@@ -1,0 +1,44 @@
+{
+  "name": "grabfood-mini-backend",
+  "version": "1.0.0",
+  "description": "Backend API for GrabFood Mini with Express and TypeScript",
+  "main": "dist/app.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js"
+  },
+  "keywords": [
+    "express",
+    "typescript",
+    "grabfood",
+    "boilerplate"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cloudinary": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.9.7",
+    "nodemailer": "^6.9.13",
+    "reflect-metadata": "^0.2.2",
+    "sequelize": "^6.37.3",
+    "sequelize-typescript": "^2.1.6",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.12.12",
+    "@types/nodemailer": "^6.4.15",
+    "@types/validator": "^13.11.9",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
+  }
+}

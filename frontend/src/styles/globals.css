@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Thiết lập font mặc định và màu sắc hoài cổ cho toàn bộ ứng dụng */
+  html, body {
+    font-family: "Be Vietnam Pro", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #FAF7F3; /* saigon.neutral.bg */
+    color: #2C1A0E;            /* saigon.neutral.text */
+    min-height: 100vh;
+    scroll-behavior: smooth;
+  }
+
+  /* Định nghĩa các tiêu đề lớn mặc định sử dụng font Serif */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Playfair Display", "Lora", Georgia, Cambria, "Times New Roman", Times, serif;
+    font-weight: 700;
+    color: #2C1A0E;
+  }
+
+  /* Định nghĩa hiển thị giá tiền, số liệu mặc định sử dụng font Mono */
+  .price-text, .mono-data {
+    font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+}
+
+@layer components {
+  /**
+   * Class `.texture-paper` tạo hiệu ứng hạt grain nhám của giấy báo cũ.
+   * Sử dụng ảnh SVG nhiễu (noise) được nhúng trực tiếp dưới dạng Base64
+   * kết hợp với z-index cao và pointer-events: none để tạo hiệu ứng phủ mờ mà không ảnh hưởng tới tương tác của người dùng.
+   */
+  .texture-paper {
+    position: relative;
+  }
+
+  .texture-paper::before {
+    content: "";
+    position: fixed; /* Phủ cứng toàn màn hình kể cả khi cuộn trang */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none; /* Tránh cản trở việc click vào các phần tử bên dưới */
+    z-index: 9999;        /* Đảm bảo nằm trên cùng tất cả các layer UI khác */
+    opacity: 0.04;        /* Độ mờ của hạt grain (4%) để tạo cảm giác tự nhiên mộc mạc */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  /* Nút bấm thiết kế viền nổi bật khối hộp (Flat Blocky) phong cách Retro Đông Dương */
+  .btn-retro {
+    @apply border-2 border-saigon-neutral-text bg-saigon-secondary text-saigon-neutral-text font-bold px-4 py-2 shadow-retro hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-retro-sm transition-all duration-150 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none;
+  }
+
+  .btn-retro-primary {
+    @apply border-2 border-saigon-neutral-text bg-saigon-primary text-saigon-neutral-surface font-bold px-4 py-2 shadow-retro hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-retro-sm transition-all duration-150 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none;
+  }
+
+  /* Khung thẻ (Card) phong cách bao bì xi măng hoặc tờ rơi vẽ tay xưa */
+  .card-retro {
+    @apply border-2 border-saigon-neutral-text bg-saigon-neutral-surface p-4 shadow-retro transition-all duration-200;
+  }
+}

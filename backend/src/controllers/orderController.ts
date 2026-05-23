@@ -1,0 +1,83 @@
+import { Request, Response, NextFunction } from 'express';
+import { orderService } from '../services/orderService';
+import { orderRepository } from '../repositories/orderRepository';
+import { AppError } from '../middlewares/errorHandler';
+
+// Interface mở rộng định dạng Request từ Express để lưu trữ thông tin user sau khi giải mã JWT
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+  };
+}
+
+export const orderController = {
+  /**
+   * Tạo đơn hàng mới
+   */
+  createOrder: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập để thực hiện tác vụ này.');
+      }
+
+      const userId = req.user.id;
+      const { restaurantId, items, deliveryAddress, paymentMethod } = req.body;
+
+      const order = await orderService.createOrder(userId, restaurantId, items, deliveryAddress, paymentMethod);
+
+      res.status(201).json({
+        success: true,
+        message: 'Tạo đơn hàng thành công.',
+        data: order,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Cập nhật trạng thái đơn hàng
+   */
+  updateStatus: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập để thực hiện tác vụ này.');
+      }
+
+      const { id } = req.params;
+      const { status } = req.body;
+
+      const order = await orderService.updateOrderStatus(id, req.user.id, status);
+
+      res.status(200).json({
+        success: true,
+        message: 'Cập nhật trạng thái đơn hàng thành công.',
+        data: order,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Lấy danh sách đơn hàng của người dùng đang đăng nhập
+   */
+  getMyOrders: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập để thực hiện tác vụ này.');
+      }
+
+      const orders = await orderRepository.findByUserId(req.user.id);
+
+      res.status(200).json({
+        success: true,
+        data: orders,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+};
