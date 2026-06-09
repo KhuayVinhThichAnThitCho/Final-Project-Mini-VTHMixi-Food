@@ -1,4 +1,8 @@
 import { v2 as cloudinary } from 'cloudinary';
+import * as dotenv from 'dotenv';
+
+// Nạp các biến môi trường từ file .env
+dotenv.config();
 
 // Cấu hình tài khoản Cloudinary phục vụ việc lưu trữ ảnh (Món ăn, Avatar, Banner)
 cloudinary.config({

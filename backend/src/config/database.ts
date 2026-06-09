@@ -1,12 +1,16 @@
 import { Sequelize } from 'sequelize-typescript';
 import * as dotenv from 'dotenv';
 
-// Import toàn bộ 5 Models đã triển khai
+// Import toàn bộ 9 Models đã triển khai
 import { User } from '../models/User';
 import { Restaurant } from '../models/Restaurant';
 import { MenuItem } from '../models/MenuItem';
 import { Order } from '../models/Order';
 import { Wallet } from '../models/Wallet';
+import { Cart } from '../models/Cart';
+import { CartItem } from '../models/CartItem';
+import { Review } from '../models/Review';
+import { Voucher } from '../models/Voucher';
 
 // Nạp các biến môi trường từ .env
 dotenv.config();
@@ -23,7 +27,7 @@ export const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'grabfood_mini',
   
   // Đăng ký toàn bộ Model vào Sequelize Instance
-  models: [User, Restaurant, MenuItem, Order, Wallet],
+  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher],
   
   // Cấu hình ghi log SQL ra console trong môi trường phát triển
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
@@ -44,13 +48,23 @@ export const initializeDatabase = async (): Promise<boolean> => {
     await sequelize.authenticate();
     console.log('✅ Kết nối tới MySQL thành công!');
 
+    // Tạm thời tắt kiểm tra khóa ngoại để tránh lỗi đồng bộ/deadlock của Sequelize (Sync alter)
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+
     // Tự động đồng bộ hóa các thay đổi cấu trúc bảng mà không làm mất dữ liệu cũ (alter: true)
     console.log('⚙️ Đang thực hiện đồng bộ hóa cấu trúc bảng (Syncing models)...');
     await sequelize.sync({ alter: true });
+
+    // Bật lại kiểm tra khóa ngoại sau khi đồng bộ xong
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
     console.log('✅ Đồng bộ hóa cấu trúc bảng MySQL hoàn tất!');
     
     return true;
   } catch (error) {
+    // Đảm bảo bật lại khóa ngoại kể cả khi xảy ra lỗi
+    try {
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    } catch (_) {}
     console.error('❌ Lỗi khởi tạo cơ sở dữ liệu MySQL:', error);
     return false;
   }

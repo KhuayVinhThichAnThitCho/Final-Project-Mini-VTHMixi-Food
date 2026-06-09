@@ -1,0 +1,224 @@
+import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
+import Header from '../../components/organisms/Header';
+import { MOCK_MENU_ITEMS } from '../../utils/mockData';
+import useCart from '../../hooks/useCart';
+
+export const ProductDetail: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { addToCart, totalItems } = useCart();
+
+  // Find product detail from mock menu items
+  const item = useMemo(() => {
+    return MOCK_MENU_ITEMS.find((m) => m.id === id) || MOCK_MENU_ITEMS[0];
+  }, [id]);
+
+  // States
+  const [quantity, setQuantity] = useState(1);
+  const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+
+  // Increase/Decrease quantity
+  const handleIncrease = () => setQuantity((q) => q + 1);
+  const handleDecrease = () => setQuantity((q) => (q > 1 ? q - 1 : 1));
+
+  // Toggle topping selections
+  const handleToppingToggle = (toppingId: string) => {
+    setSelectedToppings((prev) =>
+      prev.includes(toppingId)
+        ? prev.filter((tId) => tId !== toppingId)
+        : [...prev, toppingId]
+    );
+  };
+
+  // Real-time total price calculation using useMemo
+  const totalPrice = useMemo(() => {
+    const toppingsCost = selectedToppings.reduce((sum, toppingId) => {
+      const topping = item.toppings.find((t) => t.id === toppingId);
+      return sum + (topping ? topping.price : 0);
+    }, 0);
+    return (item.price + toppingsCost) * quantity;
+  }, [item.price, item.toppings, selectedToppings, quantity]);
+
+  // Handle add item to global cart
+  const handleAddToCart = () => {
+    const toppingsList = selectedToppings
+      .map((toppingId) => item.toppings.find((t) => t.id === toppingId))
+      .filter(Boolean) as { id: string; name: string; price: number }[];
+
+    const unitPrice = item.price + toppingsList.reduce((sum, t) => sum + t.price, 0);
+    
+    addToCart(
+      {
+        id: item.id,
+        name: item.name,
+        price: unitPrice,
+        imageUrl: item.imageUrl,
+        toppings: toppingsList.map((t) => t.name),
+      },
+      item.restaurantId
+    );
+    
+    alert(`Đã thêm ${quantity}x ${item.name} vào giỏ hàng thành công!`);
+    navigate(`/restaurants/${item.restaurantId}`);
+  };
+
+  return (
+    <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
+      
+      {/* 1. Navbar Header */}
+      <Header cartCount={totalItems} />
+
+      {/* 2. Main Page Content */}
+      <main className="flex-grow max-w-4xl w-full mx-auto px-4 py-6">
+        
+        {/* Back navigation button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm font-semibold text-neutral-500 hover:text-primary-600 mb-6 transition-colors font-body"
+        >
+          <ChevronLeft size={16} />
+          Quay lại nhà hàng
+        </button>
+
+        {/* 2-Column Responsive Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          
+          {/* Left Column (5/12): Image section - Full bleed on Mobile, card wrapper on Desktop */}
+          <div className="col-span-1 md:col-span-5 -mx-4 -mt-6 md:mx-0 md:mt-0">
+            <div className="w-full md:card-retro md:p-2 bg-white overflow-hidden aspect-video md:aspect-square border-b-2 md:border-2 border-neutral-900 shadow-retro">
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                className="w-full h-full object-cover filter sepia-[8%] saturate-[110%] brightness-[98%] food-image"
+              />
+            </div>
+            
+            {/* Restaurant indicator for desktop */}
+            <div className="hidden md:block text-center mt-3 text-xs font-mono uppercase tracking-widest text-neutral-400 select-none">
+              ✿ {item.restaurantName} ✿
+            </div>
+          </div>
+
+          {/* Right Column (7/12): Product details with photo album corners */}
+          <div className="col-span-1 md:col-span-7">
+            <div className="card-retro bg-[#FEFCF9] frame-corner p-6 relative overflow-hidden flex flex-col gap-6">
+              
+              {/* Product Info */}
+              <div>
+                <span className="bg-secondary-100 text-secondary-600 border border-secondary-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm uppercase select-none">
+                  Món ngon khuyên dùng
+                </span>
+                
+                {/* Title: Playfair Display Italic */}
+                <h1 className="text-3xl font-display italic font-bold text-[#2C1A0E] mt-3 mb-2 leading-tight">
+                  {item.name}
+                </h1>
+                
+                {/* Price: Space Mono Bold */}
+                <p className="text-2xl font-mono font-bold text-[#BF3A20]">
+                  {item.price.toLocaleString('vi-VN')} đ
+                </p>
+                
+                {/* Description: Be Vietnam Pro */}
+                <p className="text-sm text-neutral-700 leading-relaxed font-body mt-4">
+                  {item.description}
+                </p>
+              </div>
+
+              {/* Toppings Section */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-mono font-black text-neutral-500 uppercase tracking-widest border-b border-dashed border-neutral-200 pb-1.5 mb-3 select-none">
+                  Tùy chọn thêm Topping
+                </h3>
+                
+                <div className="space-y-2.5">
+                  {item.toppings.map((topping) => {
+                    const isChecked = selectedToppings.includes(topping.id);
+                    return (
+                      <label
+                        key={topping.id}
+                        className={`flex items-center justify-between p-3 bg-[#FAF7F3] hover:bg-neutral-100 rounded-md border border-neutral-200 cursor-pointer select-none transition-all duration-150 ${
+                          isChecked ? 'border-primary-600 ring-1 ring-primary-600/20 bg-secondary-50/30' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToppingToggle(topping.id)}
+                            disabled={!item.isAvailable}
+                            className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 rounded-sm cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span className="text-sm font-semibold text-neutral-800 font-body">
+                            {topping.name}
+                          </span>
+                        </div>
+                        <span className="font-mono text-sm text-[#5C3A22] font-semibold">
+                          +{topping.price.toLocaleString('vi-VN')}đ
+                        </span>
+                      </label>
+                    );
+                  })}
+
+                  {item.toppings.length === 0 && (
+                    <p className="text-xs font-mono text-neutral-400 italic">[ Món ăn này không có tùy chọn topping thêm ]</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Control Action Bar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-6 border-t border-dashed border-neutral-200 mt-2">
+                
+                {/* Square Quantity Counter */}
+                <div className="flex items-center justify-between border-2 border-neutral-900 bg-white shadow-retro-sm select-none">
+                  <button
+                    onClick={handleDecrease}
+                    disabled={!item.isAvailable}
+                    className="w-10 h-10 flex items-center justify-center font-bold text-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    -
+                  </button>
+                  <span className="px-4 font-mono font-bold text-lg text-neutral-900">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={handleIncrease}
+                    disabled={!item.isAvailable}
+                    className="w-10 h-10 flex items-center justify-center font-bold text-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* THÊM VÀO GIỎ HÀNG Button */}
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!item.isAvailable}
+                  className={`flex-grow py-3 px-6 font-bold uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 text-center text-sm ${
+                    item.isAvailable
+                      ? 'bg-[#BF3A20] hover:bg-[#D44B2F] text-white cursor-pointer'
+                      : 'bg-neutral-300 text-neutral-500 opacity-45 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0 active:shadow-none'
+                  }`}
+                >
+                  {item.isAvailable ? (
+                    <span>Thêm vào giỏ hàng — {totalPrice.toLocaleString('vi-VN')} đ</span>
+                  ) : (
+                    <span>HẾT HÀNG</span>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+
+    </div>
+  );
+};
+
+export default ProductDetail;

@@ -1,0 +1,500 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  MapPin, 
+  CreditCard, 
+  DollarSign, 
+  ArrowLeft,
+  AlertTriangle,
+  Loader2
+} from 'lucide-react';
+import Header from '../../components/organisms/Header';
+import useCart from '../../hooks/useCart';
+import useAuth from '../../hooks/useAuth';
+
+interface CheckoutItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  toppings?: string[];
+}
+
+export const CheckoutTracking: React.FC = () => {
+  const navigate = useNavigate();
+  const { items, totalItems, totalPrice, clearCart } = useCart();
+  const { user } = useAuth();
+
+  // Screen state: 'checkout' (Thanh Toán) | 'tracking' (Theo Dõi)
+  const [screen, setScreen] = useState<'checkout' | 'tracking'>('checkout');
+
+  // Form states
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'wallet'>('cod');
+  const [couponCode, setCouponCode] = useState('');
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [appliedCode, setAppliedCode] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [isOrdering, setIsOrdering] = useState(false);
+
+  // Address defaults
+  const deliveryAddress = {
+    title: 'Nhà riêng (Mặc định)',
+    detail: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+    recipientName: user?.name || 'Nguyễn Văn A',
+    recipientPhone: '0987654321'
+  };
+
+  // Determine items to display (fallback to mock items if cart is empty for testing/demo robustness)
+  const checkoutItems = useMemo<CheckoutItem[]>(() => {
+    if (items.length > 0) {
+      return items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        toppings: item.toppings
+      }));
+    }
+    return [
+      { id: 'mock-1', name: 'Hủ Tiếu Gõ Thập Cẩm', price: 45000, quantity: 2, toppings: ['Trứng cút', 'Thịt xá xíu'] },
+      { id: 'mock-2', name: 'Cà Phê Sữa Đá Sài Gòn', price: 20000, quantity: 1, toppings: [] }
+    ];
+  }, [items]);
+
+  // Subtotal calculation
+  const subtotal = useMemo(() => {
+    if (items.length > 0) return totalPrice;
+    return checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [items, totalPrice, checkoutItems]);
+
+  const deliveryFee = 15000; // Fixed delivery fee
+
+  // Final Total calculation
+  const finalTotal = useMemo(() => {
+    const total = subtotal + deliveryFee - discountAmount;
+    return total > 0 ? total : 0;
+  }, [subtotal, deliveryFee, discountAmount]);
+
+  // Apply Coupon code
+  const handleApplyCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCouponError('');
+    if (couponCode.trim().toUpperCase() === 'SAIGON90S') {
+      setDiscountAmount(15000);
+      setAppliedCode('SAIGON90S');
+      setCouponCode('');
+    } else if (couponCode.trim() === '') {
+      setCouponError('Vui lòng nhập mã giảm giá.');
+    } else {
+      setCouponError('Mã không hợp lệ hoặc đã hết hạn.');
+    }
+  };
+
+  // Confirm Order submission
+  const handleConfirmOrder = () => {
+    setIsOrdering(true);
+    // Simulate bưu cục processing delay (2 seconds)
+    setTimeout(() => {
+      setIsOrdering(false);
+      clearCart(); // Clear active items from cart store
+      setScreen('tracking');
+    }, 2000);
+  };
+
+  // Stepper state definition for Tracking Screen
+  const stages = [
+    { label: 'Tiếp Nhận', desc: 'Chờ bưu cục duyệt' },
+    { label: 'Xác Nhận', desc: 'Bếp đã nhận đơn' },
+    { label: 'Chuẩn Bị', desc: 'Đầu bếp đang nấu' },
+    { label: 'Đang Giao', desc: 'Anh Tư đang đi Cup 81' },
+    { label: 'Hoàn Thành', desc: 'Giao hàng thành công' }
+  ];
+  
+  const [currentStage, setCurrentStage] = useState(0);
+
+  // Stepper dynamic progress bar simulation
+  useEffect(() => {
+    if (screen !== 'tracking') return;
+    
+    // Auto-advance stepper every 7 seconds
+    const interval = setInterval(() => {
+      setCurrentStage((prev) => {
+        if (prev < stages.length - 1) {
+          return prev + 1;
+        }
+        clearInterval(interval);
+        return prev;
+      });
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, [screen]);
+
+  return (
+    <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
+      {/* CSS Injection for Shaking Emoji */}
+      <style>{`
+        @keyframes retro-shake {
+          0% { transform: translate(1px, 1px) rotate(0deg); }
+          10% { transform: translate(-1.5px, -2px) rotate(-1deg); }
+          20% { transform: translate(-2.5px, 0px) rotate(1deg); }
+          30% { transform: translate(0px, 2px) rotate(0deg); }
+          40% { transform: translate(1.5px, -1.5px) rotate(1deg); }
+          50% { transform: translate(-1px, 2px) rotate(-1deg); }
+          60% { transform: translate(-2.5px, 1px) rotate(0deg); }
+          70% { transform: translate(2px, 1.5px) rotate(-1deg); }
+          80% { transform: translate(-1px, -1px) rotate(1deg); }
+          90% { transform: translate(2px, 2px) rotate(0deg); }
+          100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .animate-retro-shake {
+          animation: retro-shake 0.4s infinite;
+        }
+      `}</style>
+
+      {/* Header */}
+      <Header cartCount={totalItems} />
+
+      <main className="flex-grow max-w-5xl w-full mx-auto px-4 py-8">
+        
+        {/* VIEW 1: CHECKOUT SCREEN */}
+        {screen === 'checkout' && (
+          <div>
+            {/* Title: Lora Bold */}
+            <h1 className="text-3xl font-heading font-bold text-neutral-900 mb-8 border-b-2 border-neutral-900 pb-2 uppercase tracking-wide">
+              Thanh Toán Đơn Hàng
+            </h1>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              
+              {/* Left Side (8/12): Delivery Info & Payment Selector */}
+              <div className="lg:col-span-8 space-y-6">
+                
+                {/* 1. Address Section */}
+                <div className="card-retro bg-[#FEFCF9] p-6 shadow-sm border-2 border-neutral-900">
+                  <div className="flex items-center gap-2 mb-4 border-b border-dashed border-neutral-200 pb-2">
+                    <MapPin className="text-[#BF3A20]" size={18} strokeWidth={1.5} />
+                    <h2 className="font-mono font-bold text-xs uppercase tracking-widest text-neutral-800">
+                      Địa chỉ nhận hàng
+                    </h2>
+                  </div>
+
+                  <div className="p-4 bg-transparent border-2 border-[#E8D8C6] rounded-md">
+                    <div className="flex justify-between items-center gap-2 mb-2">
+                      <span className="bg-[#FAF0D2] border border-[#C98F0A]/30 text-[10px] font-bold font-mono px-2 py-0.5 text-neutral-800 rounded-sm uppercase">
+                        {deliveryAddress.title}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#2C1A0E] font-body font-semibold">
+                      {deliveryAddress.detail}
+                    </p>
+                    <div className="mt-2 text-xs text-neutral-500 font-mono">
+                      <span>Người nhận: {deliveryAddress.recipientName}</span> — <span>SĐT: {deliveryAddress.recipientPhone}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Payment Selector */}
+                <div className="card-retro bg-[#FEFCF9] p-6 shadow-sm border-2 border-neutral-900">
+                  <div className="flex items-center gap-2 mb-4 border-b border-dashed border-neutral-200 pb-2">
+                    <CreditCard className="text-[#BF3A20]" size={18} strokeWidth={1.5} />
+                    <h2 className="font-mono font-bold text-xs uppercase tracking-widest text-neutral-800">
+                      Phương thức thanh toán
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Method COD */}
+                    <label 
+                      onClick={() => setPaymentMethod('cod')}
+                      className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
+                        paymentMethod === 'cod'
+                          ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
+                          : 'border-neutral-200 bg-white hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'cod'}
+                          onChange={() => setPaymentMethod('cod')}
+                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold font-body text-neutral-800">Tiền mặt (COD)</p>
+                          <p className="text-[10px] font-mono text-neutral-400">Trả tiền khi nhận bưu phẩm</p>
+                        </div>
+                      </div>
+                      <DollarSign size={20} strokeWidth={1.5} className="text-neutral-500" />
+                    </label>
+
+                    {/* Method Internal Wallet */}
+                    <label 
+                      onClick={() => setPaymentMethod('wallet')}
+                      className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
+                        paymentMethod === 'wallet'
+                          ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
+                          : 'border-neutral-200 bg-white hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'wallet'}
+                          onChange={() => setPaymentMethod('wallet')}
+                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold font-body text-neutral-800">Ví Saigon-Pay</p>
+                          <p className="text-[10px] font-mono text-neutral-400">Số dư: 150.000đ</p>
+                        </div>
+                      </div>
+                      <CreditCard size={20} strokeWidth={1.5} className="text-neutral-500" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* 3. Coupon Input */}
+                <div className="card-retro bg-[#FEFCF9] p-6 shadow-sm border-2 border-neutral-900">
+                  <form onSubmit={handleApplyCoupon} className="space-y-2">
+                    <label className="block text-[10px] font-mono font-bold uppercase text-neutral-500 select-none">
+                      Mã giảm giá bưu điện (Coupon)
+                    </label>
+                    <div className="flex border-2 border-neutral-900 bg-white max-w-md">
+                      <input
+                        type="text"
+                        placeholder="Nhập mã coupon..."
+                        className="w-full bg-transparent px-3 py-2 text-xs text-neutral-900 uppercase font-mono placeholder:text-neutral-400 focus:outline-none"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        disabled={appliedCode !== ''}
+                      />
+                      <button
+                        type="submit"
+                        className="bg-white text-[#BF3A20] font-body font-bold text-xs uppercase px-5 border-l-2 border-neutral-900 hover:bg-[#BF3A20]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        disabled={appliedCode !== ''}
+                      >
+                        ÁP DỤNG
+                      </button>
+                    </div>
+                    {couponError && (
+                      <p className="text-[10px] font-mono font-bold text-[#BF3A20] flex items-center gap-0.5 mt-1">
+                        <AlertTriangle size={11} /> {couponError}
+                      </p>
+                    )}
+                    {appliedCode && (
+                      <p className="text-[10px] font-mono font-bold text-emerald-600 flex items-center gap-1 mt-1">
+                        ✓ Đã áp dụng mã thư tín {appliedCode} (-15.000đ)
+                      </p>
+                    )}
+                    <p className="text-[9px] font-mono text-neutral-400 italic">
+                      * Nhập mã giảm giá "SAIGON90S" để được giảm 15.000đ cước vận chuyển.
+                    </p>
+                  </form>
+                </div>
+
+              </div>
+
+              {/* Right Side (4/12): Mini Order Bill Summary */}
+              <div className="lg:col-span-4">
+                <div className="card-retro bg-[#FEFCF9] p-6 shadow-saigon-card border-2 border-neutral-900 relative">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-grid-pattern opacity-5 pointer-events-none"></div>
+                  
+                  <h2 className="text-xs font-mono font-black text-neutral-500 uppercase tracking-widest border-b border-dashed border-neutral-200 pb-1.5 mb-4 select-none">
+                    Hóa đơn mua món
+                  </h2>
+
+                  {/* Checkout items list */}
+                  <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1 mb-4">
+                    {checkoutItems.map((item) => (
+                      <div key={item.id} className="flex justify-between items-start text-xs border-b border-neutral-100 pb-2">
+                        <div>
+                          <p className="font-semibold text-neutral-900 font-body">
+                            {item.quantity}x {item.name}
+                          </p>
+                          {item.toppings && item.toppings.length > 0 && (
+                            <p className="text-[9px] text-[#9E6E4A] font-semibold mt-0.5">
+                              + Topping: {item.toppings.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <span className="font-mono font-bold text-neutral-700">
+                          {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Calculations details */}
+                  <div className="space-y-2.5 font-mono text-[11px] text-neutral-600 border-t border-dashed border-neutral-200 pt-3">
+                    <div className="flex justify-between">
+                      <span>Tạm tính món ăn:</span>
+                      <span>{subtotal.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Phí giao hàng:</span>
+                      <span>+{deliveryFee.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-emerald-600 font-bold">
+                        <span>Mã giảm giá:</span>
+                        <span>-{discountAmount.toLocaleString('vi-VN')}đ</span>
+                      </div>
+                    )}
+                    
+                    {/* Final Payment Total */}
+                    <div className="flex justify-between items-center border-t border-dashed border-neutral-200 pt-3 text-xs font-black">
+                      <span className="text-neutral-700 uppercase select-none">Tổng cước:</span>
+                      <span className="text-base text-[#BF3A20]">
+                        {finalTotal.toLocaleString('vi-VN')}đ
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Checkout CTA Button with loading simulation */}
+                  <button
+                    onClick={handleConfirmOrder}
+                    disabled={isOrdering}
+                    className="w-full bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-semibold text-xs py-3.5 px-6 uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 cursor-pointer text-center mt-6 flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+                  >
+                    {isOrdering ? (
+                      <>
+                        <Loader2 className="animate-spin" size={14} />
+                        Đang ký gửi bưu điện...
+                      </>
+                    ) : (
+                      'XÁC NHẬN ĐẶT HÀNG'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: ORDER TRACKING SCREEN */}
+        {screen === 'tracking' && (
+          <div className="max-w-3xl mx-auto">
+            {/* Title: Lora Bold */}
+            <h1 className="text-3xl font-heading font-bold text-[#2C1A0E] text-center mb-2 uppercase tracking-wide">
+              Bếp đang chuẩn bị món cho bạn...
+            </h1>
+            <p className="text-center text-xs text-neutral-400 font-mono mb-8">
+              Mã bưu gửi đơn hàng: <span className="font-bold">#GRB-{Math.floor(Math.random() * 9000 + 1000)}</span>
+            </p>
+
+            <div className="space-y-8">
+              
+              {/* Stepper Horizontal Progress Bar */}
+              <div className="card-retro bg-[#FEFCF9] p-6 shadow-sm border-2 border-neutral-900 relative">
+                <div className="relative flex items-center justify-between gap-2 md:gap-4 pt-2">
+                  {/* Progress Line */}
+                  <div className="absolute top-[18px] left-0 w-full h-[3px] bg-neutral-200 -translate-y-1/2 z-0"></div>
+                  
+                  {/* Dynamic Active Line */}
+                  <div 
+                    className="absolute top-[18px] left-0 h-[3px] bg-[#BF3A20] -translate-y-1/2 z-0 transition-all duration-500"
+                    style={{ width: `${(currentStage / (stages.length - 1)) * 100}%` }}
+                  ></div>
+
+                  {stages.map((stage, index) => {
+                    const isCompleted = index <= currentStage;
+                    const isCurrent = index === currentStage;
+
+                    return (
+                      <div key={stage.label} className="flex flex-col items-center z-10 flex-1 relative">
+                        {/* Step Circle */}
+                        <div
+                          className={`w-9 h-9 rounded-full border-2 flex items-center justify-center font-mono font-bold text-xs transition-all ${
+                            isCurrent
+                              ? 'bg-[#BF3A20] border-neutral-900 text-white scale-110 shadow-retro-sm'
+                              : isCompleted
+                              ? 'bg-[#BF3A20] border-neutral-900 text-white'
+                              : 'bg-white border-[#D0B89A] text-[#D0B89A]'
+                          }`}
+                        >
+                          {index + 1}
+                        </div>
+                        {/* Step Label */}
+                        <span
+                          className={`text-[9px] md:text-[10px] font-bold mt-2 uppercase text-center tracking-wider max-w-[75px] ${
+                            isCompleted ? 'text-neutral-900' : 'text-[#D0B89A]'
+                          }`}
+                        >
+                          {stage.label}
+                        </span>
+                        {/* Step Description */}
+                        <span className="text-[7.5px] text-neutral-400 hidden md:block text-center mt-0.5 leading-tight">
+                          {stage.desc}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Shaking 🛵 Emoji and Delivery Details */}
+              <div className="card-retro bg-[#FEFCF9] p-8 shadow-saigon-card border-2 border-neutral-900 flex flex-col items-center justify-center gap-6 relative">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-grid-pattern opacity-5 pointer-events-none"></div>
+
+                {/* Animated shake motor box */}
+                <div className="p-6 bg-[#FAF7F3] border border-dashed border-neutral-300 rounded-lg w-full max-w-md flex flex-col items-center justify-center text-center shadow-inner select-none relative overflow-hidden">
+                  <div className="absolute inset-0 bg-grid-pattern opacity-[2%] pointer-events-none"></div>
+                  
+                  {/* Moving 🛵 Emoji with Shake animation */}
+                  <span className="text-7xl animate-retro-shake inline-block" role="img" aria-label="delivering scooter">
+                    🛵
+                  </span>
+
+                  <div className="mt-4 space-y-1">
+                    <p className="text-xs font-mono font-black text-neutral-500 uppercase tracking-widest">Thời gian dự kiến</p>
+                    <p className="text-2xl font-mono font-black text-[#BF3A20]">25 - 35 phút</p>
+                    <p className="text-[10px] text-neutral-400 font-body">Shipper của bạn đang chuẩn bị lăn bánh cút kít</p>
+                  </div>
+                </div>
+
+                {/* Shipper Details (Saigon style) */}
+                <div className="w-full max-w-md grid grid-cols-2 gap-4 border-t border-neutral-200 pt-6 text-xs font-mono">
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-neutral-400 uppercase tracking-wider block">Người đưa thư tín</span>
+                    <span className="font-bold text-neutral-800 text-sm">Anh Tư Xe Lôi</span>
+                    <span className="text-[10px] text-neutral-400 block font-body">SĐT: 0909.888.777</span>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <span className="text-[9px] text-neutral-400 uppercase tracking-wider block">Ngựa sắt di chuyển</span>
+                    <span className="font-bold text-[#BF3A20] text-sm">Honda Cub 81</span>
+                    <span className="text-[10px] text-neutral-400 block">Biển số: 52-F4 9090</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Back Home */}
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={() => navigate('/')}
+                  className="bg-transparent hover:bg-neutral-100 text-neutral-800 font-body font-bold text-xs uppercase tracking-widest py-3 px-6 border-2 border-neutral-900 shadow-retro active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <ArrowLeft size={14} />
+                  Quay lại trang chủ đặt thêm
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-[#FEFCF9] border-t border-[#E8D8C6] py-6 text-center text-xs text-neutral-400 mt-12 font-mono">
+        <p className="font-display italic font-bold text-sm text-[#BF3A20]">GrabFood Mini © 1990 - 2026</p>
+        <p className="mt-1 text-[10px]">✿ Bưu phẩm gửi nhanh - Ấm lòng thực khách phương xa ✿</p>
+      </footer>
+    </div>
+  );
+};
+
+export default CheckoutTracking;

@@ -1,14 +1,14 @@
 import 'reflect-metadata';
+import * as dotenv from 'dotenv';
+// Nạp các biến môi trường từ file .env
+dotenv.config();
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import * as dotenv from 'dotenv';
 import { errorHandler, AppError } from './middlewares/errorHandler';
 import apiRouter from './routes';
-
-
-// Nạp các biến môi trường từ file .env
-dotenv.config();
+import { initializeDatabase } from './config/database';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -66,11 +66,18 @@ app.use(errorHandler);
 
 // Lắng nghe cổng kết nối nếu ứng dụng được chạy trực tiếp
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`===================================================`);
-    console.log(`🚀 GrabFood Mini Backend chạy trên: http://localhost:${PORT}`);
-    console.log(`⚙️  API Base URL: http://localhost:${PORT}/api/v1`);
-    console.log(`===================================================`);
+  initializeDatabase().then((success) => {
+    if (success) {
+      app.listen(PORT, () => {
+        console.log(`===================================================`);
+        console.log(`🚀 GrabFood Mini Backend chạy trên: http://localhost:${PORT}`);
+        console.log(`⚙️  API Base URL: http://localhost:${PORT}/api/v1`);
+        console.log(`===================================================`);
+      });
+    } else {
+      console.error('❌ Không thể khởi động server vì kết nối Database thất bại.');
+      process.exit(1);
+    }
   });
 }
 

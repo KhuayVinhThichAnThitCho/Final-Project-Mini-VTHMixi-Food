@@ -61,6 +61,14 @@ export class User extends Model {
   @Column(DataType.ENUM('pending', 'active', 'banned'))
   status!: UserStatus;
 
+  @AllowNull(true)
+  @Column(DataType.STRING(10))
+  otpCode?: string;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  otpExpiresAt?: Date;
+
   // ==========================================
   // THIẾT LẬP CÁC MỐI QUAN HỆ (ASSOCIATIONS)
   // ==========================================

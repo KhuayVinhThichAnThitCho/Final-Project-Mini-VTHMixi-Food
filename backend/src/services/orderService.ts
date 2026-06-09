@@ -1,6 +1,6 @@
 import { orderRepository } from '../repositories/orderRepository';
 import { walletService } from './walletService';
-import { IOrder, OrderStatus, PaymentMethod } from '../models/Order';
+import { Order, OrderStatus, PaymentMethod } from '../models/Order';
 import { AppError } from '../middlewares/errorHandler';
 
 export const orderService = {
@@ -13,7 +13,7 @@ export const orderService = {
     items: { menuItemId: string; name: string; quantity: number; price: number }[],
     deliveryAddress: string,
     paymentMethod: PaymentMethod
-  ): Promise<IOrder> => {
+  ): Promise<Order> => {
     if (items.length === 0) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Đơn hàng phải chứa ít nhất một món ăn.');
     }
@@ -43,7 +43,7 @@ export const orderService = {
   /**
    * Cập nhật trạng thái đơn hàng (Dành cho Vendor, Manager hoặc Admin)
    */
-  updateOrderStatus: async (orderId: string, userId: string, newStatus: OrderStatus): Promise<IOrder> => {
+  updateOrderStatus: async (orderId: string, userId: string, newStatus: OrderStatus): Promise<Order> => {
     const order = await orderRepository.findById(orderId);
     if (!order) {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy đơn hàng yêu cầu.');
@@ -60,3 +60,4 @@ export const orderService = {
     return updatedOrder;
   },
 };
+export default orderService;

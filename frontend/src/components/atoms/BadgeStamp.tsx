@@ -15,10 +15,10 @@ export const BadgeStamp: React.FC<BadgeStampProps> = ({
 
   switch (variant) {
     case 'primary':
-      colorStyle = 'border-saigon-primary text-saigon-primary bg-saigon-primary/5';
+      colorStyle = 'border-primary-600 text-primary-600 bg-primary-600/5';
       break;
     case 'secondary':
-      colorStyle = 'border-saigon-secondary text-saigon-secondary bg-saigon-secondary/5';
+      colorStyle = 'border-secondary-500 text-secondary-500 bg-secondary-500/5';
       break;
     case 'success':
       colorStyle = 'border-emerald-700 text-emerald-700 bg-emerald-50';

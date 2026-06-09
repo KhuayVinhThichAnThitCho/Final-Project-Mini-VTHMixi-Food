@@ -8,18 +8,34 @@ export const useAuth = () => {
   // Đăng ký tài khoản
   const registerMutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: (data) => {
-      setUser(data.user);
-      setTokens(data.accessToken, data.refreshToken);
+    onSuccess: (res: any) => {
+      if (!res.requiresOtp) {
+        const authData = res.data;
+        setUser(authData.user);
+        setTokens(authData.accessToken, authData.refreshToken);
+      }
     },
   });
 
   // Đăng nhập tài khoản
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: (data) => {
-      setUser(data.user);
-      setTokens(data.accessToken, data.refreshToken);
+    onSuccess: (res: any) => {
+      if (!res.requiresOtp) {
+        const authData = res.data;
+        setUser(authData.user);
+        setTokens(authData.accessToken, authData.refreshToken);
+      }
+    },
+  });
+
+  // Xác thực OTP đăng nhập
+  const verifyOtpMutation = useMutation({
+    mutationFn: authApi.verifyOtp,
+    onSuccess: (res: any) => {
+      const authData = res.data;
+      setUser(authData.user);
+      setTokens(authData.accessToken, authData.refreshToken);
     },
   });
 
@@ -37,6 +53,9 @@ export const useAuth = () => {
     login: loginMutation.mutate,
     isLoadingLogin: loginMutation.isPending,
     errorLogin: loginMutation.error,
+    verifyOtp: verifyOtpMutation.mutate,
+    isLoadingVerifyOtp: verifyOtpMutation.isPending,
+    errorVerifyOtp: verifyOtpMutation.error,
     logout,
   };
 };
