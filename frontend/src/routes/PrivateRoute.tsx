@@ -19,8 +19,11 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({
   }
 
   // Nếu có yêu cầu về phân quyền và vai trò của user không khớp: Redirect về Home
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+  if (allowedRoles && user) {
+    const hasRole = allowedRoles.some(role => role.toLowerCase() === user.role.toLowerCase());
+    if (!hasRole) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   // Thỏa mãn điều kiện: Cho phép render component con bên trong

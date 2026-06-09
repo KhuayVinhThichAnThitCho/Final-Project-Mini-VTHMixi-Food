@@ -1,80 +1,57 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../../components/organisms/Navbar';
-import RestaurantCard, { RestaurantData } from '../../components/organisms/RestaurantCard';
+import Header from '../../components/organisms/Header';
+import Hero from '../../components/organisms/Hero';
+import CategoryStrip from '../../components/molecules/CategoryStrip';
+import RestaurantCard from '../../components/molecules/RestaurantCard';
 import SaigonDivider from '../../components/molecules/SaigonDivider';
-import { Search } from 'lucide-react';
-
-const MOCK_RESTAURANTS: RestaurantData[] = [
-  {
-    id: 'rest-1',
-    name: 'Hủ Tiếu Gõ Chợ Bàn Cờ',
-    address: 'Hẻm 174 Nguyễn Thiện Thuật, Quận 3',
-    rating: 4.8,
-    tags: ['Hủ tiếu', 'Món nước', 'Bình dân'],
-    bannerUrl: '',
-  },
-  {
-    id: 'rest-2',
-    name: 'Cơm Tấm Bãi Rác Quận 4',
-    address: '73 Lê Văn Linh, Quận 4, Sài Gòn',
-    rating: 4.6,
-    tags: ['Cơm tấm', 'Sườn bì chả', 'Ăn trưa'],
-    bannerUrl: '',
-  },
-  {
-    id: 'rest-3',
-    name: 'Bột Chiên Trấn Giang',
-    address: 'Đầu hẻm Phùng Hưng, Quận 5',
-    rating: 4.5,
-    tags: ['Bột chiên', 'Ăn vặt', 'Trung Hoa'],
-    bannerUrl: '',
-  },
-];
+import { MOCK_CATEGORIES, MOCK_RESTAURANTS } from '../../utils/mockData';
+import useCart from '../../hooks/useCart';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const { totalItems } = useCart();
 
-  const filteredRestaurants = MOCK_RESTAURANTS.filter((r) =>
-    r.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtering Logic
+  const filteredRestaurants = MOCK_RESTAURANTS.filter((restaurant) => {
+    const matchesCategory = selectedCategory === 'all' || restaurant.tags.includes(selectedCategory);
+    const matchesSearch =
+      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      restaurant.address.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar cartCount={0} />
+    <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
+      
+      {/* 1. Header / Navbar (h-16) */}
+      <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} cartCount={totalItems} />
 
-      <main className="flex-grow max-w-6xl w-full mx-auto px-4 py-8">
+      {/* 2. Hero Section (min-h-[500px]) */}
+      <Hero searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+
+      {/* 3. Category Strip (Horizontal Scroll) */}
+      <CategoryStrip
+        categories={MOCK_CATEGORIES}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+      />
+
+      {/* 4. Featured Restaurants List */}
+      <main className="flex-grow max-w-6xl w-full mx-auto px-4 py-12">
         
-        {/* Banner Sài Gòn 90s */}
-        <section className="card-retro bg-saigon-neutral-surface mb-8 text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-grid-pattern opacity-10 pointer-events-none"></div>
-          <h1 className="text-4xl md:text-5xl font-black mb-3 text-saigon-primary">
-            GRABFOOD MINI
-          </h1>
-          <p className="text-saigon-neutral-subText font-medium max-w-xl mx-auto mb-6">
-            Khám phá hương vị xưa giữa lòng Sài Gòn hiện đại. Đặt thức ăn nhanh chóng, an tâm với chất lượng hoài cổ.
+        {/* Section Title with .divider-saigon styling */}
+        <div className="mb-10 text-center">
+          <SaigonDivider text="Quán Ngon Phố Cũ Sài Gòn" className="max-w-2xl mx-auto" />
+          <p className="text-xs text-neutral-500 font-mono mt-2 uppercase tracking-widest">
+            ☆ Tinh hoa vỉa hè được chọn lọc kỹ càng ☆
           </p>
+        </div>
 
-          {/* Ô Tìm Kiếm */}
-          <div className="flex max-w-md mx-auto border-2 border-saigon-neutral-text shadow-retro bg-saigon-neutral-bg focus-within:translate-x-[2px] focus-within:translate-y-[2px] focus-within:shadow-retro-sm transition-all">
-            <input
-              type="text"
-              placeholder="Tìm kiếm quán ngon gần bạn..."
-              className="w-full bg-transparent px-4 py-2 text-sm text-saigon-neutral-text placeholder:text-saigon-neutral-subText/50 focus:outline-none"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <div className="bg-saigon-primary text-saigon-neutral-surface px-4 flex items-center justify-center border-l-2 border-saigon-neutral-text">
-              <Search size={18} />
-            </div>
-          </div>
-        </section>
-
-        <SaigonDivider text="Quán Ngon Bình Dân" />
-
-        {/* Lưới các Quán ăn */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Grid Layout (2 cols on mobile, 4 cols on desktop) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {filteredRestaurants.map((restaurant) => (
             <RestaurantCard
               key={restaurant.id}
@@ -82,19 +59,46 @@ export const Home: React.FC = () => {
               onClick={() => navigate(`/restaurants/${restaurant.id}`)}
             />
           ))}
+
+          {/* Empty Fallback State */}
           {filteredRestaurants.length === 0 && (
-            <div className="col-span-full text-center py-12 text-saigon-neutral-subText font-mono">
-              [Không tìm thấy quán ăn phù hợp với từ khóa]
+            <div className="col-span-full text-center py-16 card-retro bg-[#FEFCF9]">
+              <p className="font-mono text-sm text-neutral-500">
+                [ Hẻm ẩm thực hiện không tìm thấy quán ăn nào phù hợp ]
+              </p>
+              <button
+                className="btn-retro text-xs mt-4"
+                onClick={() => {
+                  setSelectedCategory('all');
+                  setSearchQuery('');
+                }}
+              >
+                Xem tất cả quán ăn
+              </button>
             </div>
           )}
-        </section>
+        </div>
 
       </main>
 
-      {/* Footer */}
-      <footer className="bg-saigon-neutral-surface border-t-2 border-saigon-neutral-text py-6 text-center text-xs text-saigon-neutral-subText mt-12">
-        <p className="font-serif italic font-bold text-sm text-saigon-primary">GrabFood Mini © 1990 - 2026</p>
+      {/* 5. Retro Footer */}
+      <footer className="bg-[#FEFCF9] border-t-2 border-neutral-900 py-8 text-center text-xs text-neutral-500">
+        <div className="max-w-6xl mx-auto px-4 space-y-3">
+          <p className="font-display italic font-bold text-base text-[#BF3A20]">
+            GrabFood Mini © 1990 - 2026
+          </p>
+          <p className="max-w-md mx-auto leading-relaxed text-neutral-600 font-body">
+            Nền tảng ẩm thực hoài cổ được xây dựng bởi HCMUTE Software Engineering. Giao nhận bằng xe đạp Phượng Hoàng và ký ức Sài Gòn.
+          </p>
+          <div className="max-w-xs mx-auto">
+            <div className="border-t border-double border-neutral-300 opacity-60"></div>
+          </div>
+          <p className="font-mono text-[10px] text-neutral-400">
+            TypeScript · React · Tailwind CSS · Sequelize MySQL
+          </p>
+        </div>
       </footer>
+
     </div>
   );
 };

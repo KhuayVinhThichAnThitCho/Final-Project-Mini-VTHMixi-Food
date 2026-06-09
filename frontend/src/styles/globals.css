@@ -3,62 +3,183 @@
 @tailwind utilities;
 
 @layer base {
-  /* Thiết lập font mặc định và màu sắc hoài cổ cho toàn bộ ứng dụng */
+  /* === ĐỊNH NGHĨA CSS VARIABLES THEO MẪU THIẾT KẾ SÀI GÒN 90S === */
+  :root {
+    --color-primary-900: #5C1A0A;
+    --color-primary-800: #7D2410;
+    --color-primary-700: #9E2F18;
+    --color-primary-600: #BF3A20;   /* Main CTA */
+    --color-primary-500: #D44B2F;   /* Hover */
+    --color-primary-400: #E06B52;
+    --color-primary-300: #EA9080;
+    --color-primary-200: #F2B8AE;
+    --color-primary-100: #FAE4E0;
+    --color-primary-50:  #FEF5F3;
+
+    --color-secondary-900: #4A3200;
+    --color-secondary-800: #6B4800;
+    --color-secondary-700: #8C5F00;
+    --color-secondary-600: #AD7800;
+    --color-secondary-500: #C98F0A; /* Accent chính */
+    --color-secondary-400: #DBA832;
+    --color-secondary-300: #E9C46A; /* Highlight */
+    --color-secondary-200: #F3DC9E;
+    --color-secondary-100: #FAF0D2;
+    --color-secondary-50:  #FEFBF0;
+
+    --color-neutral-950: #1A1008;
+    --color-neutral-900: #2C1A0E;   /* Text tiêu đề chính */
+    --color-neutral-800: #3D2314;
+    --color-neutral-700: #5C3A22;   /* Text body */
+    --color-neutral-600: #7A5235;
+    --color-neutral-500: #9E6E4A;
+    --color-neutral-400: #B8906E;
+    --color-neutral-300: #D0B89A;
+    --color-neutral-200: #E8D8C6;   /* Border nhẹ */
+    --color-neutral-100: #F5EFE6;
+    --color-neutral-50:  #FAF7F3;   /* Background kem nhạt */
+    --color-white:       #FEFCF9;   /* Off-white */
+
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-heading: 'Lora', Georgia, serif;
+    --font-body:    'Be Vietnam Pro', 'Segoe UI', sans-serif;
+    --font-mono:    'Space Mono', 'Courier New', monospace;
+  }
+
+  /* === ĐỊNH DẠNG KIỂU DÁNG MẶC ĐỊNH CHO CÁC THẺ === */
   html, body {
-    font-family: "Be Vietnam Pro", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #FAF7F3; /* saigon.neutral.bg */
-    color: #2C1A0E;            /* saigon.neutral.text */
+    font-family: var(--font-body);
+    background-color: var(--color-neutral-50);
+    color: var(--color-neutral-700);
     min-height: 100vh;
     scroll-behavior: smooth;
+    /* Dải màu nền lan tỏa nhẹ góc trang */
+    background-image: 
+      radial-gradient(ellipse at 20% 10%, rgba(201, 143, 10, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(191, 58, 32, 0.03) 0%, transparent 50%);
   }
 
-  /* Định nghĩa các tiêu đề lớn mặc định sử dụng font Serif */
   h1, h2, h3, h4, h5, h6 {
-    font-family: "Playfair Display", "Lora", Georgia, Cambria, "Times New Roman", Times, serif;
+    font-family: var(--font-heading);
+    color: var(--color-neutral-900);
     font-weight: 700;
-    color: #2C1A0E;
   }
 
-  /* Định nghĩa hiển thị giá tiền, số liệu mặc định sử dụng font Mono */
+  /* Định nghĩa giá tiền và số liệu mono mặc định */
   .price-text, .mono-data {
-    font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-family: var(--font-mono);
   }
 }
 
 @layer components {
-  /**
-   * Class `.texture-paper` tạo hiệu ứng hạt grain nhám của giấy báo cũ.
-   * Sử dụng ảnh SVG nhiễu (noise) được nhúng trực tiếp dưới dạng Base64
-   * kết hợp với z-index cao và pointer-events: none để tạo hiệu ứng phủ mờ mà không ảnh hưởng tới tương tác của người dùng.
-   */
+  /* === 1. LỚP PHỦ HẠT GIẤY NHÁM RETRO (SVG NOISE OPACITY 4%) === */
   .texture-paper {
     position: relative;
   }
 
   .texture-paper::before {
     content: "";
-    position: fixed; /* Phủ cứng toàn màn hình kể cả khi cuộn trang */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    pointer-events: none; /* Tránh cản trở việc click vào các phần tử bên dưới */
-    z-index: 9999;        /* Đảm bảo nằm trên cùng tất cả các layer UI khác */
-    opacity: 0.04;        /* Độ mờ của hạt grain (4%) để tạo cảm giác tự nhiên mộc mạc */
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.04; /* Phủ mờ nhạt 4% tự nhiên */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px 200px;
   }
 
-  /* Nút bấm thiết kế viền nổi bật khối hộp (Flat Blocky) phong cách Retro Đông Dương */
+  /* === 2. ĐƯỜNG KẺ HOA VĂN MỜ DẦN (DIVIDER SAIGON CHÉO) === */
+  .divider-saigon {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--color-secondary-500);
+  }
+
+  .divider-saigon::before,
+  .divider-saigon::after {
+    content: '';
+    flex: 1;
+    height: 1.5px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--color-neutral-200),
+      transparent
+    );
+  }
+
+  /* === 3. GÓC TRANG TRÍ KHUNG ẢNH CỔ KÍNH (CORNER FRAMES) === */
+  .frame-corner {
+    position: relative;
+  }
+
+  .frame-corner::before,
+  .frame-corner::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-color: var(--color-secondary-500);
+    border-style: solid;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .frame-corner::before {
+    top: 8px;
+    left: 8px;
+    border-width: 2px 0 0 2px; /* Góc trên bên trái */
+  }
+
+  .frame-corner::after {
+    bottom: 8px;
+    right: 8px;
+    border-width: 0 2px 2px 0; /* Góc dưới bên phải */
+  }
+
+  /* === 4. TEM NHÃN DÁN ĐÓNG DẤU RETRO (BADGE STAMP) === */
+  .badge-stamp-indochina {
+    display: inline-block;
+    background-color: var(--color-primary-600);
+    color: var(--color-white);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: var(--text-xs);
+    padding: 4px 12px;
+    transform: rotate(-2.5deg); /* Xoay lệch nghiêng nhẹ 2.5 độ */
+    border: 1px dashed var(--color-white);
+    box-shadow: 3px 3px 0px 0px var(--color-neutral-900);
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+  }
+
+  /* === 5. BỘ LỌC ẤM ÁP CHO HÌNH ẢNH MÓN ĂN (WARM VINTAGE PHOTO FILTER) === */
+  .food-image img, img.food-image {
+    filter: sepia(8%) saturate(110%) brightness(98%);
+    transition: filter 300ms ease, transform 300ms ease;
+  }
+
+  .food-image:hover img, img.food-image:hover {
+    filter: sepia(0%) saturate(115%) brightness(100%);
+    transform: scale(1.02);
+  }
+
+  /* === 6. NÚT BẤM VÀ THẺ PHONG CÁCH RETRO SHADOW === */
   .btn-retro {
-    @apply border-2 border-saigon-neutral-text bg-saigon-secondary text-saigon-neutral-text font-bold px-4 py-2 shadow-retro hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-retro-sm transition-all duration-150 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none;
+    @apply border-2 border-neutral-900 bg-secondary-500 text-neutral-900 font-bold px-4 py-2 shadow-retro hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-retro-sm transition-all duration-150 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none;
   }
 
   .btn-retro-primary {
-    @apply border-2 border-saigon-neutral-text bg-saigon-primary text-saigon-neutral-surface font-bold px-4 py-2 shadow-retro hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-retro-sm transition-all duration-150 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none;
+    @apply border-2 border-neutral-900 bg-primary-600 text-white font-bold px-4 py-2 shadow-retro hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-retro-sm transition-all duration-150 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none;
   }
 
-  /* Khung thẻ (Card) phong cách bao bì xi măng hoặc tờ rơi vẽ tay xưa */
   .card-retro {
-    @apply border-2 border-saigon-neutral-text bg-saigon-neutral-surface p-4 shadow-retro transition-all duration-200;
+    @apply border-2 border-neutral-900 bg-white p-4 shadow-retro transition-all duration-200;
   }
 }

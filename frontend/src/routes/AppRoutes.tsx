@@ -6,10 +6,15 @@ import PrivateRoute from './PrivateRoute';
 import Home from '../pages/guest/Home';
 import RestaurantDetail from '../pages/guest/RestaurantDetail';
 import VendorDashboard from '../pages/vendor/Dashboard';
+import Login from '../pages/guest/Login';
+import Register from '../pages/guest/Register';
+import ForgotPassword from '../pages/guest/ForgotPassword';
+import ProductDetail from '../pages/guest/ProductDetail';
+import Cart from '../pages/guest/Cart';
+import Profile from '../pages/user/Profile';
+import CheckoutTracking from '../pages/user/CheckoutTracking';
+import Favorites from '../pages/user/Favorites';
 
-// Mock trang Đăng nhập / Đăng ký đơn giản
-const Login = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Đăng Nhập</h2></div>;
-const Register = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Đăng Ký</h2></div>;
 const OrderHistory = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Lịch Sử Đơn Hàng</h2></div>;
 const AdminDashboard = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Admin Dashboard</h2></div>;
 
@@ -21,9 +26,15 @@ export const AppRoutes: React.FC = () => {
       <Route path="/restaurants/:id" element={<RestaurantDetail />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/menu-items/:id" element={<ProductDetail />} />
+      <Route path="/cart" element={<Cart />} />
 
       {/* 2. Các route cần đăng nhập (Vai trò: USER) */}
       <Route element={<PrivateRoute allowedRoles={['USER', 'VENDOR', 'MANAGER', 'ADMIN']} />}>
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/checkout" element={<CheckoutTracking />} />
+        <Route path="/favorites" element={<Favorites />} />
         <Route path="/orders/history" element={<OrderHistory />} />
       </Route>
 

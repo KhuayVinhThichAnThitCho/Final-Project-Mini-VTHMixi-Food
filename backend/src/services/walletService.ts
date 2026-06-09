@@ -1,26 +1,29 @@
-import { IWallet } from '../models/Wallet';
-import { ITransaction } from '../models/Transaction';
+import { Wallet } from '../models/Wallet';
 import { AppError } from '../middlewares/errorHandler';
 
-// Dữ liệu giả lập ví điện tử
-let walletsMock: IWallet[] = [];
+interface ITransaction {
+  id: string;
+  walletId: number;
+  amount: number;
+  type: 'DEPOSIT' | 'PAYMENT';
+  description: string;
+  createdAt: Date;
+}
+
 let transactionsMock: ITransaction[] = [];
 
 export const walletService = {
   /**
    * Lấy ví điện tử của người dùng, tự động tạo nếu chưa có
    */
-  getOrCreateWallet: async (userId: string): Promise<IWallet> => {
-    let wallet = walletsMock.find((w) => w.userId === userId);
+  getOrCreateWallet: async (userId: string): Promise<Wallet> => {
+    let wallet = await Wallet.findOne({ where: { userId } });
     if (!wallet) {
-      wallet = {
-        id: `WALLET-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      wallet = await Wallet.create({
         userId,
-        balance: 0, // Mặc định số dư là 0 VND
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      walletsMock.push(wallet);
+        balance: 0,
+        pendingBalance: 0,
+      });
     }
     return wallet;
   },
@@ -28,14 +31,14 @@ export const walletService = {
   /**
    * Nạp tiền vào ví điện tử
    */
-  deposit: async (userId: string, amount: number, description = 'Nạp tiền vào ví'): Promise<IWallet> => {
+  deposit: async (userId: string, amount: number, description = 'Nạp tiền vào ví'): Promise<Wallet> => {
     if (amount <= 0) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Số tiền nạp vào ví phải lớn hơn 0.');
     }
 
     const wallet = await walletService.getOrCreateWallet(userId);
-    wallet.balance += amount;
-    wallet.updatedAt = new Date();
+    wallet.balance = Number(wallet.balance) + amount;
+    await wallet.save();
 
     // Ghi nhận lịch sử giao dịch
     const transaction: ITransaction = {
@@ -54,15 +57,15 @@ export const walletService = {
   /**
    * Thanh toán bằng ví điện tử
    */
-  payWithWallet: async (userId: string, amount: number, description: string): Promise<IWallet> => {
+  payWithWallet: async (userId: string, amount: number, description: string): Promise<Wallet> => {
     const wallet = await walletService.getOrCreateWallet(userId);
 
     if (wallet.balance < amount) {
       throw new AppError(400, 'BUSINESS_ERROR', `Số dư tài khoản ví không đủ để thực hiện giao dịch (Thiếu ${amount - wallet.balance} VND).`);
     }
 
-    wallet.balance -= amount;
-    wallet.updatedAt = new Date();
+    wallet.balance = Number(wallet.balance) - amount;
+    await wallet.save();
 
     // Ghi nhận lịch sử giao dịch
     const transaction: ITransaction = {

@@ -15,6 +15,6 @@ router.post('/', orderController.createOrder);
 router.get('/mine', orderController.getMyOrders);
 
 // Route cập nhật trạng thái đơn hàng (chỉ VENDOR, MANAGER, ADMIN được thực hiện): PATCH /api/v1/orders/:id/status
-router.patch('/:id/status', authorize(['VENDOR', 'MANAGER', 'ADMIN']), orderController.updateStatus);
+router.patch('/:id/status', authorize(['vendor', 'manager', 'admin']), orderController.updateStatus);
 
 export default router;

@@ -1,4 +1,8 @@
 import nodemailer from 'nodemailer';
+import * as dotenv from 'dotenv';
+
+// Nạp các biến môi trường từ file .env
+dotenv.config();
 
 // Khởi tạo Transporter cho Nodemailer gửi email (ví dụ OTP, hóa đơn)
 export const mailTransporter = nodemailer.createTransport({
@@ -7,7 +11,7 @@ export const mailTransporter = nodemailer.createTransport({
   secure: process.env.MAIL_SECURE === 'true', // true cho port 465, false cho các port khác
   auth: {
     user: process.env.MAIL_USER || 'your_email@gmail.com',
-    pass: process.env.MAIL_PASS || 'your_email_app_password',
+    pass: (process.env.MAIL_PASS || 'your_email_app_password').replace(/\s+/g, ''),
   },
 });
 
