@@ -54,6 +54,27 @@ export const authApi = {
   resendOtp: async (email: string) => {
     return api.post('/auth/resend-otp', { email }) as any;
   },
+
+  /**
+   * Lấy thông tin tài khoản người dùng đăng nhập hiện tại
+   */
+  getMe: async () => {
+    return api.get('/auth/me') as any;
+  },
+
+  /**
+   * Cập nhật thông tin hồ sơ cá nhân (tên, sđt, avatar)
+   */
+  updateProfile: async (data: { name?: string; phone?: string; avatar?: string }) => {
+    return api.put('/auth/profile', data) as any;
+  },
+
+  /**
+   * Đổi mật khẩu khi đã đăng nhập
+   */
+  changePassword: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+    return api.put('/auth/change-password', data) as any;
+  },
 };
 
 export default authApi;

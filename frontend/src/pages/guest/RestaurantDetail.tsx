@@ -1,36 +1,26 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Star, ShoppingCart } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import Button from '../../components/atoms/Button';
 import useCart from '../../hooks/useCart';
-
-interface MenuItemData {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-}
-
-const MOCK_RESTAURANT = {
-  id: 'rest-1',
-  name: 'Hủ Tiếu Gõ Chợ Bàn Cờ',
-  address: 'Hẻm 174 Nguyễn Thiện Thuật, Quận 3',
-  rating: 4.8,
-  menu: [
-    { id: 'menu-1', name: 'Hủ tiếu mì sườn heo', price: 45000, description: 'Sườn heo non ninh nhừ ngọt nước lèo.' },
-    { id: 'menu-2', name: 'Hủ tiếu mì hoành thánh', price: 40000, description: 'Hoành thánh tươi gói thịt băm thơm nức.' },
-    { id: 'menu-3', name: 'Xí quách tô đặc biệt', price: 30000, description: 'Xương ống tủy béo ngậy chấm tương đen sa tế.' },
-  ] as MenuItemData[],
-};
+import { MOCK_RESTAURANTS, MOCK_MENU_ITEMS } from '../../utils/mockData';
 
 export const RestaurantDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart, totalItems, totalPrice } = useCart();
 
-  // Ở thực tế sẽ gọi API lấy thông tin dựa trên `id`
-  const restaurant = MOCK_RESTAURANT;
+  // Load restaurant dynamically
+  const restaurant = useMemo(() => {
+    return MOCK_RESTAURANTS.find((r) => r.id === id) || MOCK_RESTAURANTS[0];
+  }, [id]);
+
+  // Load menu items dynamically
+  const menuItems = useMemo(() => {
+    return MOCK_MENU_ITEMS.filter((item) => item.restaurantId === restaurant.id);
+  }, [restaurant.id]);
+
   console.log('Viewing restaurant id:', id);
 
   return (
@@ -50,10 +40,10 @@ export const RestaurantDetail: React.FC = () => {
 
         {/* Thông tin đầu trang nhà hàng */}
         <section className="card-retro bg-white mb-8">
-          <h1 className="text-3xl font-bold text-primary-600 mb-2">{restaurant.name}</h1>
+          <h1 className="text-3xl font-bold text-[#BF3A20] mb-2">{restaurant.name}</h1>
           <p className="text-sm text-neutral-500 mb-4 font-body">{restaurant.address}</p>
           <div className="flex items-center gap-1 text-xs font-mono font-bold bg-[#E9C46A]/20 w-fit px-2 py-1 border border-secondary-300 rounded-sm">
-            <Star size={14} fill="#C98F0A" className="text-secondary-500" />
+            <Star size={14} fill="#C98F0A" className="text-[#BF3A20]" />
             <span>{restaurant.rating} / 5.0 Đánh Giá</span>
           </div>
         </section>
@@ -63,7 +53,7 @@ export const RestaurantDetail: React.FC = () => {
           <h2 className="text-xl font-bold border-b-2 border-neutral-900 pb-2 mb-4">Thực Đơn Của Quán</h2>
           
           <div className="space-y-4">
-            {restaurant.menu.map((item) => (
+            {menuItems.map((item) => (
               <div key={item.id} className="card-retro flex justify-between items-center gap-4 bg-white">
                 <div 
                   onClick={() => navigate(`/menu-items/${item.id}`)}
@@ -71,18 +61,48 @@ export const RestaurantDetail: React.FC = () => {
                 >
                   <h3 className="text-lg font-bold group-hover/item:text-primary-600 group-hover/item:underline transition-all duration-150">{item.name}</h3>
                   <p className="text-xs text-neutral-500 mb-2 font-body">{item.description}</p>
-                  <span className="price-text font-bold text-primary-600">{item.price.toLocaleString('vi-VN')} đ</span>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="price-text font-bold text-primary-600">{item.price.toLocaleString('vi-VN')} đ</span>
+                    {item.stock <= 0 || !item.isAvailable ? (
+                      <span className="text-[10px] font-mono bg-red-100 text-red-600 border border-red-200 px-1.5 py-0.5 rounded-sm">HẾT HÀNG</span>
+                    ) : (
+                      <span className="text-[10px] font-mono bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-sm">Còn: {item.stock} phần</span>
+                    )}
+                    <span className="text-[10px] font-mono text-neutral-400">Đã bán: {item.soldCount || 0}+</span>
+                  </div>
                 </div>
                 
                 <Button
                   variant="retro"
-                  onClick={() => addToCart(item, restaurant.id)}
-                  className="py-1.5 px-3 text-xs bg-secondary-100 flex items-center gap-1"
+                  onClick={() => {
+                    if (item.stock > 0 && item.isAvailable) {
+                      addToCart({
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        imageUrl: item.image || item.imageUrl,
+                        toppings: []
+                      }, restaurant.id);
+                      alert(`Đã thêm ${item.name} vào giỏ hàng!`);
+                    } else {
+                      alert('Món ăn này hiện tại đã hết hàng!');
+                    }
+                  }}
+                  disabled={item.stock <= 0 || !item.isAvailable}
+                  className={`py-1.5 px-3 text-xs flex items-center gap-1 ${
+                    item.stock <= 0 || !item.isAvailable
+                      ? 'bg-neutral-200 text-neutral-400 border-neutral-300 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0'
+                      : 'bg-[#BF3A20] text-white hover:bg-[#D44B2F]'
+                  }`}
                 >
                   Thêm món
                 </Button>
               </div>
             ))}
+
+            {menuItems.length === 0 && (
+              <p className="text-sm font-mono text-neutral-400 text-center py-8">[ Quán ăn này chưa cập nhật món ăn nào ]</p>
+            )}
           </div>
         </section>
 

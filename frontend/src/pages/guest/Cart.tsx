@@ -135,8 +135,12 @@ export const Cart: React.FC = () => {
                     {/* Small Image aspect-square with sepia warm filter */}
                     <div className="w-16 h-16 bg-neutral-100 border border-neutral-950 overflow-hidden flex-shrink-0">
                       <img
-                        src={item.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=150&q=80'}
+                        src={item.imageUrl || 'https://placehold.co/150x150/FAF7F3/2C1A0E?text=Sài+Gòn+90s'}
                         alt={item.name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `https://placehold.co/150x150/FEFCF9/BF3A20?text=${encodeURIComponent(item.name)}`;
+                        }}
                         className="w-full h-full object-cover filter sepia-[8%] saturate-[115%] brightness-[96%]"
                       />
                     </div>

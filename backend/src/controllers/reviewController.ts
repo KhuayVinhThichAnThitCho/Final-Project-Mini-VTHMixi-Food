@@ -13,13 +13,37 @@ export const reviewController = {
         throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập để viết đánh giá.');
       }
 
-      const { orderId, rating, comment } = req.body;
-      const review = await reviewService.createReview(req.user.id, orderId, rating, comment);
+      const { orderId, menuItemId, rating, comment, rewardType } = req.body;
+      const result = await reviewService.createReview(req.user.id, orderId, menuItemId, rating, comment, rewardType);
+
+      let successMessage = 'Cảm ơn bạn đã viết đánh giá!';
+      if (result.rewardPoints) {
+        successMessage = `Cảm ơn bạn đã viết đánh giá! Bạn được tặng ${result.rewardPoints} điểm tích lũy.`;
+      } else if (result.voucherCode) {
+        successMessage = `Cảm ơn bạn đã viết đánh giá! Bạn nhận được mã giảm giá: ${result.voucherCode}`;
+      }
 
       res.status(201).json({
         success: true,
-        message: 'Cảm ơn bạn đã đánh giá đơn hàng! Bạn đã được cộng 10 điểm thưởng tích lũy.',
-        data: review,
+        message: successMessage,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Lấy danh sách đánh giá của món ăn cụ thể
+   */
+  getMenuItemReviews: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { menuItemId } = req.params;
+      const reviews = await reviewService.getReviewsByMenuItem(menuItemId);
+
+      res.status(200).json({
+        success: true,
+        data: reviews,
       });
     } catch (error) {
       next(error);

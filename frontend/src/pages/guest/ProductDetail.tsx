@@ -1,9 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Star, MessageSquare, Users } from 'lucide-react';
 import Header from '../../components/organisms/Header';
+import ImageSwiper from '../../components/molecules/ImageSwiper';
 import { MOCK_MENU_ITEMS } from '../../utils/mockData';
 import useCart from '../../hooks/useCart';
+import menuItemApi from '../../services/menuItemApi';
+import reviewApi from '../../services/reviewApi';
+
+const categoryNames: Record<string, string> = {
+  all: 'Tất cả món',
+  pho: 'Phở & Bún',
+  com: 'Cơm Tấm',
+  coffee: 'Cà Phê Vợt',
+  snack: 'Ăn Vặt Hẻm',
+  dessert: 'Chè Ngọt',
+  bread: 'Bánh Mì Sài Gòn',
+};
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +31,45 @@ export const ProductDetail: React.FC = () => {
   // States
   const [quantity, setQuantity] = useState(1);
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+  const [stats, setStats] = useState<{ buyerCount: number; reviewCount: number }>({ buyerCount: 0, reviewCount: 0 });
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // Tăng lượt xem & Tải thông số thống kê, đánh giá khi xem sản phẩm
+  useEffect(() => {
+    if (id) {
+      menuItemApi.incrementView(id);
+
+      // Lưu sản phẩm đã xem gần đây vào localStorage
+      try {
+        const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        const updated = [id, ...recentlyViewed.filter((itemId: string) => itemId !== id)].slice(0, 10);
+        localStorage.setItem('recentlyViewed', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Lỗi khi lưu sản phẩm đã xem gần đây:', err);
+      }
+      
+      const fetchStatsAndReviews = async () => {
+        try {
+          setReviewsLoading(true);
+          const statsRes = await menuItemApi.getItemStats(id);
+          if (statsRes && statsRes.success) {
+            setStats(statsRes.data);
+          }
+          const reviewsRes = await reviewApi.getMenuItemReviews(id);
+          if (reviewsRes && reviewsRes.success) {
+            setReviews(reviewsRes.data || []);
+          }
+        } catch (error) {
+          console.error('Lỗi khi tải thông số stats/reviews món ăn:', error);
+        } finally {
+          setReviewsLoading(false);
+        }
+      };
+
+      fetchStatsAndReviews();
+    }
+  }, [id]);
 
   // Increase/Decrease quantity
   const handleIncrease = () => setQuantity((q) => q + 1);
@@ -41,6 +93,15 @@ export const ProductDetail: React.FC = () => {
     return (item.price + toppingsCost) * quantity;
   }, [item.price, item.toppings, selectedToppings, quantity]);
 
+  // Similar products logic
+  const similarItems = useMemo(() => {
+    let list = MOCK_MENU_ITEMS.filter((m) => m.category === item.category && m.id !== item.id);
+    if (list.length === 0) {
+      list = MOCK_MENU_ITEMS.filter((m) => m.restaurantId === item.restaurantId && m.id !== item.id);
+    }
+    return list.slice(0, 4);
+  }, [item]);
+
   // Handle add item to global cart
   const handleAddToCart = () => {
     const toppingsList = selectedToppings
@@ -54,7 +115,7 @@ export const ProductDetail: React.FC = () => {
         id: item.id,
         name: item.name,
         price: unitPrice,
-        imageUrl: item.imageUrl,
+        imageUrl: item.image || item.imageUrl,
         toppings: toppingsList.map((t) => t.name),
       },
       item.restaurantId
@@ -87,16 +148,10 @@ export const ProductDetail: React.FC = () => {
           
           {/* Left Column (5/12): Image section - Full bleed on Mobile, card wrapper on Desktop */}
           <div className="col-span-1 md:col-span-5 -mx-4 -mt-6 md:mx-0 md:mt-0">
-            <div className="w-full md:card-retro md:p-2 bg-white overflow-hidden aspect-video md:aspect-square border-b-2 md:border-2 border-neutral-900 shadow-retro">
-              <img
-                src={item.imageUrl}
-                alt={item.name}
-                className="w-full h-full object-cover filter sepia-[8%] saturate-[110%] brightness-[98%] food-image"
-              />
-            </div>
+            <ImageSwiper images={item.images || (item.image ? [item.image] : [item.imageUrl])} altText={item.name} />
             
             {/* Restaurant indicator for desktop */}
-            <div className="hidden md:block text-center mt-3 text-xs font-mono uppercase tracking-widest text-neutral-400 select-none">
+            <div className="hidden md:block text-center mt-4 text-xs font-mono uppercase tracking-widest text-neutral-400 select-none">
               ✿ {item.restaurantName} ✿
             </div>
           </div>
@@ -117,9 +172,28 @@ export const ProductDetail: React.FC = () => {
                 </h1>
                 
                 {/* Price: Space Mono Bold */}
-                <p className="text-2xl font-mono font-bold text-[#BF3A20]">
+                <p className="text-2xl font-mono font-bold text-[#BF3A20] mb-3">
                   {item.price.toLocaleString('vi-VN')} đ
                 </p>
+
+                {/* Stock, Sold, Category Information Badges */}
+                <div className="flex flex-wrap gap-2.5 text-[11px] font-mono text-neutral-600 mt-3 select-none">
+                  <span className="bg-neutral-100/80 border border-neutral-300 px-2 py-0.5 rounded-sm">
+                    📦 Tồn kho: <strong className="text-neutral-900">{item.stock > 0 ? `${item.stock} phần` : 'Hết hàng'}</strong>
+                  </span>
+                  <span className="bg-neutral-100/80 border border-neutral-300 px-2 py-0.5 rounded-sm">
+                    🔥 Đã bán: <strong className="text-neutral-900">{item.soldCount || 0}+ suất</strong>
+                  </span>
+                  <span className="bg-neutral-100/80 border border-neutral-300 px-2 py-0.5 rounded-sm">
+                    📁 Danh mục: <strong className="text-neutral-900">{categoryNames[item.category] || 'Món ăn'}</strong>
+                  </span>
+                  <span className="bg-[#FAF0D2] border border-[#C98F0A]/30 px-2 py-0.5 rounded-sm flex items-center gap-1">
+                    <Users size={11} className="text-amber-800" /> Khách mua: <strong className="text-amber-900">{stats.buyerCount} người</strong>
+                  </span>
+                  <span className="bg-[#E2F0D9] border border-[#385723]/30 px-2 py-0.5 rounded-sm flex items-center gap-1">
+                    <MessageSquare size={11} className="text-emerald-800" /> Đánh giá: <strong className="text-emerald-900">{stats.reviewCount} lượt</strong>
+                  </span>
+                </div>
                 
                 {/* Description: Be Vietnam Pro */}
                 <p className="text-sm text-neutral-700 leading-relaxed font-body mt-4">
@@ -148,7 +222,7 @@ export const ProductDetail: React.FC = () => {
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => handleToppingToggle(topping.id)}
-                            disabled={!item.isAvailable}
+                            disabled={!item.isAvailable || item.stock <= 0}
                             className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 rounded-sm cursor-pointer disabled:cursor-not-allowed"
                           />
                           <span className="text-sm font-semibold text-neutral-800 font-body">
@@ -175,7 +249,7 @@ export const ProductDetail: React.FC = () => {
                 <div className="flex items-center justify-between border-2 border-neutral-900 bg-white shadow-retro-sm select-none">
                   <button
                     onClick={handleDecrease}
-                    disabled={!item.isAvailable}
+                    disabled={!item.isAvailable || item.stock <= 0}
                     className="w-10 h-10 flex items-center justify-center font-bold text-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     -
@@ -185,7 +259,7 @@ export const ProductDetail: React.FC = () => {
                   </span>
                   <button
                     onClick={handleIncrease}
-                    disabled={!item.isAvailable}
+                    disabled={!item.isAvailable || item.stock <= 0 || quantity >= item.stock}
                     className="w-10 h-10 flex items-center justify-center font-bold text-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     +
@@ -195,14 +269,14 @@ export const ProductDetail: React.FC = () => {
                 {/* THÊM VÀO GIỎ HÀNG Button */}
                 <button
                   onClick={handleAddToCart}
-                  disabled={!item.isAvailable}
+                  disabled={!item.isAvailable || item.stock <= 0}
                   className={`flex-grow py-3 px-6 font-bold uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 text-center text-sm ${
-                    item.isAvailable
+                    item.isAvailable && item.stock > 0
                       ? 'bg-[#BF3A20] hover:bg-[#D44B2F] text-white cursor-pointer'
                       : 'bg-neutral-300 text-neutral-500 opacity-45 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0 active:shadow-none'
                   }`}
                 >
-                  {item.isAvailable ? (
+                  {item.isAvailable && item.stock > 0 ? (
                     <span>Thêm vào giỏ hàng — {totalPrice.toLocaleString('vi-VN')} đ</span>
                   ) : (
                     <span>HẾT HÀNG</span>
@@ -214,6 +288,98 @@ export const ProductDetail: React.FC = () => {
           </div>
 
         </div>
+
+        {/* 2.5. Reviews Section */}
+        <div className="mt-12 border-t-2 border-neutral-900 pt-8">
+          <h2 className="text-xl font-display font-bold italic text-neutral-900 mb-6 select-none">
+            ❀ Ý Kiến Khách Hàng ❀
+          </h2>
+
+          {reviewsLoading ? (
+            <div className="text-center py-6 text-xs font-mono text-neutral-400 italic">
+              Đang tải đánh giá món ăn...
+            </div>
+          ) : reviews.length > 0 ? (
+            <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2">
+              {reviews.map((rev: any) => (
+                <div key={rev.id} className="card-retro bg-[#FEFCF9] p-4 border border-neutral-900 shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-bold text-xs text-neutral-800 font-mono">
+                        {rev.user?.name || 'Thực khách ẩn danh'}
+                      </p>
+                      <div className="flex text-amber-500 mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            size={11} 
+                            fill={i < rev.rating ? '#D49E00' : 'none'} 
+                            stroke={i < rev.rating ? '#D49E00' : '#888888'}
+                            className="inline" 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono text-neutral-400">
+                      {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-700 italic font-body leading-relaxed pl-1 border-l-2 border-dashed border-[#BF3A20]/30">
+                    "{rev.comment || 'Không có nhận xét bằng lời.'}"
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-neutral-400 font-mono italic border border-dashed border-neutral-300 bg-white rounded-md select-none">
+              [ Chưa có đánh giá nào cho món ăn này. Hãy mua và trở thành người đầu tiên đánh giá để nhận quà tích điểm! ]
+            </div>
+          )}
+        </div>
+
+        {/* 3. Similar Products Section */}
+        {similarItems.length > 0 && (
+          <div className="mt-12 border-t-2 border-neutral-900 pt-8">
+            <h2 className="text-xl font-display font-bold italic text-neutral-900 mb-6 select-none">
+              ❀ Món Ngon Tương Tự ❀
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {similarItems.map((similar) => (
+                <div
+                  key={similar.id}
+                  onClick={() => {
+                    navigate(`/menu-items/${similar.id}`);
+                    setQuantity(1);
+                    setSelectedToppings([]);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="card-retro bg-[#FEFCF9] cursor-pointer group flex flex-col gap-2 p-3 hover:border-[#BF3A20] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
+                >
+                  <div className="w-full aspect-square overflow-hidden border border-neutral-200 rounded-sm">
+                    <img
+                      src={similar.image || similar.imageUrl}
+                      alt={similar.name}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = `https://placehold.co/600x600/FEFCF9/BF3A20?text=${encodeURIComponent(similar.name)}`;
+                      }}
+                      className="w-full h-full object-cover filter sepia-[5%] group-hover:scale-105 transition-transform duration-200"
+                    />
+                  </div>
+                  <h3 className="font-bold text-sm text-neutral-900 line-clamp-1 group-hover:text-[#BF3A20] transition-colors">
+                    {similar.name}
+                  </h3>
+                  <p className="text-[10px] text-neutral-500 font-mono">
+                    📁 {categoryNames[similar.category] || 'Món ngon'}
+                  </p>
+                  <p className="font-mono text-sm font-bold text-[#BF3A20] mt-auto">
+                    {similar.price.toLocaleString('vi-VN')} đ
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </main>
 

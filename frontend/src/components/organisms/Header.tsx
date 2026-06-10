@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ShoppingBag, Heart, User, LogOut } from 'lucide-react';
+import { ShoppingBag, Heart, User, LogOut } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
 
 interface HeaderProps {
-  searchQuery?: string;
-  setSearchQuery?: (query: string) => void;
   cartCount?: number;
 }
 
-export const Header: React.FC<HeaderProps> = ({ searchQuery = '', setSearchQuery, cartCount = 0 }) => {
+export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -26,19 +24,6 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery = '', setSearchQuery
           </span>
         </div>
 
-        {/* Middle: Search Bar */}
-        <div className="flex-grow max-w-md relative hidden md:block">
-          <div className="flex items-center bg-[#F0E9DE] rounded-lg px-3 py-1.5 border border-transparent focus-within:border-primary-600 transition-colors">
-            <Search size={18} strokeWidth={1.5} className="text-neutral-500 mr-2" />
-            <input
-              type="text"
-              placeholder="Tìm món ngon, quán xá, hẻm nhỏ Sài Gòn..."
-              className="w-full bg-transparent text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
 
         {/* Right: Cart Pill & Login / Account */}
         <div className="flex items-center gap-4">

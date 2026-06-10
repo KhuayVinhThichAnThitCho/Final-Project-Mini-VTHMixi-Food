@@ -19,6 +19,10 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurant, onCl
           <img
             src={restaurant.imageUrl}
             alt={restaurant.name}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = `https://placehold.co/600x400/FEFCF9/BF3A20?text=${encodeURIComponent(restaurant.name)}`;
+            }}
             className="w-full h-full object-cover filter sepia-[8%] saturate-[110%] brightness-[98%] group-hover:scale-105 transition-all duration-300"
           />
           

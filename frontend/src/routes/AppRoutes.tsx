@@ -14,6 +14,7 @@ import Cart from '../pages/guest/Cart';
 import Profile from '../pages/user/Profile';
 import CheckoutTracking from '../pages/user/CheckoutTracking';
 import Favorites from '../pages/user/Favorites';
+import MenuCatalog from '../pages/guest/MenuCatalog';
 
 const OrderHistory = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Lịch Sử Đơn Hàng</h2></div>;
 const AdminDashboard = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Admin Dashboard</h2></div>;
@@ -29,6 +30,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/menu-items/:id" element={<ProductDetail />} />
       <Route path="/cart" element={<Cart />} />
+      <Route path="/menu" element={<MenuCatalog />} />
 
       {/* 2. Các route cần đăng nhập (Vai trò: USER) */}
       <Route element={<PrivateRoute allowedRoles={['USER', 'VENDOR', 'MANAGER', 'ADMIN']} />}>

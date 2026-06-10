@@ -12,7 +12,7 @@ import {
 import { User } from './User';
 import { Restaurant } from './Restaurant';
 
-export type PaymentMethod = 'COD' | 'WALLET';
+export type PaymentMethod = 'COD' | 'WALLET' | 'POINTS';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'completed' | 'cancelled';
 
 @Table({
@@ -42,6 +42,10 @@ export class Order extends Model {
   @Column(DataType.STRING(255))
   deliveryAddress!: string;
 
+  @AllowNull(false)
+  @Column(DataType.JSON)
+  items!: { menuItemId: string; name: string; quantity: number; price: number; toppings?: string[] }[];
+
   // Tổng số tiền thanh toán của đơn hàng (bao gồm tiền món + phí ship)
   @AllowNull(false)
   @Column(DataType.DECIMAL(12, 2))
@@ -49,7 +53,7 @@ export class Order extends Model {
 
   @AllowNull(false)
   @Default('COD')
-  @Column(DataType.ENUM('COD', 'WALLET'))
+  @Column(DataType.ENUM('COD', 'WALLET', 'POINTS'))
   paymentMethod!: PaymentMethod;
 
   @AllowNull(false)

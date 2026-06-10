@@ -48,6 +48,10 @@ export class User extends Model {
   phone?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(500))
+  address?: string;
+
+  @AllowNull(true)
   @Column(DataType.STRING(255))
   avatar?: string;
 
@@ -60,6 +64,11 @@ export class User extends Model {
   @Default('pending')
   @Column(DataType.ENUM('pending', 'active', 'banned'))
   status!: UserStatus;
+
+  @AllowNull(false)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  points!: number;
 
   @AllowNull(true)
   @Column(DataType.STRING(10))

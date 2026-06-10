@@ -35,8 +35,12 @@ export const ImageSwiper: React.FC<ImageSwiperProps> = ({ images, altText = 'Mó
         {images.map((imgUrl, index) => (
           <SwiperSlide key={index} className="w-full h-full">
             <img
-              src={imgUrl || 'https://via.placeholder.com/600x400/FAF7F3/2C1A0E?text=Sài+Gòn+90s'}
+              src={imgUrl || 'https://placehold.co/600x600/FAF7F3/2C1A0E?text=Sài+Gòn+90s'}
               alt={`${altText} - ${index + 1}`}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = `https://placehold.co/600x600/FEFCF9/BF3A20?text=${encodeURIComponent(altText)}`;
+              }}
               className="w-full h-full object-cover"
             />
           </SwiperSlide>
