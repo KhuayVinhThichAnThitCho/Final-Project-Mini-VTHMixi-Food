@@ -5,6 +5,9 @@ interface UserState {
   name: string;
   email: string;
   role: string;
+  points?: number;
+  phone?: string;
+  avatar?: string;
 }
 
 interface AuthStore {

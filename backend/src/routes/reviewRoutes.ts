@@ -10,4 +10,7 @@ router.post('/', authMiddleware, reviewController.createReview);
 // API xem đánh giá của một nhà hàng (công khai): GET /api/v1/reviews/restaurant/:restaurantId
 router.get('/restaurant/:restaurantId', reviewController.getRestaurantReviews);
 
+// API xem đánh giá của một món ăn (công khai): GET /api/v1/reviews/menu-item/:menuItemId
+router.get('/menu-item/:menuItemId', reviewController.getMenuItemReviews);
+
 export default router;

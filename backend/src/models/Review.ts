@@ -13,6 +13,7 @@ import {
 } from 'sequelize-typescript';
 import { User } from './User';
 import { Order } from './Order';
+import { MenuItem } from './MenuItem';
 
 @Table({
   tableName: 'reviews',
@@ -36,6 +37,12 @@ export class Review extends Model {
   @AllowNull(false)
   @Column(DataType.UUID)
   orderId!: string;
+
+  // Khóa ngoại trỏ đến món ăn được đánh giá (Lọc bình luận theo sản phẩm)
+  @ForeignKey(() => MenuItem)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  menuItemId?: string;
 
   // Điểm đánh giá (từ 1 đến 5 sao)
   @AllowNull(false)
@@ -63,6 +70,9 @@ export class Review extends Model {
 
   @BelongsTo(() => Order)
   order!: Order;
+
+  @BelongsTo(() => MenuItem)
+  menuItem?: MenuItem;
 }
 
 export default Review;

@@ -4,9 +4,10 @@ import { Search, Sparkles } from 'lucide-react';
 interface HeroProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  onExploreMenu?: () => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ searchQuery, setSearchQuery }) => {
+export const Hero: React.FC<HeroProps> = ({ searchQuery, setSearchQuery, onExploreMenu }) => {
   return (
     <section className="relative min-h-[500px] flex items-center justify-center text-center px-4 overflow-hidden bg-neutral-950">
       
@@ -53,6 +54,19 @@ export const Hero: React.FC<HeroProps> = ({ searchQuery, setSearchQuery }) => {
             <Search size={18} strokeWidth={1.5} />
           </button>
         </div>
+
+        {/* CTA Button to Explore Menu Catalog */}
+        {onExploreMenu && (
+          <div className="pt-4 flex justify-center">
+            <button
+              onClick={onExploreMenu}
+              className="btn-retro bg-[#E9C46A] hover:bg-[#F3DC9E] text-neutral-950 font-mono text-xs font-bold uppercase tracking-wider px-6 py-3 border-2 border-neutral-900 shadow-retro cursor-pointer transition-all active:scale-95 flex items-center gap-2"
+            >
+              <span>🍽️ Khám Phá Thực Đơn Trọn Vẹn</span>
+              <span className="animate-pulse">👉</span>
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

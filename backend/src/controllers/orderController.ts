@@ -23,9 +23,9 @@ export const orderController = {
       }
 
       const userId = req.user.id;
-      const { restaurantId, items, deliveryAddress, paymentMethod } = req.body;
+      const { restaurantId, items, deliveryAddress, paymentMethod, voucherCode } = req.body;
 
-      const order = await orderService.createOrder(userId, restaurantId, items, deliveryAddress, paymentMethod);
+      const order = await orderService.createOrder(userId, restaurantId, items, deliveryAddress, paymentMethod, voucherCode);
 
       res.status(201).json({
         success: true,

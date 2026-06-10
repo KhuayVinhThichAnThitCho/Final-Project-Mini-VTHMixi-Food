@@ -2,6 +2,8 @@ import { orderRepository } from '../repositories/orderRepository';
 import { walletService } from './walletService';
 import { Order, OrderStatus, PaymentMethod } from '../models/Order';
 import { AppError } from '../middlewares/errorHandler';
+import { User } from '../models/User';
+import { Voucher } from '../models/Voucher';
 
 export const orderService = {
   /**
@@ -12,27 +14,68 @@ export const orderService = {
     restaurantId: string,
     items: { menuItemId: string; name: string; quantity: number; price: number }[],
     deliveryAddress: string,
-    paymentMethod: PaymentMethod
+    paymentMethod: PaymentMethod,
+    voucherCode?: string
   ): Promise<Order> => {
     if (items.length === 0) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Đơn hàng phải chứa ít nhất một món ăn.');
     }
 
-    // Tính tổng số tiền của đơn hàng
+    // 1. Tính tổng tiền gốc của món ăn
     const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-    // Nếu chọn thanh toán qua ví điện tử
-    if (paymentMethod === 'WALLET') {
-      // Thực hiện trừ tiền ví của người dùng
-      await walletService.payWithWallet(userId, totalPrice, `Thanh toán đơn hàng tại nhà hàng ${restaurantId}`);
+    // 2. Tính số tiền giảm giá nếu áp dụng voucher
+    let discount = 0;
+    if (voucherCode) {
+      const voucher = await Voucher.findOne({ where: { code: voucherCode, isActive: true } });
+      if (!voucher) {
+        throw new AppError(404, 'NOT_FOUND', 'Mã giảm giá không tồn tại hoặc đã hết hạn.');
+      }
+
+      const now = new Date();
+      if (now < voucher.startDate || now > voucher.endDate) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Mã giảm giá không nằm trong thời gian áp dụng.');
+      }
+
+      if (totalPrice < Number(voucher.minOrderAmount)) {
+        throw new AppError(400, 'BUSINESS_ERROR', `Đơn hàng chưa đạt giá trị tối thiểu ${Number(voucher.minOrderAmount).toLocaleString('vi-VN')} đ để áp dụng mã này.`);
+      }
+
+      if (voucher.discountType === 'fixed_amount') {
+        discount = Number(voucher.discountValue);
+      } else if (voucher.discountType === 'percentage') {
+        const calculated = (totalPrice * Number(voucher.discountValue)) / 100;
+        discount = voucher.maxDiscountAmount ? Math.min(calculated, Number(voucher.maxDiscountAmount)) : calculated;
+      }
     }
 
-    // Tạo đơn hàng
+    const finalAmount = Math.max(totalPrice - discount, 0);
+
+    // 3. Xử lý thanh toán theo phương thức chọn
+    if (paymentMethod === 'WALLET') {
+      // Thanh toán qua ví điện tử
+      await walletService.payWithWallet(userId, finalAmount, `Thanh toán đơn hàng tại nhà hàng ${restaurantId}`);
+    } else if (paymentMethod === 'POINTS') {
+      // Thanh toán bằng điểm tích lũy (Quy đổi: 1 điểm = 1.000đ)
+      const pointsNeeded = Math.ceil(finalAmount / 1000);
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy thông tin tài khoản người dùng.');
+      }
+      if (user.points < pointsNeeded) {
+        throw new AppError(400, 'BUSINESS_ERROR', `Bạn không đủ điểm tích lũy để thanh toán đơn hàng này (cần ${pointsNeeded} điểm, hiện có ${user.points} điểm).`);
+      }
+      user.points -= pointsNeeded;
+      await user.save();
+      console.log(`🪙 User ${userId} đã thanh toán ${pointsNeeded} điểm tích lũy cho đơn hàng.`);
+    }
+
+    // 4. Tạo đơn hàng lưu vào database
     const order = await orderRepository.create({
       userId,
       restaurantId,
       items,
-      totalPrice,
+      totalAmount: finalAmount,
       deliveryAddress,
       paymentMethod,
     });

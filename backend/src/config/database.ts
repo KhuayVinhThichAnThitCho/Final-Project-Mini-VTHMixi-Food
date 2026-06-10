@@ -11,6 +11,7 @@ import { Cart } from '../models/Cart';
 import { CartItem } from '../models/CartItem';
 import { Review } from '../models/Review';
 import { Voucher } from '../models/Voucher';
+import { Favorite } from '../models/Favorite';
 
 // Nạp các biến môi trường từ .env
 dotenv.config();
@@ -27,7 +28,7 @@ export const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'grabfood_mini',
   
   // Đăng ký toàn bộ Model vào Sequelize Instance
-  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher],
+  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite],
   
   // Cấu hình ghi log SQL ra console trong môi trường phát triển
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
@@ -54,6 +55,10 @@ export const initializeDatabase = async (): Promise<boolean> => {
     // Tự động đồng bộ hóa các thay đổi cấu trúc bảng mà không làm mất dữ liệu cũ (alter: true)
     console.log('⚙️ Đang thực hiện đồng bộ hóa cấu trúc bảng (Syncing models)...');
     await sequelize.sync({ alter: true });
+
+    // Seed database with mock data if tables are empty
+    const { seedDatabase } = await import('./seedData');
+    await seedDatabase();
 
     // Bật lại kiểm tra khóa ngoại sau khi đồng bộ xong
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');

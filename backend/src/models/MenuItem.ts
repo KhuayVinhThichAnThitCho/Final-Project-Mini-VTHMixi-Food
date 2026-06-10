@@ -45,6 +45,35 @@ export class MenuItem extends Model {
   @Column(DataType.STRING(255))
   image?: string;
 
+  // Mảng chứa danh sách nhiều hình ảnh của sản phẩm phục vụ Swiper
+  @AllowNull(true)
+  @Column(DataType.JSON)
+  images?: string[];
+
+  // Số lượng sản phẩm còn lại trong kho (báo hàng tồn)
+  @AllowNull(false)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  stock!: number;
+
+  // Số lượng sản phẩm đã bán được
+  @AllowNull(false)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  soldCount!: number;
+
+  // Danh mục tương ứng của sản phẩm (ví dụ: pho, com, coffee...)
+  @AllowNull(false)
+  @Default('all')
+  @Column(DataType.STRING(50))
+  category!: string;
+
+  // Số lượt xem món ăn (để tìm các món được xem nhiều nhất)
+  @AllowNull(false)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  viewCount!: number;
+
   @AllowNull(false)
   @Default(true)
   @Column(DataType.BOOLEAN)

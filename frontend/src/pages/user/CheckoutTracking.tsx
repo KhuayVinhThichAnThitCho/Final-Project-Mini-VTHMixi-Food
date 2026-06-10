@@ -11,6 +11,8 @@ import {
 import Header from '../../components/organisms/Header';
 import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
+import orderApi from '../../services/orderApi';
+import voucherApi from '../../services/voucherApi';
 
 interface CheckoutItem {
   id: string;
@@ -22,19 +24,39 @@ interface CheckoutItem {
 
 export const CheckoutTracking: React.FC = () => {
   const navigate = useNavigate();
-  const { items, totalItems, totalPrice, clearCart } = useCart();
-  const { user } = useAuth();
+  const { items, restaurantId, totalItems, totalPrice, clearCart } = useCart();
+  const { user, refetchMe } = useAuth();
 
   // Screen state: 'checkout' (Thanh Toán) | 'tracking' (Theo Dõi)
   const [screen, setScreen] = useState<'checkout' | 'tracking'>('checkout');
 
   // Form states
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'wallet'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'WALLET' | 'POINTS'>('COD');
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [appliedCode, setAppliedCode] = useState('');
   const [couponError, setCouponError] = useState('');
   const [isOrdering, setIsOrdering] = useState(false);
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [vouchersLoading, setVouchersLoading] = useState(false);
+
+  // Fetch active vouchers
+  useEffect(() => {
+    const fetchVouchers = async () => {
+      try {
+        setVouchersLoading(true);
+        const res = await voucherApi.getVouchers();
+        if (res && res.success) {
+          setVouchers(res.data || []);
+        }
+      } catch (err) {
+        console.error('Lỗi lấy danh sách voucher:', err);
+      } finally {
+        setVouchersLoading(false);
+      }
+    };
+    fetchVouchers();
+  }, []);
 
   // Address defaults
   const deliveryAddress = {
@@ -75,30 +97,97 @@ export const CheckoutTracking: React.FC = () => {
     return total > 0 ? total : 0;
   }, [subtotal, deliveryFee, discountAmount]);
 
+  // Apply Coupon code object
+  const applyVoucherObj = (voucher: any) => {
+    setCouponError('');
+    const now = new Date();
+    const startDate = new Date(voucher.startDate);
+    const endDate = new Date(voucher.endDate);
+
+    if (now < startDate || now > endDate) {
+      setCouponError('Mã giảm giá này chưa có hiệu lực hoặc đã hết hạn.');
+      return;
+    }
+
+    if (subtotal < Number(voucher.minOrderAmount)) {
+      setCouponError(`Đơn hàng chưa đạt giá trị tối thiểu ${Number(voucher.minOrderAmount).toLocaleString('vi-VN')}đ để áp dụng mã này.`);
+      return;
+    }
+
+    let calculatedDiscount = 0;
+    if (voucher.discountType === 'fixed_amount') {
+      calculatedDiscount = Number(voucher.discountValue);
+    } else if (voucher.discountType === 'percentage') {
+      const calculated = (subtotal * Number(voucher.discountValue)) / 100;
+      calculatedDiscount = voucher.maxDiscountAmount ? Math.min(calculated, Number(voucher.maxDiscountAmount)) : calculated;
+    }
+
+    setDiscountAmount(calculatedDiscount);
+    setAppliedCode(voucher.code);
+    setCouponCode('');
+  };
+
   // Apply Coupon code
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError('');
-    if (couponCode.trim().toUpperCase() === 'SAIGON90S') {
+    const code = couponCode.trim().toUpperCase();
+    if (code === '') {
+      setCouponError('Vui lòng nhập mã giảm giá.');
+      return;
+    }
+
+    const foundVoucher = vouchers.find(v => v.code.toUpperCase() === code);
+    if (foundVoucher) {
+      applyVoucherObj(foundVoucher);
+    } else if (code === 'SAIGON90S') {
       setDiscountAmount(15000);
       setAppliedCode('SAIGON90S');
       setCouponCode('');
-    } else if (couponCode.trim() === '') {
-      setCouponError('Vui lòng nhập mã giảm giá.');
     } else {
       setCouponError('Mã không hợp lệ hoặc đã hết hạn.');
     }
   };
 
   // Confirm Order submission
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     setIsOrdering(true);
-    // Simulate bưu cục processing delay (2 seconds)
-    setTimeout(() => {
+    try {
+      if (items.length === 0) {
+        alert('Giỏ hàng trống! Vui lòng chọn món ăn trước.');
+        setIsOrdering(false);
+        return;
+      }
+
+      const orderData = {
+        restaurantId: restaurantId || 'res-1',
+        items: items.map(item => ({
+          menuItemId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        deliveryAddress: deliveryAddress.detail,
+        paymentMethod: paymentMethod, // 'COD' | 'WALLET' | 'POINTS'
+        voucherCode: appliedCode || undefined
+      };
+
+      const res = await orderApi.createOrder(orderData);
+      if (res && res.success) {
+        clearCart(); // Clear active items from cart store
+        if (refetchMe) {
+          await refetchMe(); // Cập nhật số dư điểm của user
+        }
+        setScreen('tracking');
+      } else {
+        alert(res?.message || 'Có lỗi xảy ra khi gửi đơn hàng.');
+      }
+    } catch (err: any) {
+      console.error('Lỗi đặt hàng:', err);
+      alert(err.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng kiểm tra số dư ví/điểm.');
+    } finally {
       setIsOrdering(false);
-      clearCart(); // Clear active items from cart store
-      setScreen('tracking');
-    }, 2000);
+    }
   };
 
   // Stepper state definition for Tracking Screen
@@ -203,12 +292,12 @@ export const CheckoutTracking: React.FC = () => {
                     </h2>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Method COD */}
                     <label 
-                      onClick={() => setPaymentMethod('cod')}
+                      onClick={() => setPaymentMethod('COD')}
                       className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
-                        paymentMethod === 'cod'
+                        paymentMethod === 'COD'
                           ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
                           : 'border-neutral-200 bg-white hover:bg-neutral-50'
                       }`}
@@ -217,13 +306,13 @@ export const CheckoutTracking: React.FC = () => {
                         <input
                           type="radio"
                           name="payment"
-                          checked={paymentMethod === 'cod'}
-                          onChange={() => setPaymentMethod('cod')}
+                          checked={paymentMethod === 'COD'}
+                          onChange={() => setPaymentMethod('COD')}
                           className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer"
                         />
                         <div>
                           <p className="text-sm font-semibold font-body text-neutral-800">Tiền mặt (COD)</p>
-                          <p className="text-[10px] font-mono text-neutral-400">Trả tiền khi nhận bưu phẩm</p>
+                          <p className="text-[10px] font-mono text-neutral-400">Trả khi nhận món</p>
                         </div>
                       </div>
                       <DollarSign size={20} strokeWidth={1.5} className="text-neutral-500" />
@@ -231,9 +320,9 @@ export const CheckoutTracking: React.FC = () => {
 
                     {/* Method Internal Wallet */}
                     <label 
-                      onClick={() => setPaymentMethod('wallet')}
+                      onClick={() => setPaymentMethod('WALLET')}
                       className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
-                        paymentMethod === 'wallet'
+                        paymentMethod === 'WALLET'
                           ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
                           : 'border-neutral-200 bg-white hover:bg-neutral-50'
                       }`}
@@ -242,8 +331,8 @@ export const CheckoutTracking: React.FC = () => {
                         <input
                           type="radio"
                           name="payment"
-                          checked={paymentMethod === 'wallet'}
-                          onChange={() => setPaymentMethod('wallet')}
+                          checked={paymentMethod === 'WALLET'}
+                          onChange={() => setPaymentMethod('WALLET')}
                           className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer"
                         />
                         <div>
@@ -252,6 +341,42 @@ export const CheckoutTracking: React.FC = () => {
                         </div>
                       </div>
                       <CreditCard size={20} strokeWidth={1.5} className="text-neutral-500" />
+                    </label>
+
+                    {/* Method Points Wallet */}
+                    <label 
+                      onClick={() => {
+                        const pointsNeeded = Math.ceil(finalTotal / 1000);
+                        const userPoints = user?.points || 0;
+                        if (userPoints < pointsNeeded) {
+                          alert(`Bạn không đủ điểm tích lũy để thanh toán đơn hàng này (cần ${pointsNeeded} điểm, hiện có ${userPoints} điểm).`);
+                          return;
+                        }
+                        setPaymentMethod('POINTS');
+                      }}
+                      className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
+                        paymentMethod === 'POINTS'
+                          ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
+                          : 'border-neutral-200 bg-white hover:bg-neutral-50'
+                      } ${(user?.points || 0) < Math.ceil(finalTotal / 1000) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'POINTS'}
+                          disabled={(user?.points || 0) < Math.ceil(finalTotal / 1000)}
+                          onChange={() => setPaymentMethod('POINTS')}
+                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold font-body text-neutral-800">Điểm Tích Lũy</p>
+                          <p className="text-[10px] font-mono text-neutral-400">
+                            Số dư: {user?.points || 0} điểm (cần {Math.ceil(finalTotal / 1000)}đ)
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-amber-600 font-mono">🪙</span>
                     </label>
                   </div>
                 </div>
@@ -285,11 +410,67 @@ export const CheckoutTracking: React.FC = () => {
                       </p>
                     )}
                     {appliedCode && (
-                      <p className="text-[10px] font-mono font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                        ✓ Đã áp dụng mã thư tín {appliedCode} (-15.000đ)
-                      </p>
+                      <div className="flex items-center justify-between max-w-md mt-1">
+                        <p className="text-[10px] font-mono font-bold text-emerald-600 flex items-center gap-1">
+                          ✓ Đã áp dụng mã thư tín {appliedCode} (-{discountAmount.toLocaleString('vi-VN')}đ)
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliedCode('');
+                            setDiscountAmount(0);
+                          }}
+                          className="text-[10px] font-mono font-bold text-[#BF3A20] hover:underline"
+                        >
+                          Hủy bỏ
+                        </button>
+                      </div>
                     )}
-                    <p className="text-[9px] font-mono text-neutral-400 italic">
+                    
+                    {/* Dynamic vouchers list */}
+                    {vouchersLoading ? (
+                      <p className="text-[10px] font-mono text-neutral-400 italic">Đang tải mã giảm giá...</p>
+                    ) : vouchers.length > 0 ? (
+                      <div className="pt-2">
+                        <p className="text-[10px] font-mono font-bold uppercase text-neutral-400 mb-1.5">Mã giảm giá khả dụng:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md">
+                          {vouchers.map((v: any) => {
+                            const isApplicable = subtotal >= Number(v.minOrderAmount);
+                            return (
+                              <div 
+                                key={v.id}
+                                onClick={() => isApplicable && !appliedCode && applyVoucherObj(v)}
+                                className={`p-2 border-2 rounded-md select-none transition-all flex flex-col justify-between cursor-pointer ${
+                                  appliedCode === v.code
+                                    ? 'border-neutral-900 bg-[#FAF7F3]'
+                                    : isApplicable && !appliedCode
+                                    ? 'border-dashed border-neutral-400 hover:border-neutral-900 hover:bg-neutral-50'
+                                    : 'border-dashed border-neutral-200 opacity-50 cursor-not-allowed'
+                                }`}
+                              >
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="bg-[#FAF0D2] border border-[#C98F0A]/30 text-[9px] font-bold font-mono px-1.5 py-0.5 text-neutral-800 rounded-sm uppercase">
+                                    {v.code}
+                                  </span>
+                                  <span className="text-[10px] font-mono font-bold text-[#BF3A20]">
+                                    {v.discountType === 'fixed_amount' 
+                                      ? `-${Number(v.discountValue).toLocaleString('vi-VN')}đ`
+                                      : `-${v.discountValue}%`}
+                                  </span>
+                                </div>
+                                <p className="text-[9.5px] font-body text-neutral-500">
+                                  Đơn hàng tối thiểu: {Number(v.minOrderAmount).toLocaleString('vi-VN')}đ
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] font-mono text-neutral-400 italic">Không có mã giảm giá nào khác khả dụng.</p>
+                    )}
+
+                    <p className="text-[9px] font-mono text-neutral-400 italic pt-1">
                       * Nhập mã giảm giá "SAIGON90S" để được giảm 15.000đ cước vận chuyển.
                     </p>
                   </form>

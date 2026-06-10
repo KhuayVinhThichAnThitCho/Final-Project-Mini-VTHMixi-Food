@@ -105,10 +105,20 @@ export const authService = {
       throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
     }
 
-    // Thay vì đăng nhập trực tiếp, tiến hành gửi mã OTP qua Email
-    await generateAndSendOtp(user);
+    // Nếu tài khoản mới đăng ký đang ở trạng thái pending, tự động kích hoạt khi đăng nhập thành công
+    if (user.status === 'pending') {
+      await user.update({ status: 'active' });
+    }
 
-    return { requiresOtp: true, email: user.email };
+    // Tạo Access Token & Refresh Token và đăng nhập trực tiếp
+    const tokens = authService.generateTokens(user);
+
+    const userJson = user.toJSON() as any;
+    delete userJson.password;
+    delete userJson.otpCode;
+    delete userJson.otpExpiresAt;
+
+    return { requiresOtp: false, user: userJson, ...tokens };
   },
 
   /**
