@@ -13,14 +13,14 @@ export const Hero: React.FC<HeroProps> = ({ searchQuery, setSearchQuery, onExplo
       
       {/* Blurred Saigon street food background */}
       <div 
-        className="absolute inset-0 bg-cover bg-center opacity-40 filter blur-[1.5px]"
+        className="absolute inset-0 bg-cover bg-center opacity-60"
         style={{ 
-          backgroundImage: "url('https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80')" 
+          backgroundImage: "url('/home_banner.png')" 
         }}
       ></div>
 
       {/* Warm vintage gradient overlay (nâu/đỏ gạch) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#2C1A0E]/80 via-[#BF3A20]/60 to-[#2C1A0E]/80 pointer-events-none z-10"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#2C1A0E]/60 via-[#BF3A20]/40 to-[#2C1A0E]/60 pointer-events-none z-10"></div>
       <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none z-10"></div>
 
       {/* Hero Content */}

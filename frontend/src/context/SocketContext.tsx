@@ -17,7 +17,7 @@ export const useSocketContext = () => useContext(SocketContext);
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const { user, isAuthenticated } = useAuthStore(); // Lấy thông tin user đăng nhập
+  const { user, isAuthenticated, accessToken } = useAuthStore(); // Lấy thông tin user đăng nhập
 
   useEffect(() => {
     // Chỉ kết nối Socket khi người dùng đã đăng nhập thành công
@@ -34,6 +34,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api/v1', '') : 'http://localhost:5000';
     const newSocket = io(socketUrl, {
       transports: ['websocket'],
+      auth: {
+        token: accessToken
+      }
     });
 
     newSocket.on('connect', () => {

@@ -14,6 +14,7 @@ import {
 import { Restaurant } from './Restaurant';
 import { Wallet } from './Wallet';
 import { Order } from './Order';
+import { Conversation } from './Conversation';
 
 export type UserRole = 'guest' | 'user' | 'vendor' | 'manager' | 'admin';
 export type UserStatus = 'pending' | 'active' | 'banned';
@@ -93,6 +94,10 @@ export class User extends Model {
   // Quan hệ 1-N với Order (Một khách hàng có thể đặt nhiều đơn hàng)
   @HasMany(() => Order)
   orders?: Order[];
+
+  // Quan hệ 1-N với Conversation (Một khách hàng có thể chat với nhiều nhà hàng)
+  @HasMany(() => Conversation)
+  conversations?: Conversation[];
 }
 
 export default User;

@@ -13,6 +13,7 @@ import {
 import { User } from './User';
 import { MenuItem } from './MenuItem';
 import { Order } from './Order';
+import { Conversation } from './Conversation';
 
 export type RestaurantStatus = 'pending' | 'open' | 'closed' | 'banned';
 
@@ -94,6 +95,10 @@ export class Restaurant extends Model {
   // Một nhà hàng nhận và chuẩn bị nhiều Đơn hàng đặt đồ ăn
   @HasMany(() => Order)
   orders!: Order[];
+
+  // Một nhà hàng có thể có nhiều cuộc trò chuyện với nhiều khách hàng
+  @HasMany(() => Conversation)
+  conversations?: Conversation[];
 }
 
 export default Restaurant;
