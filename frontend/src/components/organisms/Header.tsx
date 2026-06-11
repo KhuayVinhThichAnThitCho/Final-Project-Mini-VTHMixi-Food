@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, Heart, User, LogOut } from 'lucide-react';
+import { ShoppingBag, User, LogOut, Search } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
 
@@ -25,9 +25,28 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
         </div>
 
 
-        {/* Right: Cart Pill & Login / Account */}
-        <div className="flex items-center gap-4">
-          {/* Pill-shaped Cart Button (#BF3A20) */}
+        {/* Right: Search + Cart + Login */}
+        <div className="flex items-center gap-3">
+
+          {/* Search Button */}
+          <button
+            onClick={() => navigate('/search')}
+            className="hidden sm:flex items-center gap-1.5 text-neutral-600 hover:text-[#BF3A20] border-2 border-neutral-300 hover:border-[#BF3A20] bg-white rounded-sm px-3 py-1.5 text-xs font-mono font-bold transition-all shadow-sm"
+            title="Tìm kiếm"
+          >
+            <Search size={13} strokeWidth={1.5} />
+            <span>Tìm kiếm</span>
+          </button>
+          {/* Mobile search icon only */}
+          <button
+            onClick={() => navigate('/search')}
+            className="sm:hidden flex items-center justify-center w-8 h-8 border-2 border-neutral-300 hover:border-[#BF3A20] bg-white rounded-sm text-neutral-600 hover:text-[#BF3A20] transition-all"
+            title="Tìm kiếm"
+          >
+            <Search size={14} strokeWidth={1.5} />
+          </button>
+
+          {/* Pill-shaped Cart Button */}
           <button 
             onClick={() => navigate('/cart')}
             className="flex items-center gap-1.5 bg-[#BF3A20] hover:bg-[#D44B2F] text-white rounded-full px-4 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95"
@@ -60,16 +79,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
                     <User size={13} strokeWidth={1.5} />
                     <span>Hồ Sơ Của Bạn</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      navigate('/favorites');
-                      setIsDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-neutral-800 hover:bg-[#BF3A20]/5 hover:text-[#BF3A20] font-semibold transition-colors flex items-center gap-2"
-                  >
-                    <Heart size={13} strokeWidth={1.5} fill="#BF3A20" className="text-[#BF3A20]" />
-                    <span>Quán Ruột Yêu Thích</span>
-                  </button>
+
                   
                   <div className="border-t border-dashed border-neutral-200 my-1"></div>
                   

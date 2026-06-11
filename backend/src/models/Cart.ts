@@ -37,7 +37,7 @@ export class Cart extends Model {
   @ForeignKey(() => Restaurant)
   @AllowNull(true)
   @Column(DataType.UUID)
-  restaurantId?: string;
+  restaurantId!: string | null;
 
   // ==========================================
   // THIẾT LẬP CÁC MỐI QUAN HỆ (ASSOCIATIONS)

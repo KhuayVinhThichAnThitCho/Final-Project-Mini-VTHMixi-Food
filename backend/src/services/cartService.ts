@@ -47,12 +47,10 @@ export const cartService = {
       cart.restaurantId = item.restaurantId;
       await cart.save();
     } else if (cart.restaurantId !== item.restaurantId) {
-      // Khác nhà hàng: Trả về lỗi yêu cầu xác nhận xóa giỏ cũ
-      throw new AppError(
-        400,
-        'BUSINESS_ERROR',
-        'Giỏ hàng đã chứa món ăn của nhà hàng khác. Bạn cần dọn sạch giỏ hàng hiện tại trước khi đặt món ở nhà hàng mới.'
-      );
+      // Khác nhà hàng: Tự động dọn sạch giỏ hàng cũ và thiết lập nhà hàng mới
+      await CartItem.destroy({ where: { cartId: cart.id } });
+      cart.restaurantId = item.restaurantId;
+      await cart.save();
     }
 
     // 2. Kiểm tra xem món ăn đã có trong giỏ chưa
@@ -101,7 +99,7 @@ export const cartService = {
     // Cập nhật lại restaurant_id của Cart nếu giỏ hàng rỗng sau khi xóa
     const remainingItems = await CartItem.count({ where: { cartId: cart.id } });
     if (remainingItems === 0) {
-      cart.restaurantId = undefined;
+      cart.restaurantId = null;
       await cart.save();
     }
 
@@ -122,7 +120,7 @@ export const cartService = {
     const cart = await Cart.findOne({ where: { userId } });
     if (cart) {
       await CartItem.destroy({ where: { cartId: cart.id } });
-      cart.restaurantId = undefined;
+      cart.restaurantId = null;
       await cart.save();
     }
   },

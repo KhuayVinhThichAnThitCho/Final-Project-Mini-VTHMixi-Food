@@ -52,9 +52,11 @@ export const initializeDatabase = async (): Promise<boolean> => {
     // Tạm thời tắt kiểm tra khóa ngoại để tránh lỗi đồng bộ/deadlock của Sequelize (Sync alter)
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
 
-    // Tự động đồng bộ hóa các thay đổi cấu trúc bảng mà không làm mất dữ liệu cũ (alter: true)
+    // Tự động đồng bộ hóa các thay đổi cấu trúc bảng.
+    // Dùng sequelize.sync() để chỉ tạo bảng nếu chưa có (không chạy lại các lệnh ALTER TABLE phiền phức trên mỗi lần restart).
+    // Nếu bạn sửa Model (thêm cột, đổi kiểu dữ liệu) thì đổi tạm thời thành { alter: true } để DB cập nhật theo, sau đó đổi lại.
     console.log('⚙️ Đang thực hiện đồng bộ hóa cấu trúc bảng (Syncing models)...');
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
 
     // Seed database with mock data if tables are empty
     const { seedDatabase } = await import('./seedData');

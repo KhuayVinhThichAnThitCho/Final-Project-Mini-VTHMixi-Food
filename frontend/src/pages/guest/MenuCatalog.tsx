@@ -1,18 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react';
+
 import Header from '../../components/organisms/Header';
-import SaigonDivider from '../../components/molecules/SaigonDivider';
 import { MOCK_CATEGORIES, MenuItemDetail, MOCK_MENU_ITEMS } from '../../utils/mockData';
 import useCart from '../../hooks/useCart';
-import useAuth from '../../hooks/useAuth';
 import menuItemApi from '../../services/menuItemApi';
-import favoriteApi from '../../services/favoriteApi';
 
 export const MenuCatalog: React.FC = () => {
   const navigate = useNavigate();
   const { totalItems } = useCart();
-  const { isAuthenticated } = useAuth();
 
   // Category selection and fetched items
   const [selectedListCategory, setSelectedListCategory] = useState<string>('all');
@@ -31,25 +27,7 @@ export const MenuCatalog: React.FC = () => {
   const [currentProductPage, setCurrentProductPage] = useState<number>(1);
 
   // Favorites & Recently Viewed states
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<MenuItemDetail[]>([]);
-
-  // Fetch Favorites
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const fetchFavorites = async () => {
-      try {
-        const res = await favoriteApi.getFavorites();
-        if (res && res.success) {
-          const ids = res.data.map((fav: any) => fav.menuItemId);
-          setFavoriteIds(ids);
-        }
-      } catch (err) {
-        console.error('Error fetching favorites:', err);
-      }
-    };
-    fetchFavorites();
-  }, [isAuthenticated]);
 
   // Fetch Recently Viewed
   useEffect(() => {
@@ -66,27 +44,7 @@ export const MenuCatalog: React.FC = () => {
     }
   }, []);
 
-  // Handle Toggle Favorite
-  const handleToggleFavorite = async (e: React.MouseEvent, menuItemId: string) => {
-    e.stopPropagation();
-    if (!isAuthenticated) {
-      alert('Vui lòng đăng nhập để yêu thích món ăn này.');
-      navigate('/login');
-      return;
-    }
-    try {
-      const res = await favoriteApi.toggleFavorite(menuItemId);
-      if (res && res.success) {
-        if (res.data.action === 'added') {
-          setFavoriteIds((prev) => [...prev, menuItemId]);
-        } else {
-          setFavoriteIds((prev) => prev.filter((id) => id !== menuItemId));
-        }
-      }
-    } catch (err) {
-      console.error('Error toggling favorite:', err);
-    }
-  };
+
 
   // Fetch Products by Category (All items for client-side filtering & pagination)
   const fetchCategoryProducts = useCallback(async (category: string) => {
@@ -173,16 +131,35 @@ export const MenuCatalog: React.FC = () => {
       {/* 1. Header / Navbar */}
       <Header cartCount={totalItems} />
 
-      {/* 2. Main content */}
-      <main className="flex-grow max-w-6xl w-full mx-auto px-4 py-12">
-        
-        {/* Section Title */}
-        <div className="mb-10 text-center">
-          <SaigonDivider text="Thực Đơn Món Ngon Sài Thành" className="max-w-2xl mx-auto" />
-          <p className="text-xs text-neutral-500 font-mono mt-2 uppercase tracking-widest">
-            ☆ Khám phá tinh hoa ẩm thực vỉa hè được giao nhận tận nơi ☆
+      {/* Retro Banner Section */}
+      <section className="relative h-56 flex items-center justify-center text-center px-4 overflow-hidden bg-neutral-950 border-b-2 border-neutral-900">
+        {/* Background Image with slight blur */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30 filter blur-[1px]"
+          style={{ 
+            backgroundImage: "url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80')" 
+          }}
+        ></div>
+        {/* Warm vintage gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2C1A0E]/95 via-[#BF3A20]/75 to-[#2C1A0E]/95 pointer-events-none z-10"></div>
+        <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none z-10"></div>
+
+        {/* Banner Content */}
+        <div className="relative z-20 max-w-3xl mx-auto space-y-3">
+          <div className="inline-flex items-center gap-1.5 bg-secondary-300 text-neutral-900 text-[9px] font-mono font-bold px-2 py-0.5 border border-neutral-900 uppercase tracking-widest rotate-[-1deg] shadow-retro-sm mx-auto select-none">
+            🥢 Hương vị hoài cổ 🥢
+          </div>
+          <h1 className="text-2xl md:text-4xl font-display italic font-bold text-white leading-tight drop-shadow-md">
+            Thực Đơn Món Ngon <span className="text-secondary-300">Sài Thành</span>
+          </h1>
+          <p className="text-[#FEFCF9]/80 font-body text-xs md:text-sm max-w-md mx-auto leading-relaxed">
+            Khám phá tinh hoa ẩm thực vỉa hè Sài Gòn, từ xe bánh mì đầu hẻm đến tô phở nghi ngút khói đầu hẻm xưa.
           </p>
         </div>
+      </section>
+
+      {/* 2. Main content */}
+      <main className="flex-grow max-w-6xl w-full mx-auto px-4 pt-10 pb-12">
 
         {/* Category Tabs */}
         <div className="mb-8 flex flex-wrap gap-2.5 justify-center">
@@ -352,16 +329,7 @@ export const MenuCatalog: React.FC = () => {
                   className="card-retro bg-[#FEFCF9] cursor-pointer group flex flex-col gap-2 p-3 hover:border-[#BF3A20] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
                 >
                   <div className="w-full aspect-square overflow-hidden border border-neutral-200 rounded-sm relative">
-                    {/* Heart Button */}
-                    <button
-                      onClick={(e) => handleToggleFavorite(e, viewed.id)}
-                      className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-[#FEFCF9]/80 border border-neutral-900 hover:bg-[#FEFCF9] transition-all active:scale-90"
-                    >
-                      <Heart 
-                        size={12} 
-                        className={favoriteIds.includes(viewed.id) ? "text-[#BF3A20] fill-[#BF3A20]" : "text-neutral-500"} 
-                      />
-                    </button>
+
                     <img
                       src={viewed.image || viewed.imageUrl}
                       alt={viewed.name}
@@ -401,16 +369,7 @@ export const MenuCatalog: React.FC = () => {
               className="card-retro bg-[#FEFCF9] cursor-pointer group flex flex-col gap-2.5 p-3.5 hover:border-[#BF3A20] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
             >
               <div className="w-full aspect-square overflow-hidden border border-neutral-200 rounded-sm relative">
-                {/* Heart Button */}
-                <button
-                  onClick={(e) => handleToggleFavorite(e, item.id)}
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-[#FEFCF9]/80 border border-neutral-900 hover:bg-[#FEFCF9] transition-all active:scale-90"
-                >
-                  <Heart 
-                    size={12} 
-                    className={favoriteIds.includes(item.id) ? "text-[#BF3A20] fill-[#BF3A20]" : "text-neutral-500"} 
-                  />
-                </button>
+
                 <img
                   src={item.imageUrl}
                   alt={item.name}
@@ -446,7 +405,14 @@ export const MenuCatalog: React.FC = () => {
 
         {/* Loading / Empty State */}
         {filteredItems.length === 0 && !loadingProducts && (
-          <div className="text-center py-12 card-retro bg-[#FEFCF9] mt-6">
+          <div className="text-center py-10 card-retro bg-[#FEFCF9] mt-6 flex flex-col items-center justify-center">
+            <div className="w-24 h-24 mb-4 opacity-85 select-none">
+              <img
+                src="/empty_bowl.png"
+                alt="Không tìm thấy món ăn"
+                className="w-full h-full object-contain filter sepia-[5%]"
+              />
+            </div>
             <p className="font-mono text-sm text-neutral-500">
               [ Không tìm thấy món ngon nào khớp với bộ lọc ]
             </p>

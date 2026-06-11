@@ -15,9 +15,12 @@ interface AuthStore {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
+  showAuthModal: boolean;
+  authModalRedirectPath: string | null;
   setUser: (user: UserState | null) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
   clearAuth: () => void;
+  setShowAuthModal: (show: boolean, redirectPath?: string | null) => void;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -25,6 +28,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   accessToken: localStorage.getItem('accessToken'),
   refreshToken: localStorage.getItem('refreshToken'),
   isAuthenticated: !!localStorage.getItem('accessToken'),
+  showAuthModal: false,
+  authModalRedirectPath: null,
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   
@@ -39,5 +44,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
     localStorage.removeItem('refreshToken');
     set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
   },
+
+  setShowAuthModal: (show, redirectPath = null) => set({ 
+    showAuthModal: show, 
+    authModalRedirectPath: redirectPath 
+  }),
 }));
 export default useAuthStore;

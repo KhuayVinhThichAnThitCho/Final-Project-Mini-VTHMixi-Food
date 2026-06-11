@@ -41,7 +41,10 @@ export const favoritesController = {
       res.status(200).json({
         success: true,
         message: isFavorite ? 'Đã thêm vào danh sách yêu thích.' : 'Đã xóa khỏi danh sách yêu thích.',
-        data: { isFavorite },
+        data: { 
+          isFavorite,
+          action: isFavorite ? 'added' : 'removed'
+        },
       });
     } catch (error) {
       next(error);

@@ -57,6 +57,9 @@ export default {
         body: ['"Be Vietnam Pro"', 'sans-serif'],
         // Font Mono chuyên biệt cho giá cả, số liệu thống kê và mã số
         mono: ['"Space Mono"', 'monospace'],
+        // Override font-serif và font-sans mặc định để tránh lỗi phông tiếng Việt
+        serif: ['"Lora"', 'Georgia', 'serif'],
+        sans: ['"Be Vietnam Pro"', 'sans-serif'],
       },
       boxShadow: {
         // Shadow tông nâu ấm áp hoài cổ thay vì xám đen công nghiệp

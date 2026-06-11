@@ -1,12 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Star, MessageSquare, Users } from 'lucide-react';
+import { ChevronLeft, Star, MessageSquare, Users, CheckCircle, Heart, XCircle } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import ImageSwiper from '../../components/molecules/ImageSwiper';
 import { MOCK_MENU_ITEMS } from '../../utils/mockData';
 import useCart from '../../hooks/useCart';
+import useAuth from '../../hooks/useAuth';
 import menuItemApi from '../../services/menuItemApi';
 import reviewApi from '../../services/reviewApi';
+import favoriteApi from '../../services/favoriteApi';
 
 const categoryNames: Record<string, string> = {
   all: 'Tất cả món',
@@ -21,7 +23,9 @@ const categoryNames: Record<string, string> = {
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addToCart, totalItems } = useCart();
+  const { addToCart, allCartItemsCount } = useCart();
+  const { isAuthenticated } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // Find product detail from mock menu items
   const item = useMemo(() => {
@@ -34,6 +38,13 @@ export const ProductDetail: React.FC = () => {
   const [stats, setStats] = useState<{ buyerCount: number; reviewCount: number }>({ buyerCount: 0, reviewCount: 0 });
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Hiện toast notification tự động ẩn sau 2.5 giây
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2500);
+  }, []);
 
   // Tăng lượt xem & Tải thông số thống kê, đánh giá khi xem sản phẩm
   useEffect(() => {
@@ -70,6 +81,43 @@ export const ProductDetail: React.FC = () => {
       fetchStatsAndReviews();
     }
   }, [id]);
+
+  // Check if item is favorited on mount
+  useEffect(() => {
+    if (!isAuthenticated || !id) return;
+    const fetchFavoriteStatus = async () => {
+      try {
+        const res = await favoriteApi.getFavorites();
+        if (res && res.success) {
+          const isFav = res.data.some((fav: any) => fav.id === id);
+          setIsFavorite(isFav);
+        }
+      } catch (err) {
+        console.error('Lỗi khi kiểm tra trạng thái yêu thích:', err);
+      }
+    };
+    fetchFavoriteStatus();
+  }, [id, isAuthenticated]);
+
+  // Handle Toggle Favorite
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { message: 'Vui lòng đăng nhập để yêu thích món ăn.', from: `/menu-items/${id}` } });
+      return;
+    }
+    if (!id) return;
+    try {
+      const res = await favoriteApi.toggleFavorite(id);
+      if (res && res.success) {
+        setIsFavorite(res.data.isFavorite);
+        showToast(res.data.isFavorite ? 'Đã thêm món ăn vào danh sách yêu thích! ♥' : 'Đã xóa món ăn khỏi danh sách yêu thích.');
+      }
+    } catch (err: any) {
+      console.error('Error toggling favorite:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi cập nhật yêu thích.';
+      showToast(errMsg, 'error');
+    }
+  };
 
   // Increase/Decrease quantity
   const handleIncrease = () => setQuantity((q) => q + 1);
@@ -110,7 +158,7 @@ export const ProductDetail: React.FC = () => {
 
     const unitPrice = item.price + toppingsList.reduce((sum, t) => sum + t.price, 0);
     
-    addToCart(
+    const added = addToCart(
       {
         id: item.id,
         name: item.name,
@@ -118,21 +166,36 @@ export const ProductDetail: React.FC = () => {
         imageUrl: item.image || item.imageUrl,
         toppings: toppingsList.map((t) => t.name),
       },
-      item.restaurantId
+      item.restaurantId,
+      quantity
     );
-    
-    alert(`Đã thêm ${quantity}x ${item.name} vào giỏ hàng thành công!`);
-    navigate(`/restaurants/${item.restaurantId}`);
+
+    // addToCart trả về false nếu chưa đăng nhập (đã tự redirect đến /login)
+    if (added) {
+      showToast(`🛵 Đã thêm ${quantity}x "${item.name}" vào giỏ hàng!`);
+    }
   };
 
   return (
     <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
-      
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[999] flex items-center gap-3 px-5 py-3 border-2 border-neutral-900 shadow-retro font-mono text-sm font-bold transition-all duration-300 ${
+          toast.type === 'success'
+            ? 'bg-emerald-600 text-white'
+            : 'bg-[#BF3A20] text-white'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* 1. Navbar Header */}
-      <Header cartCount={totalItems} />
+      <Header cartCount={allCartItemsCount} />
 
       {/* 2. Main Page Content */}
-      <main className="flex-grow max-w-4xl w-full mx-auto px-4 py-6">
+      <main className="flex-grow max-w-6xl w-full mx-auto px-4 py-6">
         
         {/* Back navigation button */}
         <button
@@ -146,18 +209,13 @@ export const ProductDetail: React.FC = () => {
         {/* 2-Column Responsive Layout */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
           
-          {/* Left Column (5/12): Image section - Full bleed on Mobile, card wrapper on Desktop */}
-          <div className="col-span-1 md:col-span-5 -mx-4 -mt-6 md:mx-0 md:mt-0">
-            <ImageSwiper images={item.images || (item.image ? [item.image] : [item.imageUrl])} altText={item.name} />
-            
-            {/* Restaurant indicator for desktop */}
-            <div className="hidden md:block text-center mt-4 text-xs font-mono uppercase tracking-widest text-neutral-400 select-none">
-              ✿ {item.restaurantName} ✿
-            </div>
+          {/* Left Column (7/12): Image Swiper với thumbnail */}
+          <div className="col-span-1 md:col-span-7 -mx-4 -mt-6 md:mx-0 md:mt-0">
+            <ImageSwiper images={item.images || (item.image ? [item.image] : [item.imageUrl])} altText={item.restaurantName || item.name} />
           </div>
 
-          {/* Right Column (7/12): Product details with photo album corners */}
-          <div className="col-span-1 md:col-span-7">
+          {/* Right Column (5/12): Product details with photo album corners */}
+          <div className="col-span-1 md:col-span-5">
             <div className="card-retro bg-[#FEFCF9] frame-corner p-6 relative overflow-hidden flex flex-col gap-6">
               
               {/* Product Info */}
@@ -166,10 +224,23 @@ export const ProductDetail: React.FC = () => {
                   Món ngon khuyên dùng
                 </span>
                 
-                {/* Title: Playfair Display Italic */}
-                <h1 className="text-3xl font-display italic font-bold text-[#2C1A0E] mt-3 mb-2 leading-tight">
-                  {item.name}
-                </h1>
+                {/* Title and Heart Button */}
+                <div className="flex items-start justify-between gap-4 mt-3 mb-2">
+                  <h1 className="text-3xl font-display italic font-bold text-[#2C1A0E] leading-tight">
+                    {item.name}
+                  </h1>
+                  
+                  <button
+                    onClick={handleToggleFavorite}
+                    className="p-2 border-2 border-neutral-900 bg-[#FEFCF9] hover:bg-neutral-50 active:translate-y-[1px] shadow-retro-sm transition-all rounded-sm flex-shrink-0 cursor-pointer"
+                    title={isFavorite ? 'Bỏ yêu thích' : 'Yêu thích món ăn'}
+                  >
+                    <Heart
+                      size={18}
+                      className={isFavorite ? 'text-[#BF3A20] fill-[#BF3A20]' : 'text-neutral-500'}
+                    />
+                  </button>
+                </div>
                 
                 {/* Price: Space Mono Bold */}
                 <p className="text-2xl font-mono font-bold text-[#BF3A20] mb-3">
@@ -243,43 +314,43 @@ export const ProductDetail: React.FC = () => {
               </div>
 
               {/* Bottom Control Action Bar */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-6 border-t border-dashed border-neutral-200 mt-2">
-                
-                {/* Square Quantity Counter */}
-                <div className="flex items-center justify-between border-2 border-neutral-900 bg-white shadow-retro-sm select-none">
+              <div className="flex items-center gap-3 pt-5 border-t border-dashed border-neutral-200 mt-2">
+
+                {/* Quantity Counter — nhỏ gọn */}
+                <div className="flex items-center border-2 border-neutral-900 bg-white shadow-retro-sm select-none flex-shrink-0">
                   <button
                     onClick={handleDecrease}
                     disabled={!item.isAvailable || item.stock <= 0}
-                    className="w-10 h-10 flex items-center justify-center font-bold text-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-7 h-7 flex items-center justify-center font-bold text-sm hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     -
                   </button>
-                  <span className="px-4 font-mono font-bold text-lg text-neutral-900">
+                  <span className="px-3 font-mono font-bold text-sm text-neutral-900 select-none">
                     {quantity}
                   </span>
                   <button
                     onClick={handleIncrease}
                     disabled={!item.isAvailable || item.stock <= 0 || quantity >= item.stock}
-                    className="w-10 h-10 flex items-center justify-center font-bold text-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-7 h-7 flex items-center justify-center font-bold text-sm hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     +
                   </button>
                 </div>
 
-                {/* THÊM VÀO GIỎ HÀNG Button */}
+                {/* THÊM VÀO GIỎ HÀNG Button — trung bình */}
                 <button
                   onClick={handleAddToCart}
                   disabled={!item.isAvailable || item.stock <= 0}
-                  className={`flex-grow py-3 px-6 font-bold uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 text-center text-sm ${
+                  className={`flex-grow py-2.5 px-4 font-bold uppercase tracking-wider border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 text-center text-xs ${
                     item.isAvailable && item.stock > 0
                       ? 'bg-[#BF3A20] hover:bg-[#D44B2F] text-white cursor-pointer'
-                      : 'bg-neutral-300 text-neutral-500 opacity-45 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0 active:shadow-none'
+                      : 'bg-neutral-300 text-neutral-500 opacity-45 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0'
                   }`}
                 >
                   {item.isAvailable && item.stock > 0 ? (
-                    <span>Thêm vào giỏ hàng — {totalPrice.toLocaleString('vi-VN')} đ</span>
+                    <span>Thêm vào giỏ — {totalPrice.toLocaleString('vi-VN')}đ</span>
                   ) : (
-                    <span>HẾT HÀNG</span>
+                    <span>Hết hàng</span>
                   )}
                 </button>
               </div>

@@ -24,7 +24,7 @@ interface CheckoutItem {
 
 export const CheckoutTracking: React.FC = () => {
   const navigate = useNavigate();
-  const { items, restaurantId, totalItems, totalPrice, clearCart } = useCart();
+  const { selectedItems, restaurantId, totalItems, totalPrice, clearSelected } = useCart();
   const { user, refetchMe } = useAuth();
 
   // Screen state: 'checkout' (Thanh Toán) | 'tracking' (Theo Dõi)
@@ -39,6 +39,19 @@ export const CheckoutTracking: React.FC = () => {
   const [isOrdering, setIsOrdering] = useState(false);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [vouchersLoading, setVouchersLoading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Custom Alert Modal state
+  const [alertConfig, setAlertConfig] = useState<{ isOpen: boolean; title: string; message: string; type?: 'info' | 'warning' | 'error' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showCustomAlert = (message: string, title: string = 'Thông Báo', type: 'info' | 'warning' | 'error' = 'info') => {
+    setAlertConfig({ isOpen: true, title, message, type });
+  };
 
   // Fetch active vouchers
   useEffect(() => {
@@ -58,18 +71,82 @@ export const CheckoutTracking: React.FC = () => {
     fetchVouchers();
   }, []);
 
-  // Address defaults
-  const deliveryAddress = {
-    title: 'Nhà riêng (Mặc định)',
-    detail: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+  // Address state setup
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<any | null>(null);
+  
+  // New address form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newRecipient, setNewRecipient] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newDetail, setNewDetail] = useState('');
+
+  // Load addresses
+  useEffect(() => {
+    const stored = localStorage.getItem('user_addresses');
+    let list = [];
+    if (stored) {
+      list = JSON.parse(stored);
+    } else if (user) {
+      // Default fallback list using user info
+      list = [
+        {
+          id: 'addr-1',
+          title: 'Nhà riêng (Mặc định)',
+          detail: (user as any).address || '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+          recipientName: user.name || 'Nguyễn Văn A',
+          recipientPhone: (user as any).phone || '0987654321',
+        },
+        {
+          id: 'addr-2',
+          title: 'Văn phòng',
+          detail: '33 Lê Duẩn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+          recipientName: user.name || 'Nguyễn Văn A',
+          recipientPhone: (user as any).phone || '0987654321',
+        }
+      ];
+      localStorage.setItem('user_addresses', JSON.stringify(list));
+    }
+    
+    if (list.length > 0) {
+      setAddresses(list);
+      setSelectedAddress(list[0]);
+    }
+  }, [user]);
+
+  // Handle adding new address
+  const handleAddAddress = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newRecipient.trim() || !newPhone.trim() || !newDetail.trim()) {
+      showCustomAlert('Vui lòng điền đầy đủ các thông tin địa chỉ.', 'Thiếu thông tin', 'warning');
+      return;
+    }
+    const newAddr = {
+      id: `addr-${Date.now()}`,
+      title: newTitle.trim(),
+      detail: newDetail.trim(),
+      recipientName: newRecipient.trim(),
+      recipientPhone: newPhone.trim()
+    };
+    const updatedList = [...addresses, newAddr];
+    setAddresses(updatedList);
+    localStorage.setItem('user_addresses', JSON.stringify(updatedList));
+    setSelectedAddress(newAddr);
+    setShowAddForm(false);
+  };
+
+  const deliveryAddress = selectedAddress || {
+    title: 'Đang tải...',
+    detail: 'Đang tải...',
     recipientName: user?.name || 'Nguyễn Văn A',
     recipientPhone: '0987654321'
   };
 
   // Determine items to display (fallback to mock items if cart is empty for testing/demo robustness)
   const checkoutItems = useMemo<CheckoutItem[]>(() => {
-    if (items.length > 0) {
-      return items.map(item => ({
+    if (selectedItems.length > 0) {
+      return selectedItems.map(item => ({
         id: item.id,
         name: item.name,
         price: item.price,
@@ -81,13 +158,13 @@ export const CheckoutTracking: React.FC = () => {
       { id: 'mock-1', name: 'Hủ Tiếu Gõ Thập Cẩm', price: 45000, quantity: 2, toppings: ['Trứng cút', 'Thịt xá xíu'] },
       { id: 'mock-2', name: 'Cà Phê Sữa Đá Sài Gòn', price: 20000, quantity: 1, toppings: [] }
     ];
-  }, [items]);
+  }, [selectedItems]);
 
   // Subtotal calculation
   const subtotal = useMemo(() => {
-    if (items.length > 0) return totalPrice;
+    if (selectedItems.length > 0) return totalPrice;
     return checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }, [items, totalPrice, checkoutItems]);
+  }, [selectedItems, totalPrice, checkoutItems]);
 
   const deliveryFee = 15000; // Fixed delivery fee
 
@@ -150,18 +227,21 @@ export const CheckoutTracking: React.FC = () => {
   };
 
   // Confirm Order submission
-  const handleConfirmOrder = async () => {
+  const handleConfirmOrder = () => {
+    if (selectedItems.length === 0) {
+      showCustomAlert('Giỏ hàng trống! Vui lòng chọn món ăn trước.', 'Giỏ hàng trống', 'warning');
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const submitOrder = async () => {
+    setShowConfirmModal(false);
     setIsOrdering(true);
     try {
-      if (items.length === 0) {
-        alert('Giỏ hàng trống! Vui lòng chọn món ăn trước.');
-        setIsOrdering(false);
-        return;
-      }
-
       const orderData = {
         restaurantId: restaurantId || 'res-1',
-        items: items.map(item => ({
+        items: selectedItems.map(item => ({
           menuItemId: item.id,
           name: item.name,
           quantity: item.quantity,
@@ -174,17 +254,17 @@ export const CheckoutTracking: React.FC = () => {
 
       const res = await orderApi.createOrder(orderData);
       if (res && res.success) {
-        clearCart(); // Clear active items from cart store
+        clearSelected(); // Clear active items from cart store
         if (refetchMe) {
           await refetchMe(); // Cập nhật số dư điểm của user
         }
         setScreen('tracking');
       } else {
-        alert(res?.message || 'Có lỗi xảy ra khi gửi đơn hàng.');
+        showCustomAlert(res?.message || 'Có lỗi xảy ra khi gửi đơn hàng.', 'Đặt hàng thất bại', 'error');
       }
     } catch (err: any) {
       console.error('Lỗi đặt hàng:', err);
-      alert(err.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng kiểm tra số dư ví/điểm.');
+      showCustomAlert(err.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng kiểm tra số dư ví/điểm.', 'Lỗi đặt hàng', 'error');
     } finally {
       setIsOrdering(false);
     }
@@ -261,26 +341,135 @@ export const CheckoutTracking: React.FC = () => {
                 
                 {/* 1. Address Section */}
                 <div className="card-retro bg-[#FEFCF9] p-6 shadow-sm border-2 border-neutral-900">
-                  <div className="flex items-center gap-2 mb-4 border-b border-dashed border-neutral-200 pb-2">
-                    <MapPin className="text-[#BF3A20]" size={18} strokeWidth={1.5} />
-                    <h2 className="font-mono font-bold text-xs uppercase tracking-widest text-neutral-800">
-                      Địa chỉ nhận hàng
-                    </h2>
+                  <div className="flex items-center justify-between gap-2 mb-4 border-b border-dashed border-neutral-200 pb-2 select-none">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="text-[#BF3A20]" size={18} strokeWidth={1.5} />
+                      <h2 className="font-mono font-bold text-xs uppercase tracking-widest text-neutral-800">
+                        Địa chỉ nhận hàng
+                      </h2>
+                    </div>
                   </div>
 
-                  <div className="p-4 bg-transparent border-2 border-[#E8D8C6] rounded-md">
-                    <div className="flex justify-between items-center gap-2 mb-2">
-                      <span className="bg-[#FAF0D2] border border-[#C98F0A]/30 text-[10px] font-bold font-mono px-2 py-0.5 text-neutral-800 rounded-sm uppercase">
-                        {deliveryAddress.title}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#2C1A0E] font-body font-semibold">
-                      {deliveryAddress.detail}
-                    </p>
-                    <div className="mt-2 text-xs text-neutral-500 font-mono">
-                      <span>Người nhận: {deliveryAddress.recipientName}</span> — <span>SĐT: {deliveryAddress.recipientPhone}</span>
-                    </div>
+                  {/* Address List */}
+                  <div className="space-y-3">
+                    {addresses.map((addr) => (
+                      <label 
+                        key={addr.id}
+                        onClick={() => setSelectedAddress(addr)}
+                        className={`flex items-start gap-3 p-3.5 border-2 rounded-md cursor-pointer select-none transition-all ${
+                          selectedAddress?.id === addr.id
+                            ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
+                            : 'border-neutral-200 bg-white hover:bg-neutral-50/50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="address_select"
+                          checked={selectedAddress?.id === addr.id}
+                          onChange={() => setSelectedAddress(addr)}
+                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 mt-0.5 cursor-pointer flex-shrink-0"
+                        />
+                        <div className="flex-grow min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="bg-[#FAF0D2] border border-[#C98F0A]/30 text-[9px] font-bold font-mono px-2 py-0.5 text-neutral-800 rounded-sm uppercase tracking-wide">
+                              {addr.title}
+                            </span>
+                          </div>
+                          <p className="text-sm font-semibold font-body text-neutral-800 break-words">{addr.detail}</p>
+                          <p className="text-[10px] font-mono text-neutral-500 mt-1">
+                            Người nhận: <span className="font-bold text-neutral-700">{addr.recipientName}</span> — SĐT: <span className="font-bold text-neutral-700">{addr.recipientPhone}</span>
+                          </p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
+
+                  {/* New Address Inline Form */}
+                  {showAddForm ? (
+                    <form onSubmit={handleAddAddress} className="mt-4 p-4 border-2 border-dashed border-neutral-900 bg-[#FAF7F3] space-y-3">
+                      <p className="text-xs font-mono font-bold uppercase text-neutral-700 border-b border-dashed border-neutral-200 pb-1">➕ Thêm Địa Chỉ Nhận Hàng Mới</p>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] font-mono font-black uppercase text-neutral-500 mb-1">Tên nhãn địa chỉ</label>
+                          <input
+                            type="text"
+                            value={newTitle}
+                            onChange={(e) => setNewTitle(e.target.value)}
+                            placeholder="Ví dụ: Nhà riêng, Văn phòng, Trường học..."
+                            className="w-full bg-white border-2 border-neutral-300 focus:border-neutral-900 rounded px-2.5 py-1.5 text-xs text-neutral-900 focus:outline-none font-body"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-mono font-black uppercase text-neutral-500 mb-1">Họ và tên người nhận</label>
+                          <input
+                            type="text"
+                            value={newRecipient}
+                            onChange={(e) => setNewRecipient(e.target.value)}
+                            placeholder="Tên người nhận..."
+                            className="w-full bg-white border-2 border-neutral-300 focus:border-neutral-900 rounded px-2.5 py-1.5 text-xs text-neutral-900 focus:outline-none font-body"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] font-mono font-black uppercase text-neutral-500 mb-1">Số điện thoại</label>
+                          <input
+                            type="tel"
+                            value={newPhone}
+                            onChange={(e) => setNewPhone(e.target.value)}
+                            placeholder="Số điện thoại liên lạc..."
+                            className="w-full bg-white border-2 border-neutral-300 focus:border-neutral-900 rounded px-2.5 py-1.5 text-xs text-neutral-900 focus:outline-none font-body"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-mono font-black uppercase text-neutral-500 mb-1">Địa chỉ chi tiết</label>
+                          <input
+                            type="text"
+                            value={newDetail}
+                            onChange={(e) => setNewDetail(e.target.value)}
+                            placeholder="Số nhà, tên đường, phường/xã, quận..."
+                            className="w-full bg-white border-2 border-neutral-300 focus:border-neutral-900 rounded px-2.5 py-1.5 text-xs text-neutral-900 focus:outline-none font-body"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2 border-t border-dashed border-neutral-200">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddForm(false)}
+                          className="px-3 py-1.5 text-[10px] font-mono font-bold text-neutral-500 hover:underline cursor-pointer"
+                        >
+                          Hủy bỏ
+                        </button>
+                        <button
+                          type="submit"
+                          className="bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-mono text-[10px] font-bold uppercase py-1.5 px-4 border-2 border-neutral-900 shadow-retro-sm cursor-pointer active:translate-y-0.5"
+                        >
+                          Lưu địa chỉ
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewTitle('');
+                        setNewRecipient(user?.name || '');
+                        setNewPhone((user as any)?.phone || '');
+                        setNewDetail('');
+                        setShowAddForm(true);
+                      }}
+                      className="mt-3 w-full bg-transparent hover:bg-neutral-50 border-2 border-dashed border-neutral-400 hover:border-neutral-900 font-mono font-bold text-xs uppercase tracking-wider py-2 text-center cursor-pointer transition-colors"
+                    >
+                      ➕ Thêm địa chỉ mới
+                    </button>
+                  )}
                 </div>
 
                 {/* 2. Payment Selector */}
@@ -349,7 +538,7 @@ export const CheckoutTracking: React.FC = () => {
                         const pointsNeeded = Math.ceil(finalTotal / 1000);
                         const userPoints = user?.points || 0;
                         if (userPoints < pointsNeeded) {
-                          alert(`Bạn không đủ điểm tích lũy để thanh toán đơn hàng này (cần ${pointsNeeded} điểm, hiện có ${userPoints} điểm).`);
+                          showCustomAlert(`Bạn không đủ điểm tích lũy để thanh toán đơn hàng này (cần ${pointsNeeded} điểm, hiện có ${userPoints} điểm).`, 'Không đủ điểm tích lũy', 'warning');
                           return;
                         }
                         setPaymentMethod('POINTS');
@@ -667,6 +856,82 @@ export const CheckoutTracking: React.FC = () => {
           </div>
         )}
 
+        {/* Modal xác nhận đặt hàng */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4">
+            <div className="card-retro bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro-lg max-w-md w-full p-6 relative animate-in fade-in zoom-in-95 duration-150">
+              <h2 className="text-xl font-heading font-black text-[#BF3A20] text-center mb-4 uppercase tracking-wide border-b-2 border-neutral-900 pb-2">
+                ❀ Xác Nhận Gửi Bưu Phẩm ❀
+              </h2>
+              
+              <p className="text-xs text-neutral-500 font-body mb-4 text-center">
+                Vui lòng rà soát lại thông tin ký gửi đơn hàng của bạn trước khi chúng tôi xuất kho.
+              </p>
+
+              <div className="space-y-4 text-xs font-body mb-6">
+                {/* Address detail */}
+                <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                  <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Địa chỉ giao hàng</span>
+                  <p className="font-semibold text-neutral-800">{deliveryAddress.detail}</p>
+                  <p className="text-[10px] text-neutral-500 font-mono mt-1">SĐT: {deliveryAddress.recipientPhone} ({deliveryAddress.recipientName})</p>
+                </div>
+
+                {/* Payment details */}
+                <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md flex justify-between items-center">
+                  <div>
+                    <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Hình thức thanh toán</span>
+                    <p className="font-semibold text-neutral-800">
+                      {paymentMethod === 'COD' && 'Tiền mặt (COD)'}
+                      {paymentMethod === 'WALLET' && 'Ví Saigon-Pay'}
+                      {paymentMethod === 'POINTS' && 'Điểm Tích Lũy'}
+                    </p>
+                  </div>
+                  <span className="text-lg">
+                    {paymentMethod === 'COD' && '💵'}
+                    {paymentMethod === 'WALLET' && '💳'}
+                    {paymentMethod === 'POINTS' && '🪙'}
+                  </span>
+                </div>
+
+                {/* Items summary */}
+                <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                  <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1.5">Tóm tắt món đặt ({selectedItems.length} món)</span>
+                  <div className="space-y-1 max-h-[100px] overflow-y-auto pr-1">
+                    {checkoutItems.map(item => (
+                      <div key={item.id} className="flex justify-between items-center text-[11px]">
+                        <span className="text-neutral-700 font-semibold">{item.quantity}x {item.name}</span>
+                        <span className="font-mono font-bold text-neutral-600">{(item.price * item.quantity).toLocaleString('vi-VN')}đ</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Total payment */}
+                <div className="flex justify-between items-center border-t border-dashed border-neutral-300 pt-3 font-mono font-black text-sm">
+                  <span className="text-neutral-700 uppercase">TỔNG CƯỚC THANH TOÁN:</span>
+                  <span className="text-base text-[#BF3A20]">{finalTotal.toLocaleString('vi-VN')}đ</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro-sm bg-white hover:bg-neutral-50 active:translate-y-[1px] active:shadow-none text-center cursor-pointer transition-all"
+                >
+                  Quay lại
+                </button>
+                
+                <button
+                  onClick={submitOrder}
+                  className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all"
+                >
+                  Xác nhận đặt
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
 
       {/* Footer */}
@@ -674,6 +939,39 @@ export const CheckoutTracking: React.FC = () => {
         <p className="font-display italic font-bold text-sm text-[#BF3A20]">GrabFood Mini © 1990 - 2026</p>
         <p className="mt-1 text-[10px]">✿ Bưu phẩm gửi nhanh - Ấm lòng thực khách phương xa ✿</p>
       </footer>
+
+      {/* Custom Alert Modal */}
+      {alertConfig.isOpen && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 select-none">
+          <div className="card-retro bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro-lg max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-150">
+            <button 
+              onClick={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))} 
+              className="absolute top-3 right-3 text-neutral-500 hover:text-neutral-900 cursor-pointer font-bold font-mono"
+            >
+              ✕
+            </button>
+            <h2 className={`text-sm font-heading font-black text-center mb-3 uppercase tracking-wide border-b-2 border-neutral-900 pb-2 ${
+              alertConfig.type === 'error' ? 'text-[#BF3A20]' : alertConfig.type === 'warning' ? 'text-[#C98F0A]' : 'text-neutral-800'
+            }`}>
+              {alertConfig.type === 'error' && '❌ '}
+              {alertConfig.type === 'warning' && '⚠️ '}
+              {alertConfig.type === 'info' && '🔔 '}
+              {alertConfig.title}
+            </h2>
+            <p className="text-xs text-neutral-700 font-body text-center leading-relaxed mb-5">
+              {alertConfig.message}
+            </p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+                className="py-2 px-6 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all min-w-[100px]"
+              >
+                Đồng ý (OK)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

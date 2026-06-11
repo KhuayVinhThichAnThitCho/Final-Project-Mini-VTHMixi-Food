@@ -10,6 +10,8 @@ import { errorHandler, AppError } from './middlewares/errorHandler';
 import apiRouter from './routes';
 import { initializeDatabase } from './config/database';
 
+import path from 'path';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -33,6 +35,9 @@ app.use(express.json({ limit: '10mb' }));
 
 // Phân tích dữ liệu URL-encoded (từ form post truyền thống)
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Phục vụ các file tĩnh trong thư mục uploads (avatar, ảnh món ăn...)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ==========================================
 // 2. KHỞI TẠO CÁC ROUTE CỦA HỆ THỐNG
