@@ -7,6 +7,8 @@ import statsRoutes from './statsRoutes';
 import menuItemRoutes from './menuItemRoutes';
 import favoritesRoutes from './favoritesRoutes';
 import voucherRoutes from './voucherRoutes';
+import restaurantRoutes from './restaurantRoutes';
+import searchRoutes from './searchRoutes';
 
 const router = Router();
 
@@ -19,5 +21,7 @@ router.use('/stats', statsRoutes);
 router.use('/menu-items', menuItemRoutes);
 router.use('/favorites', favoritesRoutes);
 router.use('/vouchers', voucherRoutes);
+router.use('/restaurants', restaurantRoutes);
+router.use('/search', searchRoutes);
 
 export default router;

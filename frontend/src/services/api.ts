@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/useAuthStore';
 
 // Tạo một instance axios chung cho dự án
 const api = axios.create({
@@ -26,6 +27,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    // Nếu gặp lỗi 401 (Unauthorized) và đang có token trong localStorage, tự động đăng xuất
+    if (error.response && error.response.status === 401) {
+      if (localStorage.getItem('accessToken')) {
+        useAuthStore.getState().clearAuth();
+      }
+    }
+
     // Trả về lỗi có cấu trúc từ backend
     const customError = error.response?.data || {
       success: false,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import FormField from '../../components/molecules/FormField';
 import Button from '../../components/atoms/Button';
 import SaigonDivider from '../../components/molecules/SaigonDivider';
@@ -9,6 +9,7 @@ import { authApi } from '../../services/authApi';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isLoadingLogin, verifyOtp, isLoadingVerifyOtp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +19,10 @@ export const Login: React.FC = () => {
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
+
+  // Lấy thông điệp và trang nguồn từ state khi bị redirect (ví dụ từ giỏ hàng)
+  const redirectFrom: string = (location.state as any)?.from || '/';
+  const redirectMessage: string = (location.state as any)?.message || '';
 
   // Bộ đếm ngược cho việc gửi lại OTP
   useEffect(() => {
@@ -48,12 +53,17 @@ export const Login: React.FC = () => {
           } else {
             const user = res.data.user;
             const role = user.role.toLowerCase();
-            if (role === 'admin') {
+            // Sau khi login, redirect về trang đã lưu (nếu có) hoặc về dashboard theo role
+            const savedRedirect = sessionStorage.getItem('redirectAfterLogin');
+            sessionStorage.removeItem('redirectAfterLogin');
+            if (savedRedirect && savedRedirect !== '/login') {
+              navigate(savedRedirect);
+            } else if (role === 'admin') {
               navigate('/admin/dashboard');
             } else if (role === 'vendor') {
               navigate('/vendor/dashboard');
             } else {
-              navigate('/');
+              navigate(redirectFrom !== '/login' ? redirectFrom : '/');
             }
           }
         },
@@ -79,12 +89,16 @@ export const Login: React.FC = () => {
         onSuccess: (res: any) => {
           const user = res.data.user;
           const role = user.role.toLowerCase();
-          if (role === 'admin') {
+          const savedRedirect = sessionStorage.getItem('redirectAfterLogin');
+          sessionStorage.removeItem('redirectAfterLogin');
+          if (savedRedirect && savedRedirect !== '/login') {
+            navigate(savedRedirect);
+          } else if (role === 'admin') {
             navigate('/admin/dashboard');
           } else if (role === 'vendor') {
             navigate('/vendor/dashboard');
           } else {
-            navigate('/');
+            navigate(redirectFrom !== '/login' ? redirectFrom : '/');
           }
         },
         onError: (err: any) => {
@@ -134,6 +148,13 @@ export const Login: React.FC = () => {
             {requiresOtp ? `Mã xác thực đã được gửi về email ${email}` : 'Đặt món ngon Sài Gòn, giao nhanh tận cửa.'}
           </p>
         </div>
+
+        {/* Banner thông báo khi bị redirect từ trang khác (ví dụ: giỏ hàng) */}
+        {redirectMessage && (
+          <div className="border-2 border-amber-500 bg-amber-50 p-3 text-xs font-mono font-bold text-amber-800 mb-4 flex items-center gap-2">
+            🛵 {redirectMessage}
+          </div>
+        )}
 
         {error && (
           <div className="border-2 border-primary-600 bg-[#BF3A20]/5 p-3 text-xs font-mono font-bold text-primary-600 mb-4">

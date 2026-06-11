@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/useAuthStore';
 import { authApi } from '../services/authApi';
+import { useCartStore } from '../store/useCartStore';
+import cartApi from '../services/cartApi';
 
 export const useAuth = () => {
   const { setUser, setTokens, clearAuth, user, isAuthenticated } = useAuthStore();
+  const queryClient = useQueryClient();
 
   // Tự động tải thông tin cá nhân và điểm tích lũy khi đã đăng nhập nhưng thiếu thông tin user (ví dụ sau F5)
   const { data: profileData, refetch: refetchMe } = useQuery({
@@ -14,13 +17,39 @@ export const useAuth = () => {
   });
 
   useEffect(() => {
-    if (profileData && profileData.success && profileData.data) {
+    if (isAuthenticated && profileData && profileData.success && profileData.data) {
       // Chỉ cập nhật nếu dữ liệu có sự thay đổi để tránh re-render liên tục
       if (JSON.stringify(profileData.data) !== JSON.stringify(user)) {
         setUser(profileData.data);
       }
     }
-  }, [profileData, setUser, user]);
+  }, [profileData, setUser, user, isAuthenticated]);
+
+  // Đồng bộ giỏ hàng từ database khi user đăng nhập thành công
+  useEffect(() => {
+    const isCartLoaded = useCartStore.getState().isCartLoaded;
+    if (isAuthenticated && !isCartLoaded) {
+      cartApi.getCart()
+        .then((res) => {
+          if (res && res.success && res.data) {
+            const cartData = res.data;
+            const mappedItems = (cartData.items || []).map((item: any) => ({
+              id: item.menuItemId,
+              name: item.menuItem?.name || 'Món ăn',
+              price: Number(item.menuItem?.price || 0),
+              quantity: item.quantity,
+              imageUrl: item.menuItem?.image || item.menuItem?.imageUrl,
+              toppings: [],
+              selected: true, // Mặc định tích chọn thanh toán
+            }));
+            useCartStore.getState().setCartItems(mappedItems, cartData.restaurantId);
+          }
+        })
+        .catch((err) => {
+          console.error('Lỗi khi tải giỏ hàng từ database:', err);
+        });
+    }
+  }, [isAuthenticated]);
 
   // Đăng ký tài khoản
   const registerMutation = useMutation({
@@ -56,9 +85,12 @@ export const useAuth = () => {
     },
   });
 
+
   // Đăng xuất
   const logout = () => {
     clearAuth();
+    queryClient.removeQueries();
+    useCartStore.getState().clearCart(); // Dọn sạch giỏ hàng khi đăng xuất
   };
 
   return {

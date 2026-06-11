@@ -8,7 +8,28 @@ import { MOCK_RESTAURANTS } from '../../utils/mockData';
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
-  const { items, restaurantId, totalItems, totalPrice, updateQuantity, clearCart } = useCart();
+  const { 
+    items, 
+    restaurantId, 
+    totalItems, 
+    allCartItemsCount, 
+    totalPrice, 
+    updateQuantity, 
+    toggleSelectItem, 
+    setSelectedItems, 
+    clearCart 
+  } = useCart();
+
+  // Kiểm tra xem tất cả các món trong giỏ đã được tích chọn hay chưa
+  const isAllSelected = useMemo(() => {
+    return items.length > 0 && items.every((item) => item.selected !== false);
+  }, [items]);
+
+  // Handler toggle chọn tất cả / bỏ chọn tất cả
+  const handleToggleSelectAll = () => {
+    const allIds = items.map((item) => item.id);
+    setSelectedItems(allIds, !isAllSelected);
+  };
 
   // Find the restaurant details
   const restaurant = useMemo(() => {
@@ -44,7 +65,7 @@ export const Cart: React.FC = () => {
 
   // Calculations using useMemo
   const subtotal = totalPrice;
-  const deliveryFee = restaurant ? (restaurant as any).deliveryFee || 15000 : 0;
+  const deliveryFee = restaurant && totalItems > 0 ? (restaurant as any).deliveryFee || 15000 : 0;
   const finalTotal = useMemo(() => {
     const total = subtotal + deliveryFee - discountAmount;
     return total > 0 ? total : 0;
@@ -95,7 +116,7 @@ export const Cart: React.FC = () => {
     <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
       
       {/* 1. Header Navigation */}
-      <Header cartCount={totalItems} />
+      <Header cartCount={allCartItemsCount} />
 
       {/* 2. Main Page Grid */}
       <main className="flex-grow max-w-6xl w-full mx-auto px-4 py-8">
@@ -124,6 +145,27 @@ export const Cart: React.FC = () => {
               </div>
             )}
 
+            {/* Select All / Deselect All Controls */}
+            <div className="card-retro bg-[#FEFCF9] px-4 py-3 flex items-center justify-between border-b border-neutral-900 select-none">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 rounded-sm cursor-pointer"
+                />
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-800">
+                  Chọn tất cả ({items.length} món)
+                </span>
+              </label>
+
+              {totalItems > 0 && (
+                <span className="text-[11px] font-mono text-[#BF3A20] font-bold">
+                  Đã chọn {totalItems} món thanh toán
+                </span>
+              )}
+            </div>
+
             {/* Dishes list */}
             <div className="space-y-4">
               {items.map((item) => (
@@ -131,32 +173,42 @@ export const Cart: React.FC = () => {
                   key={item.id}
                   className="card-retro bg-[#FEFCF9] p-4 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap"
                 >
-                  <div className="flex items-center gap-4">
-                    {/* Small Image aspect-square with sepia warm filter */}
-                    <div className="w-16 h-16 bg-neutral-100 border border-neutral-950 overflow-hidden flex-shrink-0">
-                      <img
-                        src={item.imageUrl || 'https://placehold.co/150x150/FAF7F3/2C1A0E?text=Sài+Gòn+90s'}
-                        alt={item.name}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = `https://placehold.co/150x150/FEFCF9/BF3A20?text=${encodeURIComponent(item.name)}`;
-                        }}
-                        className="w-full h-full object-cover filter sepia-[8%] saturate-[115%] brightness-[96%]"
-                      />
-                    </div>
+                  <div className="flex items-center gap-3">
+                    {/* Item checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={item.selected !== false}
+                      onChange={() => toggleSelectItem(item.id)}
+                      className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 rounded-sm cursor-pointer flex-shrink-0"
+                    />
 
-                    {/* Text Details */}
-                    <div>
-                      {/* Name: Be Vietnam Pro 600 */}
-                      <h3 className="font-body font-semibold text-sm text-neutral-900 leading-snug">
-                        {item.name}
-                      </h3>
-                      {/* Toppings list: small text color #9E6E4A */}
-                      {item.toppings && item.toppings.length > 0 && (
-                        <p className="text-[11px] text-[#9E6E4A] font-semibold mt-1">
-                          + {item.toppings.join(', ')}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-4">
+                      {/* Small Image aspect-square with sepia warm filter */}
+                      <div className="w-16 h-16 bg-neutral-100 border border-neutral-950 overflow-hidden flex-shrink-0">
+                        <img
+                          src={item.imageUrl || 'https://placehold.co/150x150/FAF7F3/2C1A0E?text=Sài+Gòn+90s'}
+                          alt={item.name}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = `https://placehold.co/150x150/FEFCF9/BF3A20?text=${encodeURIComponent(item.name)}`;
+                          }}
+                          className="w-full h-full object-cover filter sepia-[8%] saturate-[115%] brightness-[96%]"
+                        />
+                      </div>
+
+                      {/* Text Details */}
+                      <div>
+                        {/* Name: Be Vietnam Pro 600 */}
+                        <h3 className="font-body font-semibold text-sm text-neutral-900 leading-snug">
+                          {item.name}
+                        </h3>
+                        {/* Toppings list: small text color #9E6E4A */}
+                        {item.toppings && item.toppings.length > 0 && (
+                          <p className="text-[11px] text-[#9E6E4A] font-semibold mt-1">
+                            + {item.toppings.join(', ')}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -288,7 +340,12 @@ export const Cart: React.FC = () => {
               {/* CTA button: Proceed to checkout */}
               <button
                 onClick={handleCheckout}
-                className="w-full bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-semibold text-xs py-3.5 px-6 uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 cursor-pointer text-center"
+                disabled={totalItems === 0}
+                className={`w-full font-body font-semibold text-xs py-3.5 px-6 uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 cursor-pointer text-center ${
+                  totalItems > 0
+                    ? 'bg-[#BF3A20] hover:bg-[#D44B2F] text-white'
+                    : 'bg-neutral-200 text-neutral-400 border-neutral-300 opacity-60 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0 active:shadow-none'
+                }`}
               >
                 Tiến hành thanh toán
               </button>

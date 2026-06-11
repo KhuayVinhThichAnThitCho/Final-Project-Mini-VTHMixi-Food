@@ -19,6 +19,10 @@ import {
   Phone,
   Mail,
   Save,
+  MapPin,
+  CreditCard,
+  Clock,
+  Receipt
 } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import SaigonDivider from '../../components/molecules/SaigonDivider';
@@ -76,26 +80,37 @@ export const Profile: React.FC = () => {
   };
 
   // ─── Address book (local state) ────────────────────────────
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: 'addr-1',
-      title: 'Nhà riêng',
-      detail: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-      recipientName: user?.name || 'Nguyễn Văn A',
-      recipientPhone: user?.phone || '0987654321',
-    },
-    {
-      id: 'addr-2',
-      title: 'Văn phòng',
-      detail: '33 Lê Duẩn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-      recipientName: user?.name || 'Nguyễn Văn A',
-      recipientPhone: user?.phone || '0987654321',
-    },
-  ]);
+  const [addresses, setAddresses] = useState<Address[]>(() => {
+    const stored = localStorage.getItem('user_addresses');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error('Lỗi phân tích cú pháp địa chỉ từ localStorage:', e);
+      }
+    }
+    return [
+      {
+        id: 'addr-1',
+        title: 'Nhà riêng (Mặc định)',
+        detail: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+        recipientName: 'Nguyễn Văn A',
+        recipientPhone: '0987654321',
+      },
+      {
+        id: 'addr-2',
+        title: 'Văn phòng',
+        detail: '33 Lê Duẩn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+        recipientName: 'Nguyễn Văn A',
+        recipientPhone: '0987654321',
+      },
+    ];
+  });
 
   // ─── Orders & Favorites ────────────────────────────────────
   const [realOrders, setRealOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
   const [favoriteItems, setFavoriteItems] = useState<any[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
 
@@ -116,8 +131,7 @@ export const Profile: React.FC = () => {
       setFavoritesLoading(true);
       const res = await favoriteApi.getFavorites();
       if (res && res.success) {
-        const items = res.data.map((fav: any) => fav.menuItem).filter(Boolean);
-        setFavoriteItems(items);
+        setFavoriteItems(res.data || []);
       }
     } catch (err) {
       console.error('Lỗi khi tải món yêu thích:', err);
@@ -131,11 +145,40 @@ export const Profile: React.FC = () => {
     if (activeTab === 'favorites') fetchFavoriteItems();
   }, [activeTab]);
 
+  // Sync addresses to localStorage
+  useEffect(() => {
+    localStorage.setItem('user_addresses', JSON.stringify(addresses));
+  }, [addresses]);
+
+  // Synchronize default addresses recipient name/phone once user object is loaded
+  useEffect(() => {
+    if (user && !localStorage.getItem('user_addresses')) {
+      const defaultList = [
+        {
+          id: 'addr-1',
+          title: 'Nhà riêng (Mặc định)',
+          detail: (user as any).address || '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+          recipientName: user.name || 'Nguyễn Văn A',
+          recipientPhone: (user as any).phone || '0987654321',
+        },
+        {
+          id: 'addr-2',
+          title: 'Văn phòng',
+          detail: '33 Lê Duẩn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+          recipientName: user.name || 'Nguyễn Văn A',
+          recipientPhone: (user as any).phone || '0987654321',
+        },
+      ];
+      setAddresses(defaultList);
+    }
+  }, [user]);
+
   // Sync edit fields when user data loads
   useEffect(() => {
     if (user) {
       setEditName(user.name || '');
       setEditPhone((user as any).phone || '');
+      setEditAddress((user as any).address || '');
     }
   }, [user]);
 
@@ -148,10 +191,30 @@ export const Profile: React.FC = () => {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const base64 = ev.target?.result as string;
-      setAvatarPreview(base64);
-      setEditAvatar(base64);
+      if (isEditingProfile) {
+        setAvatarPreview(base64);
+        setEditAvatar(base64);
+      } else {
+        try {
+          setIsSavingProfile(true);
+          showMessage('Đang tải ảnh đại diện lên...');
+          const res = await authApi.updateProfile({ avatar: base64 });
+          if (res && res.success) {
+            await refetchMe?.();
+            setAvatarPreview(null);
+            setEditAvatar(null);
+            showMessage('Cập nhật ảnh đại diện thành công! ✓');
+          } else {
+            showMessage(res?.message || 'Có lỗi xảy ra khi cập nhật ảnh đại diện.', 'error');
+          }
+        } catch (err: any) {
+          showMessage(err?.message || 'Lỗi kết nối máy chủ khi cập nhật ảnh đại diện.', 'error');
+        } finally {
+          setIsSavingProfile(false);
+        }
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -440,25 +503,34 @@ export const Profile: React.FC = () => {
               
               {/* Avatar */}
               <div className="relative inline-block mb-4">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#BF3A20] shadow-retro-sm mx-auto bg-[#F0E9DE] flex items-center justify-center">
-                  {avatarSrc ? (
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#BF3A20] shadow-retro-sm mx-auto bg-[#F0E9DE] flex items-center justify-center relative">
+                  {/* Fallback initials in background */}
+                  <span className="absolute text-4xl font-display font-black text-[#BF3A20] select-none z-0">
+                    {userInitial}
+                  </span>
+                  
+                  {/* Avatar image on top */}
+                  {avatarSrc && (
                     <img
                       src={avatarSrc}
                       alt="Avatar"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover relative z-10"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.style.display = 'none';
                       }}
                     />
-                  ) : (
-                    <span className="text-4xl font-display font-black text-[#BF3A20]">{userInitial}</span>
+                  )}
+                  {isSavingProfile && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-20">
+                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-t-transparent border-white"></div>
+                    </div>
                   )}
                 </div>
                 {/* Camera overlay to trigger file input */}
                 <button
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#BF3A20] border-2 border-white rounded-full flex items-center justify-center shadow-md hover:bg-[#D44B2F] transition-colors cursor-pointer"
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#BF3A20] border-2 border-white rounded-full flex items-center justify-center shadow-md hover:bg-[#D44B2F] transition-colors cursor-pointer z-20"
                   title="Đổi ảnh đại diện"
                 >
                   <Camera size={14} className="text-white" />
@@ -537,16 +609,10 @@ export const Profile: React.FC = () => {
                   <p className="text-[9px] text-neutral-500 font-body mt-1">
                     * Mỗi lượt đánh giá thành công nhận ngay 50 điểm hoặc voucher 15k!
                   </p>
-                </div>
               </div>
             </div>
-
-            <div className="text-center">
-              <span className="bg-[#BF3A20] text-white text-xs font-mono font-bold uppercase tracking-widest px-4 py-1.5 border-2 border-neutral-900 shadow-retro rotate-[-1deg] inline-block">
-                Thành viên Đồng
-              </span>
-            </div>
           </div>
+        </div>
 
           {/* ══════════════════════════════════════════════════
               RIGHT COLUMN (8/12): Tabs
@@ -740,7 +806,7 @@ export const Profile: React.FC = () => {
                         </span>
                       </div>
                       {/* Phone */}
-                      <div className="flex items-center gap-3 py-3">
+                      <div className="flex items-center gap-3 py-3 border-b border-dashed border-neutral-100">
                         <div className="w-8 h-8 rounded-full bg-[#F0E9DE] flex items-center justify-center flex-shrink-0">
                           <Phone size={14} className="text-[#BF3A20]" strokeWidth={1.5} />
                         </div>
@@ -751,16 +817,17 @@ export const Profile: React.FC = () => {
                           </p>
                         </div>
                       </div>
-
-                      {/* Change password button */}
-                      <div className="pt-3 border-t border-dashed border-neutral-200">
-                        <button
-                          onClick={() => setIsChangePwModalOpen(true)}
-                          className="flex items-center gap-2 text-xs font-mono font-bold text-neutral-600 hover:text-[#BF3A20] hover:underline cursor-pointer transition-colors"
-                        >
-                          <KeyRound size={13} strokeWidth={1.5} />
-                          Đổi mật khẩu tài khoản
-                        </button>
+                      {/* Default Address */}
+                      <div className="flex items-center gap-3 py-3">
+                        <div className="w-8 h-8 rounded-full bg-[#F0E9DE] flex items-center justify-center flex-shrink-0">
+                          <MapPin size={14} className="text-[#BF3A20]" strokeWidth={1.5} />
+                        </div>
+                        <div className="flex-grow">
+                          <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Địa chỉ mặc định</p>
+                          <p className="text-sm font-body font-semibold text-neutral-800 mt-0.5">
+                            {(user as any)?.address || <span className="text-neutral-400 italic text-xs font-mono">Chưa cập nhật</span>}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -878,12 +945,20 @@ export const Profile: React.FC = () => {
                             <span className="text-[10px] text-neutral-400 block font-normal select-none">TỔNG THANH TOÁN</span>
                             <span className="text-[#BF3A20] text-base">{Number(order.totalAmount).toLocaleString('vi-VN')} đ</span>
                           </div>
-                          <button
-                            onClick={() => handleReorder(order)}
-                            className="bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-bold text-[10px] uppercase py-2 px-3 border-2 border-neutral-900 shadow-retro-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer select-none"
-                          >
-                            Đặt lại đơn này
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setSelectedOrderDetail(order)}
+                              className="bg-white hover:bg-neutral-50 text-neutral-800 font-body font-bold text-[10px] uppercase py-2.5 px-3 border-2 border-neutral-900 shadow-retro-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer select-none flex items-center gap-1"
+                            >
+                              📁 Chi tiết đơn
+                            </button>
+                            <button
+                              onClick={() => handleReorder(order)}
+                              className="bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-bold text-[10px] uppercase py-2.5 px-3 border-2 border-neutral-900 shadow-retro-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer select-none"
+                            >
+                              Đặt lại đơn này
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1190,6 +1265,213 @@ export const Profile: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════
+          MODAL: Chi tiết đơn hàng lịch sử
+      ════════════════════════════════════════════════════════ */}
+      {selectedOrderDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="card-retro bg-[#FEFCF9] max-w-xl w-full p-6 relative shadow-saigon-card border-2 border-neutral-900 max-h-[90vh] flex flex-col justify-between overflow-hidden">
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedOrderDetail(null)}
+              className="absolute top-3 right-3 text-neutral-500 hover:text-neutral-900 cursor-pointer p-1 rounded-full hover:bg-neutral-100 transition-colors"
+            >
+              <X size={20} strokeWidth={1.5} />
+            </button>
+
+            {/* Header info */}
+            <div className="border-b-2 border-neutral-900 pb-3 mb-4 select-none">
+              <span className="bg-[#BF3A20] text-white text-[9px] font-mono font-bold px-2 py-0.5 border border-neutral-950 inline-block mb-2 uppercase tracking-widest">
+                ĐƠN HÀNG KÝ GỬI
+              </span>
+              <h3 className="text-xl font-heading font-black text-neutral-900 flex items-center gap-1.5 font-display italic">
+                <Receipt size={20} className="text-[#BF3A20]" />
+                Chi Tiết Đơn Hàng
+              </h3>
+              <p className="text-[10px] font-mono text-neutral-500 mt-1">
+                Mã đơn: <span className="font-bold text-neutral-800">#GRB-{selectedOrderDetail.id.slice(0, 8).toUpperCase()}</span>
+                <span className="mx-2">•</span>
+                Ngày gửi: <span className="font-bold text-neutral-800">{new Date(selectedOrderDetail.createdAt).toLocaleString('vi-VN')}</span>
+              </p>
+            </div>
+
+            {/* Details scrollable box */}
+            <div className="flex-grow overflow-y-auto space-y-4 pr-1 scrollbar-thin">
+              
+              {/* 1. Restaurant Details */}
+              <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Cửa hàng phục vụ</span>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-display italic font-bold text-[#BF3A20] text-sm">
+                      {selectedOrderDetail.restaurant?.name || 'Cửa hàng ngon'}
+                    </h4>
+                    <p className="text-xs text-neutral-600 mt-0.5 leading-relaxed">
+                      📍 {selectedOrderDetail.restaurant?.address || 'Quận 1, TP. Hồ Chí Minh'}
+                    </p>
+                  </div>
+                  {selectedOrderDetail.restaurant?.id && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrderDetail(null);
+                        navigate(`/restaurants/${selectedOrderDetail.restaurant.id}`);
+                      }}
+                      className="text-[9px] font-mono font-bold text-[#BF3A20] hover:underline cursor-pointer flex items-center gap-0.5"
+                    >
+                      Ghé quán ➔
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Order status & delivery details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                  <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Trạng thái đơn hàng</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Clock size={13} className="text-[#BF3A20]" />
+                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 border rounded-xs ${
+                      selectedOrderDetail.status === 'completed' 
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-800'
+                        : selectedOrderDetail.status === 'cancelled'
+                        ? 'bg-[#BF3A20]/5 border-[#BF3A20] text-[#BF3A20]'
+                        : 'bg-amber-50 border-amber-600 text-amber-800'
+                    }`}>
+                      {selectedOrderDetail.status === 'completed' && 'HOÀN THÀNH'}
+                      {selectedOrderDetail.status === 'cancelled' && 'ĐÃ HỦY'}
+                      {selectedOrderDetail.status === 'pending' && 'CHỜ TIẾP NHẬN'}
+                      {selectedOrderDetail.status === 'confirmed' && 'ĐÃ XÁC NHẬN'}
+                      {selectedOrderDetail.status === 'preparing' && 'ĐANG CHUẨN BỊ'}
+                      {selectedOrderDetail.status === 'ready' && 'ĐÃ CHUẨN BỊ XONG'}
+                      {selectedOrderDetail.status === 'delivering' && 'ĐANG GIAO HÀNG'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 font-body mt-2 leading-relaxed">
+                    {selectedOrderDetail.status === 'completed' && 'Đơn hàng đã được bưu tá giao thành công.'}
+                    {selectedOrderDetail.status === 'cancelled' && 'Đơn hàng đã bị hủy bỏ.'}
+                    {selectedOrderDetail.status === 'pending' && 'Chờ bưu cục tiếp nhận và phân phối đơn.'}
+                    {selectedOrderDetail.status === 'confirmed' && 'Nhà hàng đã tiếp nhận đơn hàng của bạn.'}
+                    {selectedOrderDetail.status === 'preparing' && 'Nhà bếp đang chế biến các món ngon cho bạn.'}
+                    {selectedOrderDetail.status === 'ready' && 'Món ngon đã hoàn thành và sẵn sàng di chuyển.'}
+                    {selectedOrderDetail.status === 'delivering' && 'Bưu tá di chuyển Honda Cub 81 đang giao tới.'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                  <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Hình thức thanh toán</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <CreditCard size={13} className="text-[#BF3A20]" />
+                    <span className="text-xs font-semibold text-neutral-800">
+                      {selectedOrderDetail.paymentMethod === 'COD' && 'Tiền mặt (COD)'}
+                      {selectedOrderDetail.paymentMethod === 'WALLET' && 'Ví Saigon-Pay'}
+                      {selectedOrderDetail.paymentMethod === 'POINTS' && '🪙 Điểm Tích Lũy'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 font-body mt-2 leading-relaxed">
+                    {selectedOrderDetail.paymentMethod === 'COD' && 'Thanh toán trực tiếp cho bưu tá khi nhận món.'}
+                    {selectedOrderDetail.paymentMethod === 'WALLET' && 'Đã khấu trừ trực tiếp vào số dư ví Saigon-Pay.'}
+                    {selectedOrderDetail.paymentMethod === 'POINTS' && 'Đã thanh toán bằng điểm tích lũy của thành viên.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* 3. Delivery address */}
+              <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Địa chỉ ký nhận</span>
+                <div className="flex gap-2 items-start mt-1">
+                  <MapPin size={14} className="text-[#BF3A20] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+                  <p className="text-xs text-[#2C1A0E] font-semibold font-body leading-relaxed">
+                    {selectedOrderDetail.deliveryAddress}
+                  </p>
+                </div>
+              </div>
+
+              {/* 4. Order items details */}
+              <div className="p-3 bg-[#FAF7F3] border border-[#E8D8C6] rounded-md">
+                <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-2">Thực đơn ký gửi ({selectedOrderDetail.items?.length || 0} món)</span>
+                <div className="space-y-2 border-b border-dashed border-neutral-200 pb-2.5 mb-2.5">
+                  {selectedOrderDetail.items?.map((item: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-start text-xs">
+                      <div>
+                        <p className="font-semibold text-neutral-800 font-body">
+                          {item.quantity}x {item.name || 'Món ăn ngon'}
+                        </p>
+                        {item.toppings && item.toppings.length > 0 && (
+                          <p className="text-[9px] text-[#9E6E4A] font-semibold mt-0.5">
+                            + Topping: {item.toppings.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      <span className="font-mono font-bold text-neutral-700">
+                        {((item.price || 0) * item.quantity).toLocaleString('vi-VN')}đ
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Subtotal calculations */}
+                <div className="space-y-1.5 font-mono text-[10px] text-neutral-500">
+                  <div className="flex justify-between">
+                    <span>Tạm tính món ăn:</span>
+                    <span>
+                      {(selectedOrderDetail.items?.reduce((sum: number, item: any) => sum + (item.price || 0) * item.quantity, 0) || 0).toLocaleString('vi-VN')}đ
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Phí vận chuyển bưu điện:</span>
+                    <span>+15.000đ</span>
+                  </div>
+                  {/* Tính trừ tiền voucher nếu tổng tiền không khớp với tạm tính + 15k */}
+                  {(() => {
+                    const sub = selectedOrderDetail.items?.reduce((sum: number, item: any) => sum + (item.price || 0) * item.quantity, 0) || 0;
+                    const shipping = 15000;
+                    const final = Number(selectedOrderDetail.totalAmount);
+                    const voucherDiff = sub + shipping - final;
+                    if (voucherDiff > 0) {
+                      return (
+                        <div className="flex justify-between text-emerald-600 font-bold">
+                          <span>Mã giảm giá áp dụng:</span>
+                          <span>-{voucherDiff.toLocaleString('vi-VN')}đ</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <div className="flex justify-between items-center border-t border-dashed border-neutral-200 pt-2 text-xs font-black text-neutral-900">
+                    <span className="uppercase">TỔNG CƯỚC KÝ GỬI:</span>
+                    <span className="text-[#BF3A20] text-sm">
+                      {Number(selectedOrderDetail.totalAmount).toLocaleString('vi-VN')}đ
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer buttons */}
+            <div className="grid grid-cols-2 gap-3 border-t-2 border-neutral-900 pt-4 mt-4">
+              <button
+                onClick={() => setSelectedOrderDetail(null)}
+                className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro-sm bg-white hover:bg-neutral-50 active:translate-y-[1px] active:shadow-none text-center cursor-pointer transition-all"
+              >
+                Đóng chi tiết
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedOrderDetail(null);
+                  handleReorder(selectedOrderDetail);
+                }}
+                className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all"
+              >
+                Đặt lại đơn này
+              </button>
+            </div>
+
           </div>
         </div>
       )}
