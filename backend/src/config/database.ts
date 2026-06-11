@@ -12,6 +12,8 @@ import { CartItem } from '../models/CartItem';
 import { Review } from '../models/Review';
 import { Voucher } from '../models/Voucher';
 import { Favorite } from '../models/Favorite';
+import { Conversation } from '../models/Conversation';
+import { Message } from '../models/Message';
 
 // Nạp các biến môi trường từ .env
 dotenv.config();
@@ -28,7 +30,7 @@ export const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'grabfood_mini',
   
   // Đăng ký toàn bộ Model vào Sequelize Instance
-  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite],
+  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite, Conversation, Message],
   
   // Cấu hình ghi log SQL ra console trong môi trường phát triển
   logging: process.env.NODE_ENV === 'development' ? console.log : false,

@@ -9,11 +9,18 @@ import morgan from 'morgan';
 import { errorHandler, AppError } from './middlewares/errorHandler';
 import apiRouter from './routes';
 import { initializeDatabase } from './config/database';
+import { createServer } from 'http';
+import { initializeSocket } from './socket';
 
 import path from 'path';
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Khởi tạo Websocket Server
+const io = initializeSocket(httpServer);
+
 
 // ==========================================
 // 1. CẤU HÌNH CÁC MIDDLEWARE CHUNG
@@ -73,10 +80,11 @@ app.use(errorHandler);
 if (process.env.NODE_ENV !== 'test') {
   initializeDatabase().then((success) => {
     if (success) {
-      app.listen(PORT, () => {
+      httpServer.listen(PORT, () => {
         console.log(`===================================================`);
         console.log(`🚀 GrabFood Mini Backend chạy trên: http://localhost:${PORT}`);
         console.log(`⚙️  API Base URL: http://localhost:${PORT}/api/v1`);
+        console.log(`💬 Socket.IO đang lắng nghe kết nối...`);
         console.log(`===================================================`);
       });
     } else {

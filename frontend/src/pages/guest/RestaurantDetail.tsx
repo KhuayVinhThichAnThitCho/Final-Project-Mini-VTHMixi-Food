@@ -1,15 +1,28 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Star, ShoppingCart, CheckCircle, Clock, Bike, MapPin } from 'lucide-react';
+import { ChevronLeft, Star, ShoppingCart, CheckCircle, Clock, Bike, MapPin, MessageCircle } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import Button from '../../components/atoms/Button';
 import useCart from '../../hooks/useCart';
 import { MOCK_RESTAURANTS, MOCK_MENU_ITEMS, MOCK_CATEGORIES } from '../../utils/mockData';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useChatStore } from '../../store/useChatStore';
+import api from '../../services/api';
 
 export const RestaurantDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart, totalItems, allCartItemsCount, totalPrice } = useCart();
+  const { user } = useAuthStore();
+  const { setActiveConversation, setIsChatOpen, setMessages } = useChatStore();
+
+  // Đóng khung chat khi rời khỏi trang nhà hàng
+  useEffect(() => {
+    return () => {
+      setIsChatOpen(false);
+      setActiveConversation(null);
+    };
+  }, [setIsChatOpen, setActiveConversation]);
 
   // Toast notification state
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -45,6 +58,23 @@ export const RestaurantDetail: React.FC = () => {
     if (selectedMenuTab === 'all') return allMenuItems;
     return allMenuItems.filter((item) => item.category === selectedMenuTab);
   }, [allMenuItems, selectedMenuTab]);
+
+  const handleOpenChat = async () => {
+    if (!user) {
+      showToast('Vui lòng đăng nhập để chat', false);
+      return;
+    }
+    try {
+      const res: any = await api.get(`/chats/restaurant/${restaurant.id}`);
+      if (res.success) {
+        setActiveConversation(res.data.conversation);
+        setMessages(res.data.messages);
+        setIsChatOpen(true);
+      }
+    } catch (error) {
+      showToast('Lỗi khi tải cuộc hội thoại', false);
+    }
+  };
 
   return (
     <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
@@ -92,9 +122,17 @@ export const RestaurantDetail: React.FC = () => {
 
         {/* ── RESTAURANT INFO CARD ── */}
         <section className="card-retro bg-[#FEFCF9] mb-6 -mt-8 relative z-10 shadow-retro">
-          <h1 className="text-2xl font-display italic font-bold text-[#BF3A20] mb-1 leading-tight">
-            {restaurant.name}
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-display italic font-bold text-[#BF3A20] mb-1 leading-tight">
+              {restaurant.name}
+            </h1>
+            <button
+              onClick={handleOpenChat}
+              className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-sm border-2 border-neutral-900 shadow-retro-sm text-sm font-bold font-mono hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              <MessageCircle size={16} /> Chat với quán
+            </button>
+          </div>
 
           {/* Info grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">

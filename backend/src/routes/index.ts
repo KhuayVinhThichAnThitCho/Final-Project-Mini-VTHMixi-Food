@@ -9,6 +9,7 @@ import favoritesRoutes from './favoritesRoutes';
 import voucherRoutes from './voucherRoutes';
 import restaurantRoutes from './restaurantRoutes';
 import searchRoutes from './searchRoutes';
+import chatRoutes from './chatRoutes';
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use('/favorites', favoritesRoutes);
 router.use('/vouchers', voucherRoutes);
 router.use('/restaurants', restaurantRoutes);
 router.use('/search', searchRoutes);
+router.use('/chats', chatRoutes);
 
 export default router;

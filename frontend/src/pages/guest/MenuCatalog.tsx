@@ -132,16 +132,16 @@ export const MenuCatalog: React.FC = () => {
       <Header cartCount={totalItems} />
 
       {/* Retro Banner Section */}
-      <section className="relative h-56 flex items-center justify-center text-center px-4 overflow-hidden bg-neutral-950 border-b-2 border-neutral-900">
+      <section className="relative flex flex-col items-center justify-center text-center px-4 py-8 overflow-hidden bg-neutral-950 border-b-2 border-neutral-900">
         {/* Background Image with slight blur */}
         <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30 filter blur-[1px]"
+          className="absolute inset-0 bg-cover bg-center opacity-60"
           style={{ 
-            backgroundImage: "url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80')" 
+            backgroundImage: "url('/menu_banner.png')" 
           }}
         ></div>
         {/* Warm vintage gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2C1A0E]/95 via-[#BF3A20]/75 to-[#2C1A0E]/95 pointer-events-none z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2C1A0E]/60 via-[#BF3A20]/40 to-[#2C1A0E]/60 pointer-events-none z-10"></div>
         <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none z-10"></div>
 
         {/* Banner Content */}
@@ -156,12 +156,11 @@ export const MenuCatalog: React.FC = () => {
             Khám phá tinh hoa ẩm thực vỉa hè Sài Gòn, từ xe bánh mì đầu hẻm đến tô phở nghi ngút khói đầu hẻm xưa.
           </p>
         </div>
-      </section>
 
-      {/* 2. Main content */}
-      <main className="flex-grow max-w-6xl w-full mx-auto px-4 pt-10 pb-12">
+        {/* Interactive Elements container inside banner */}
+        <div className="relative z-20 w-full max-w-6xl mx-auto mt-6">
 
-        {/* Category Tabs */}
+          {/* Category Tabs */}
         <div className="mb-8 flex flex-wrap gap-2.5 justify-center">
           {MOCK_CATEGORIES.map((cat) => (
             <button
@@ -180,7 +179,7 @@ export const MenuCatalog: React.FC = () => {
         </div>
 
         {/* Search & Advanced Filter Toggle & Panel */}
-        <div className="mb-8 select-none max-w-4xl mx-auto">
+        <div className="select-none max-w-4xl mx-auto">
           {/* Search bar & Filter Toggle Button */}
           <div className="flex flex-col sm:flex-row gap-3 bg-[#FEFCF9] border-2 border-neutral-900 p-3.5 shadow-retro-sm">
             {/* Search Input */}
@@ -312,6 +311,11 @@ export const MenuCatalog: React.FC = () => {
             </div>
           )}
         </div>
+        </div>
+      </section>
+
+      {/* 2. Main content */}
+      <main className="flex-grow max-w-6xl w-full mx-auto px-4 pt-10 pb-12">
 
         {/* Recently Viewed Items Section */}
         {recentlyViewed.length > 0 && (
