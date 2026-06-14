@@ -1,0 +1,292 @@
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { TrendingUp, Users, Store, BarChart2 } from 'lucide-react';
+import adminApi from '../../services/adminApi';
+
+const formatVND = (n: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+
+type Period = 'day' | 'week' | 'month' | 'year';
+
+const PERIODS: { value: Period; label: string }[] = [
+  { value: 'day', label: '24 giờ' },
+  { value: 'week', label: '7 ngày' },
+  { value: 'month', label: 'Tháng này' },
+  { value: 'year', label: 'Năm nay' },
+];
+
+// ─── Simple Bar Chart ──────────────────────────────────────────
+const SimpleBarChart: React.FC<{ data: any[]; valueKey: string; labelKey: string }> = ({ data, valueKey, labelKey }) => {
+  if (!data || data.length === 0) return (
+    <div className="h-48 flex items-center justify-center text-neutral-300 font-mono text-sm">
+      Chưa có dữ liệu
+    </div>
+  );
+
+  const values = data.map(d => Number(d[valueKey]) || 0);
+  const max = Math.max(...values, 1);
+
+  return (
+    <div className="flex items-end gap-1 h-48 px-2">
+      {data.map((item, i) => {
+        const h = (Number(item[valueKey]) / max) * 100;
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+            <div className="relative w-full">
+              {/* Tooltip */}
+              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10">
+                <div className="bg-neutral-900 text-white font-mono text-xs px-2 py-1 whitespace-nowrap">
+                  {formatVND(Number(item[valueKey]) || 0)}
+                </div>
+                <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-neutral-900" />
+              </div>
+              {/* Bar */}
+              <div
+                className="w-full bg-primary-600 hover:bg-primary-500 transition-all duration-300"
+                style={{ height: `${Math.max(h, 2)}%`, minHeight: '4px' }}
+              />
+            </div>
+            <span className="text-[9px] font-mono text-neutral-400 truncate w-full text-center leading-none">
+              {String(item[labelKey] || '').slice(-5)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Revenue Tab ───────────────────────────────────────────────
+const RevenueTab: React.FC = () => {
+  const [period, setPeriod] = useState<Period>('month');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-revenue', period],
+    queryFn: () => adminApi.getRevenueAnalytics(period),
+  });
+
+  const summary = (data as any)?.data?.summary;
+  const chartData = (data as any)?.data?.revenueByTime || [];
+
+  return (
+    <div className="space-y-6">
+      {/* Period Selector */}
+      <div className="flex gap-2">
+        {PERIODS.map(p => (
+          <button
+            key={p.value}
+            onClick={() => setPeriod(p.value)}
+            className={`px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-wide border-2 transition-all ${
+              period === p.value
+                ? 'bg-primary-600 text-white border-primary-700 shadow-retro-sm'
+                : 'bg-[#FEFCF9] text-neutral-600 border-neutral-200 hover:border-neutral-400'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Tổng đơn', value: summary?.totalOrders?.toLocaleString('vi-VN') || '0', icon: BarChart2, color: 'bg-secondary-600' },
+          { label: 'Doanh Thu', value: formatVND(summary?.totalRevenue || 0), icon: TrendingUp, color: 'bg-primary-600' },
+          { label: 'User Active', value: summary?.totalUsers?.toLocaleString() || '0', icon: Users, color: 'bg-neutral-700' },
+          { label: 'Nhà hàng', value: summary?.totalVendors?.toLocaleString() || '0', icon: Store, color: 'bg-green-700' },
+        ].map(card => (
+          <div key={card.label} className="bg-[#FEFCF9] border-2 border-neutral-200 p-4 shadow-saigon-card">
+            <div className={`w-9 h-9 ${card.color} flex items-center justify-center mb-3 border border-neutral-200`}>
+              <card.icon size={18} strokeWidth={1.5} className="text-white" />
+            </div>
+            <p className="font-mono text-lg font-bold text-neutral-900 leading-tight">{card.value}</p>
+            <p className="font-body text-xs text-neutral-500 uppercase tracking-widest mt-0.5">{card.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Revenue Chart */}
+      <div className="bg-[#FEFCF9] border-2 border-neutral-200 shadow-saigon-card">
+        <div className="px-5 py-4 border-b-2 border-neutral-200">
+          <h3 className="font-heading font-bold text-neutral-900">Biểu đồ Doanh thu</h3>
+          <p className="font-mono text-xs text-neutral-400 mt-0.5">Doanh thu theo {PERIODS.find(p => p.value === period)?.label}</p>
+        </div>
+        <div className="p-5">
+          {isLoading ? (
+            <div className="h-48 bg-neutral-100 animate-pulse" />
+          ) : (
+            <SimpleBarChart data={chartData} valueKey="revenue" labelKey="period" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Vendors Analytics Tab ─────────────────────────────────────
+const VendorsTab: React.FC = () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-vendor-analytics'],
+    queryFn: () => adminApi.getVendorAnalytics(),
+  });
+
+  const vendors = (data as any)?.data || [];
+
+  return (
+    <div className="bg-[#FEFCF9] border-2 border-neutral-200 shadow-saigon-card overflow-hidden">
+      <div className="px-5 py-4 border-b-2 border-neutral-200">
+        <h3 className="font-heading font-bold text-neutral-900">Top Vendor — Doanh thu cao nhất</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-neutral-50 border-b-2 border-neutral-200">
+              {['Hạng', 'Nhà hàng', 'Rating', 'Đơn hoàn thành', 'Tổng doanh thu', 'Status'].map(h => (
+                <th key={h} className="px-5 py-3 text-left font-mono text-xs font-bold text-neutral-500 uppercase tracking-widest">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {isLoading ? (
+              [...Array(5)].map((_, i) => (
+                <tr key={i}>{[...Array(6)].map((_, j) => (
+                  <td key={j} className="px-5 py-4"><div className="h-4 bg-neutral-100 animate-pulse" /></td>
+                ))}</tr>
+              ))
+            ) : vendors.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-10 text-center font-body text-sm text-neutral-400">
+                  Chưa có dữ liệu doanh thu
+                </td>
+              </tr>
+            ) : (
+              vendors.map((v: any, i: number) => (
+                <tr key={v.restaurantId} className="hover:bg-neutral-50/60 transition-colors">
+                  <td className="px-5 py-4">
+                    <span className={`font-mono text-sm font-bold ${
+                      i === 0 ? 'text-secondary-500' : i === 1 ? 'text-neutral-500' : i === 2 ? 'text-amber-700' : 'text-neutral-400'
+                    }`}>
+                      #{i + 1}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <p className="font-display italic text-sm text-neutral-900">{v.restaurant?.name || '—'}</p>
+                    <p className="font-mono text-xs text-neutral-400 truncate max-w-36">{v.restaurant?.address}</p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="font-mono text-sm font-bold text-secondary-600">⭐ {Number(v.restaurant?.ratingAvg || 0).toFixed(1)}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="font-mono text-sm text-neutral-700">{v.completedOrders}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="font-mono text-sm font-bold text-primary-600">{formatVND(Number(v.totalRevenue || 0))}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`font-mono text-xs font-bold uppercase px-2 py-0.5 ${
+                      v.restaurant?.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {v.restaurant?.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// ─── Users Analytics Tab ───────────────────────────────────────
+const UsersTab: React.FC = () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-user-analytics'],
+    queryFn: () => adminApi.getUserAnalytics(),
+  });
+
+  const stats = (data as any)?.data;
+
+  const statItems = stats ? [
+    { label: 'Tổng user', value: stats.totalUsers, color: 'bg-neutral-700' },
+    { label: 'Đang hoạt động', value: stats.activeUsers, color: 'bg-green-700' },
+    { label: 'Bị khóa', value: stats.bannedUsers, color: 'bg-red-700' },
+    { label: 'Chờ xác thực', value: stats.pendingUsers, color: 'bg-secondary-600' },
+    { label: 'Mới (30 ngày)', value: stats.newUsersLast30Days, color: 'bg-primary-600' },
+  ] : [];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {isLoading ? (
+          [...Array(5)].map((_, i) => <div key={i} className="h-24 bg-neutral-100 border-2 border-neutral-200 animate-pulse" />)
+        ) : (
+          statItems.map(item => (
+            <div key={item.label} className="bg-[#FEFCF9] border-2 border-neutral-200 p-4 shadow-saigon-card">
+              <div className={`w-2 h-8 ${item.color} mb-3`} />
+              <p className="font-mono text-2xl font-bold text-neutral-900">{item.value?.toLocaleString('vi-VN') || 0}</p>
+              <p className="font-body text-xs text-neutral-500 uppercase tracking-widest mt-1">{item.label}</p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Registrations by day chart */}
+      {stats?.registrationsByDay?.length > 0 && (
+        <div className="bg-[#FEFCF9] border-2 border-neutral-200 shadow-saigon-card">
+          <div className="px-5 py-4 border-b-2 border-neutral-200">
+            <h3 className="font-heading font-bold text-neutral-900">Đăng ký mới — 7 ngày gần nhất</h3>
+          </div>
+          <div className="p-5">
+            <SimpleBarChart data={stats.registrationsByDay} valueKey="count" labelKey="date" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────
+const AdminAnalytics: React.FC = () => {
+  const [tab, setTab] = useState<'revenue' | 'vendors' | 'users'>('revenue');
+
+  const tabs = [
+    { value: 'revenue', label: '📈 Doanh Thu', icon: TrendingUp },
+    { value: 'vendors', label: '🏪 Vendor', icon: Store },
+    { value: 'users', label: '👥 Users', icon: Users },
+  ] as const;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="font-mono text-xs text-neutral-400 uppercase tracking-widest mb-1">A-05</p>
+        <h1 className="font-display italic text-3xl text-neutral-900">Báo Cáo & Doanh Thu</h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b-2 border-neutral-200 gap-0">
+        {tabs.map(t => (
+          <button
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`px-6 py-3 font-mono text-sm font-bold uppercase tracking-wide border-b-2 -mb-0.5 transition-all ${
+              tab === t.value
+                ? 'border-primary-600 text-primary-600 bg-primary-50'
+                : 'border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-50'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {tab === 'revenue' && <RevenueTab />}
+      {tab === 'vendors' && <VendorsTab />}
+      {tab === 'users' && <UsersTab />}
+    </div>
+  );
+};
+
+export default AdminAnalytics;
