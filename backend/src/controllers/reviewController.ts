@@ -66,6 +66,44 @@ export const reviewController = {
       next(error);
     }
   },
+
+  /**
+   * Vendor phản hồi đánh giá của khách hàng
+   */
+  replyToReview: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập để phản hồi đánh giá.');
+      }
+      if (req.user.role !== 'vendor' && req.user.role !== 'admin') {
+        throw new AppError(403, 'FORBIDDEN', 'Chỉ chủ quán mới có thể phản hồi đánh giá.');
+      }
+
+      const { id } = req.params;
+      const { reply } = req.body;
+
+      if (!reply || !reply.trim()) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Nội dung phản hồi không được để trống.');
+      }
+
+      const { Review } = await import('../models/Review');
+      const review = await Review.findByPk(id);
+      if (!review) {
+        throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy đánh giá này.');
+      }
+
+      review.vendorReply = reply.trim();
+      await review.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Phản hồi đánh giá thành công.',
+        data: review,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default reviewController;

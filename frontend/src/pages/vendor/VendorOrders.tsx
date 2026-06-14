@@ -1,131 +1,253 @@
-import React, { useState } from 'react';
-import { Search, Filter, Eye, CheckCircle2, Clock, XCircle, ChevronRight, Printer } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Filter, Clock, Printer, RefreshCcw, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { vendorApi } from '../../services/vendorApi';
+
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface Order {
+  id: string;
+  createdAt: string;
+  items: OrderItem[];
+  totalAmount: number;
+  status: 'pending' | 'preparing' | 'completed' | 'cancelled';
+  user?: { name: string; phone?: string };
+  deliveryAddress?: string;
+}
+
+type StatusFilter = 'all' | 'pending' | 'preparing' | 'completed' | 'cancelled';
 
 export const VendorOrders: React.FC = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Sample data
-  const orders = [
-    { id: 'ORD-9482', time: '10:45 23/05/2026', items: ['2x Hủ tiếu mì sườn', '1x Cà phê sữa đá'], total: 108000, status: 'PENDING', customer: 'Nguyễn Văn A' },
-    { id: 'ORD-9481', time: '10:30 23/05/2026', items: ['3x Xí quách tô đặc biệt'], total: 90000, status: 'COMPLETED', customer: 'Trần Thị B' },
-    { id: 'ORD-9480', time: '09:15 23/05/2026', items: ['1x Hủ tiếu mì sườn'], total: 55000, status: 'CANCELLED', customer: 'Lê Văn C' },
-    { id: 'ORD-9479', time: '08:45 23/05/2026', items: ['2x Cà phê sữa đá'], total: 50000, status: 'PREPARING', customer: 'Phạm D' },
-    { id: 'ORD-9483', time: '11:05 23/05/2026', items: ['1x Mì xào giòn hải sản', '1x Trà đá'], total: 65000, status: 'PENDING', customer: 'Hoàng Thị E' },
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await vendorApi.getRestaurantOrders();
+      setOrders(res?.data || []);
+    } catch (err: any) {
+      setError(err?.message || 'Không thể tải danh sách đơn hàng.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    setUpdatingId(orderId);
+    try {
+      await vendorApi.updateOrderStatus(orderId, newStatus);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
+    } catch (err: any) {
+      alert(err?.message || 'Cập nhật trạng thái thất bại.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const filtered = orders.filter(order => {
+    const matchSearch = order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = statusFilter === 'all' || order.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const statusFilters: { key: StatusFilter; label: string; color: string }[] = [
+    { key: 'all', label: 'Tất Cả', color: 'bg-gray-100 text-gray-700' },
+    { key: 'pending', label: 'Chờ Duyệt', color: 'bg-amber-50 text-amber-700 border border-amber-200' },
+    { key: 'preparing', label: 'Chuẩn Bị', color: 'bg-blue-50 text-blue-700 border border-blue-200' },
+    { key: 'completed', label: 'Hoàn Thành', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+    { key: 'cancelled', label: 'Đã Hủy', color: 'bg-gray-100 text-gray-500 border border-gray-200' },
   ];
 
+  const getTicketStyle = (status: string) => ({
+    pending: 'border-primary-200 shadow-modern-glow ring-1 ring-primary-500/20',
+    preparing: 'border-blue-200 shadow-modern-sm ring-1 ring-blue-500/20',
+    completed: 'border-emerald-100 shadow-modern-sm',
+    cancelled: 'border-gray-100 bg-gray-50/50 shadow-sm opacity-70',
+  }[status] || 'border-gray-100');
+
+  const getBadge = (status: string) => ({
+    pending: { cls: 'bg-primary-50 text-primary-700 border-primary-200', label: 'CHỜ DUYỆT' },
+    preparing: { cls: 'bg-blue-50 text-blue-700 border-blue-200', label: 'ĐANG CHUẨN BỊ' },
+    completed: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'HOÀN THÀNH' },
+    cancelled: { cls: 'bg-gray-100 text-gray-600 border-gray-200', label: 'ĐÃ HỦY' },
+  }[status] || { cls: 'bg-gray-100 text-gray-600 border-gray-200', label: status.toUpperCase() });
+
+  const formatTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-400">
+      <Loader2 size={40} className="animate-spin text-primary-500" />
+      <p className="font-medium">Đang tải đơn hàng...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="bg-red-50 border border-red-100 rounded-2xl p-8 flex flex-col items-center gap-4 text-center">
+      <AlertCircle size={48} className="text-red-400" />
+      <h2 className="text-xl font-bold text-red-700">Không thể tải dữ liệu</h2>
+      <p className="text-red-600 text-sm">{error}</p>
+      <button onClick={fetchOrders} className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all">
+        <RefreshCcw size={18} /> Thử Lại
+      </button>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end border-b-4 border-saigon-neutral-text pb-4">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-between items-end pb-4 border-b border-gray-200">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tight text-saigon-neutral-text">Quản Lý Đơn Hàng</h1>
-          <p className="text-sm font-mono text-saigon-neutral-subText mt-1">Theo dõi và xử lý đơn hàng của quán</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-800">Quản Lý Đơn Hàng</h1>
+          <p className="text-sm font-medium text-gray-500 mt-2">
+            {orders.filter(o => o.status === 'pending').length} đơn đang chờ xử lý
+          </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#FEFCF9] border-4 border-saigon-neutral-text shadow-[4px_4px_0_0_rgba(30,25,21,1)] font-mono font-bold uppercase hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_rgba(30,25,21,1)] transition-all">
-          <Printer size={18} /> In Biên Lai
-        </button>
+        <div className="flex gap-2">
+          <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold shadow-sm hover:bg-gray-50 transition-all">
+            <RefreshCcw size={16} /> Làm Mới
+          </button>
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold shadow-sm hover:bg-gray-50 transition-all">
+            <Printer size={18} /> In Biên Lai
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[#F4F1EA] p-4 border-4 border-saigon-neutral-text shadow-[6px_6px_0_0_rgba(30,25,21,1)]">
-        <div className="relative w-full md:w-1/2">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-saigon-neutral-text" size={20} />
-          <input 
-            type="text" 
-            placeholder="Tìm mã đơn hàng hoặc tên khách..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#FEFCF9] border-4 border-saigon-neutral-text focus:border-saigon-primary rounded-none pl-12 pr-4 py-3 font-mono text-neutral-900 focus:outline-none transition-all shadow-[inset_4px_4px_0_0_rgba(0,0,0,0.05)] placeholder-neutral-400"
-          />
+      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-modern-sm space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="relative w-full md:flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Tìm theo tên khách hoặc mã đơn..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 focus:border-primary-500 rounded-xl pl-12 pr-4 py-3 text-gray-700 focus:outline-none focus:ring-4 focus:ring-primary-500/10 transition-all placeholder-gray-400"
+            />
+          </div>
         </div>
-        <div className="flex gap-4">
-          <button className="flex items-center gap-2 px-6 py-3 bg-[#FEFCF9] border-4 border-saigon-neutral-text font-mono font-bold uppercase hover:bg-[#E8D8C6] transition-colors">
-            <Clock size={18} /> Hôm Nay
-          </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-[#FEFCF9] border-4 border-saigon-neutral-text font-mono font-bold uppercase hover:bg-[#E8D8C6] transition-colors">
-            <Filter size={18} /> Trạng Thái
-          </button>
+        {/* Status filters */}
+        <div className="flex gap-2 flex-wrap">
+          {statusFilters.map(sf => (
+            <button
+              key={sf.key}
+              onClick={() => setStatusFilter(sf.key)}
+              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${statusFilter === sf.key ? sf.color + ' ring-2 ring-offset-1 ring-primary-400' : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'}`}
+            >
+              {sf.label}
+              {sf.key !== 'all' && (
+                <span className="ml-1.5 font-mono">({orders.filter(o => o.status === sf.key).length})</span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Grid of Order Tickets */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
-        {orders.map(order => {
-          let ticketBorder = "border-saigon-neutral-text";
-          let badgeColor = "bg-[#FEFCF9] text-saigon-neutral-text border-saigon-neutral-text";
-          let badgeText = "";
-          let actionBtn = null;
+      {/* Order cards */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
+          <Filter size={40} className="mx-auto mb-3 text-gray-300" />
+          <p className="text-gray-400 font-medium">Không tìm thấy đơn hàng nào</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map(order => {
+            const badge = getBadge(order.status);
+            const isUpdating = updatingId === order.id;
+            return (
+              <div key={order.id} className={`bg-white rounded-2xl border ${getTicketStyle(order.status)} flex flex-col relative hover:shadow-modern transition-all duration-300 overflow-hidden`}>
+                {/* Header */}
+                <div className="p-5 border-b border-gray-100 bg-white/50 flex justify-between items-center">
+                  <div>
+                    <h3 className="font-mono font-bold text-base text-gray-900">#{order.id.slice(-8).toUpperCase()}</h3>
+                    <p className="text-xs font-medium text-gray-500 mt-1 flex items-center gap-1">
+                      <Clock size={12} /> {formatTime(order.createdAt)}
+                    </p>
+                  </div>
+                  <div className={`px-3 py-1 text-xs font-bold rounded-full border ${badge.cls}`}>
+                    {badge.label}
+                  </div>
+                </div>
 
-          if (order.status === 'PENDING') {
-            ticketBorder = "border-[#BF3A20]";
-            badgeColor = "bg-[#BF3A20] text-white border-[#BF3A20]";
-            badgeText = "CHỜ DUYỆT";
-            actionBtn = (
-              <button className="w-full mt-4 py-3 bg-[#BF3A20] text-white font-mono font-black uppercase tracking-widest border-2 border-[#8A2512] shadow-[2px_2px_0_0_rgba(138,37,18,1)] hover:bg-[#A32D15] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
-                Nhận Đơn Ngay
-              </button>
+                {/* Body */}
+                <div className="p-5 flex-grow bg-white">
+                  <p className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary-500"></span>
+                    {order.user?.name || 'Khách hàng'}
+                    {order.user?.phone && <span className="text-xs text-gray-400 font-normal">· {order.user.phone}</span>}
+                  </p>
+                  {order.deliveryAddress && (
+                    <p className="text-xs text-gray-400 mb-3 truncate">📍 {order.deliveryAddress}</p>
+                  )}
+                  <ul className="space-y-2 mt-2 text-sm text-gray-600 pl-4 border-l-2 border-gray-100">
+                    {Array.isArray(order.items) && order.items.map((item, idx) => (
+                      <li key={idx} className="flex justify-between items-start font-medium">
+                        <span>{item.quantity}x {item.name}</span>
+                        <span className="font-mono text-gray-500 ml-2">{(item.price * item.quantity).toLocaleString('vi-VN')}đ</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 bg-gray-50/50 mt-auto border-t border-gray-100">
+                  <div className="flex justify-between items-end mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Tổng cộng</span>
+                    <span className="font-mono font-bold text-xl text-primary-600">
+                      {Number(order.totalAmount).toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+
+                  {order.status === 'pending' && (
+                    <button
+                      onClick={() => handleUpdateStatus(order.id, 'preparing')}
+                      disabled={isUpdating}
+                      className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold shadow-modern-sm hover:bg-primary-700 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                      {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                      {isUpdating ? 'Đang xử lý...' : 'Nhận Đơn Ngay'}
+                    </button>
+                  )}
+                  {order.status === 'preparing' && (
+                    <button
+                      onClick={() => handleUpdateStatus(order.id, 'completed')}
+                      disabled={isUpdating}
+                      className="w-full py-3 bg-emerald-500 text-white rounded-xl font-semibold shadow-modern-sm hover:bg-emerald-600 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                      {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                      {isUpdating ? 'Đang xử lý...' : 'Đánh Dấu Hoàn Thành'}
+                    </button>
+                  )}
+                  {order.status === 'completed' && (
+                    <div className="text-center text-emerald-600 font-semibold text-sm flex items-center justify-center gap-2">
+                      <CheckCircle2 size={18} /> Đơn hàng đã hoàn thành
+                    </div>
+                  )}
+                  {order.status === 'cancelled' && (
+                    <div className="text-center text-gray-400 font-semibold text-sm flex items-center justify-center gap-2">
+                      <XCircle size={18} /> Đơn hàng đã bị hủy
+                    </div>
+                  )}
+                </div>
+              </div>
             );
-          } else if (order.status === 'PREPARING') {
-            ticketBorder = "border-[#C98F0A]";
-            badgeColor = "bg-[#C98F0A] text-white border-[#C98F0A]";
-            badgeText = "ĐANG CHUẨN BỊ";
-            actionBtn = (
-              <button className="w-full mt-4 py-3 bg-[#C98F0A] text-white font-mono font-black uppercase tracking-widest border-2 border-[#966905] shadow-[2px_2px_0_0_rgba(150,105,5,1)] hover:bg-[#B37E07] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
-                Giao Hàng
-              </button>
-            );
-          } else if (order.status === 'COMPLETED') {
-            ticketBorder = "border-emerald-700";
-            badgeColor = "bg-emerald-700 text-white border-emerald-700";
-            badgeText = "HOÀN THÀNH";
-          } else if (order.status === 'CANCELLED') {
-            ticketBorder = "border-neutral-500";
-            badgeColor = "bg-neutral-500 text-white border-neutral-500";
-            badgeText = "ĐÃ HỦY";
-          }
-
-          return (
-            <div key={order.id} className={`bg-[#FEFCF9] border-4 ${ticketBorder} p-0 flex flex-col relative shadow-[8px_8px_0_0_rgba(30,25,21,1)] group hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[12px_12px_0_0_rgba(30,25,21,1)] transition-all`}>
-              {/* Ticket Header */}
-              <div className="p-4 border-b-4 border-dashed border-saigon-neutral-text bg-[#F4F1EA] flex justify-between items-center relative">
-                {/* Jagged Edge effect top */}
-                <div className="absolute top-0 left-0 w-full h-2 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxwb2x5Z29uIHBvaW50cz0iMCwwIDQsOCA4LDAiIGZpbGw9IiNGRkZGRkYiLz48L3N2Zz4=')] -mt-2"></div>
-                
-                <div>
-                  <h3 className="font-mono font-black text-xl tracking-widest">{order.id}</h3>
-                  <p className="font-mono text-[10px] text-saigon-neutral-subText">{order.time}</p>
-                </div>
-                <div className={`px-2 py-1 font-mono text-[10px] font-black uppercase border-2 ${badgeColor}`}>
-                  {badgeText}
-                </div>
-              </div>
-
-              {/* Ticket Body */}
-              <div className="p-4 flex-grow">
-                <p className="font-serif font-bold text-lg mb-2 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-saigon-neutral-text inline-block"></span>
-                  {order.customer}
-                </p>
-                <ul className="space-y-2 mt-4 font-mono text-sm border-l-2 border-saigon-neutral-text pl-3">
-                  {order.items.map((item, idx) => (
-                    <li key={idx} className="flex justify-between items-start">
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Ticket Footer */}
-              <div className="p-4 border-t-4 border-saigon-neutral-text bg-[#F4F1EA] mt-auto">
-                <div className="flex justify-between items-end">
-                  <span className="font-mono text-xs font-bold uppercase tracking-widest text-saigon-neutral-subText">Tổng cộng</span>
-                  <span className="font-mono font-black text-2xl text-[#BF3A20]">{order.total.toLocaleString('vi-VN')} đ</span>
-                </div>
-                {actionBtn}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 };

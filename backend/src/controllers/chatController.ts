@@ -49,9 +49,12 @@ export const chatController = {
         });
 
         // Load lại conversation để lấy đầy đủ thông tin restaurant trả về cho frontend
-        conversation = await Conversation.findByPk(conversation.id, {
+        const reloaded = await Conversation.findByPk(conversation.id, {
           include: [{ model: Restaurant, attributes: ['id', 'name', 'logo'] }]
         });
+        if (reloaded) {
+          conversation = reloaded;
+        }
       }
 
       // Lấy danh sách tin nhắn

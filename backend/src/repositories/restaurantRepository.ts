@@ -41,12 +41,11 @@ export const restaurantRepository = {
       include: [
         {
           model: MenuItem,
-          as: 'menuItems',
           where: { isDeleted: false, isAvailable: true },
           required: false,
-          order: [['soldCount', 'DESC']],
         },
       ],
+      order: [[MenuItem, 'soldCount', 'DESC']],
     });
   },
 

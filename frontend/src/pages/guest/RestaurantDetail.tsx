@@ -1,13 +1,45 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Star, ShoppingCart, CheckCircle, Clock, Bike, MapPin, MessageCircle } from 'lucide-react';
+import { ChevronLeft, Star, ShoppingCart, CheckCircle, Clock, Bike, MapPin, MessageCircle, Loader2 } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import Button from '../../components/atoms/Button';
 import useCart from '../../hooks/useCart';
-import { MOCK_RESTAURANTS, MOCK_MENU_ITEMS, MOCK_CATEGORIES } from '../../utils/mockData';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useChatStore } from '../../store/useChatStore';
 import api from '../../services/api';
+import { restaurantApi } from '../../services/restaurantApi';
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  category: string;
+  stock: number;
+  image?: string;
+  imageUrl?: string;
+  isAvailable: boolean;
+  soldCount?: number;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  address: string;
+  logo?: string;
+  coverImage?: string;
+  status: string;
+  deliveryFee: number;
+  minOrderValue: number;
+  ratingAvg?: number;
+  operatingHours?: { open: string; close: string };
+  menuItems?: MenuItem[];
+  // fallback mock fields
+  rating?: number;
+  deliveryTime?: string;
+  imageUrl?: string;
+  isOpen?: boolean;
+}
 
 export const RestaurantDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +48,9 @@ export const RestaurantDetail: React.FC = () => {
   const { user } = useAuthStore();
   const { setActiveConversation, setIsChatOpen, setMessages } = useChatStore();
 
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loading, setLoading] = useState(true);
+
   // Đóng khung chat khi rời khỏi trang nhà hàng
   useEffect(() => {
     return () => {
@@ -23,6 +58,18 @@ export const RestaurantDetail: React.FC = () => {
       setActiveConversation(null);
     };
   }, [setIsChatOpen, setActiveConversation]);
+
+  // Fetch restaurant + menu từ API
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    restaurantApi.getRestaurantById(id)
+      .then((data: any) => {
+        setRestaurant(data);
+      })
+      .catch(() => setRestaurant(null))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   // Toast notification state
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -34,22 +81,17 @@ export const RestaurantDetail: React.FC = () => {
   // Tab danh mục thực đơn
   const [selectedMenuTab, setSelectedMenuTab] = useState('all');
 
-  // Load restaurant dynamically
-  const restaurant = useMemo(() => {
-    return MOCK_RESTAURANTS.find((r) => r.id === id) || MOCK_RESTAURANTS[0];
-  }, [id]);
+  // Lấy menu items từ response
+  const allMenuItems: MenuItem[] = useMemo(() => {
+    return restaurant?.menuItems || [];
+  }, [restaurant]);
 
-  // Load menu items dynamically
-  const allMenuItems = useMemo(() => {
-    return MOCK_MENU_ITEMS.filter((item) => item.restaurantId === restaurant.id);
-  }, [restaurant.id]);
-
-  // Các danh mục hiện có trong nhà hàng
+  // Lấy danh mục duy nhất
   const availableCategories = useMemo(() => {
-    const cats = new Set(allMenuItems.map((item) => item.category));
+    const cats = [...new Set(allMenuItems.map(item => item.category))].filter(Boolean);
     return [
       { id: 'all', name: 'Tất cả món', icon: '🍽️' },
-      ...MOCK_CATEGORIES.filter((c) => c.id !== 'all' && cats.has(c.id)),
+      ...cats.map(cat => ({ id: cat, name: cat, icon: '🍴' })),
     ];
   }, [allMenuItems]);
 
@@ -64,6 +106,7 @@ export const RestaurantDetail: React.FC = () => {
       showToast('Vui lòng đăng nhập để chat', false);
       return;
     }
+    if (!restaurant) return;
     try {
       const res: any = await api.get(`/chats/restaurant/${restaurant.id}`);
       if (res.success) {
@@ -75,6 +118,35 @@ export const RestaurantDetail: React.FC = () => {
       showToast('Lỗi khi tải cuộc hội thoại', false);
     }
   };
+
+  // Hiển thị loading
+  if (loading) {
+    return (
+      <div className="texture-paper min-h-screen flex flex-col bg-neutral-50">
+        <Header cartCount={0} />
+        <div className="flex-grow flex items-center justify-center gap-4 flex-col text-neutral-500">
+          <Loader2 size={40} className="animate-spin text-[#BF3A20]" />
+          <p className="font-mono text-sm">Đang tải thực đơn...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Không tìm thấy nhà hàng
+  if (!restaurant) {
+    return (
+      <div className="texture-paper min-h-screen flex flex-col bg-neutral-50">
+        <Header cartCount={0} />
+        <div className="flex-grow flex items-center justify-center flex-col text-neutral-500 gap-4">
+          <p className="font-mono text-lg font-bold">[ Không tìm thấy nhà hàng ]</p>
+          <button onClick={() => navigate(-1)} className="text-sm font-mono underline text-[#BF3A20]">← Quay lại</button>
+        </div>
+      </div>
+    );
+  }
+
+  const isOpen = restaurant.status === 'open';
+  const rating = restaurant.ratingAvg ?? restaurant.rating ?? 0;
 
   return (
     <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
@@ -92,7 +164,7 @@ export const RestaurantDetail: React.FC = () => {
       {/* ── COVER IMAGE HERO ── */}
       <div className="relative w-full h-52 md:h-72 overflow-hidden">
         <img
-          src={restaurant.coverImage || restaurant.imageUrl}
+          src={restaurant.coverImage || restaurant.imageUrl || `https://placehold.co/1200x400/2C1A0E/FEFCF9?text=${encodeURIComponent(restaurant.name)}`}
           alt={`Ảnh bìa ${restaurant.name}`}
           onError={(e) => {
             e.currentTarget.onerror = null;
@@ -113,8 +185,8 @@ export const RestaurantDetail: React.FC = () => {
         </button>
 
         {/* Status badge overlay */}
-        <span className={`absolute top-4 right-4 text-xs font-mono font-bold px-3 py-1 border rounded-sm ${restaurant.isOpen ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-neutral-700 text-neutral-200 border-neutral-600'}`}>
-          {restaurant.isOpen ? '● Đang mở cửa' : '○ Đóng cửa'}
+        <span className={`absolute top-4 right-4 text-xs font-mono font-bold px-3 py-1 border rounded-sm ${isOpen ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-neutral-700 text-neutral-200 border-neutral-600'}`}>
+          {isOpen ? '● Đang mở cửa' : '○ Đóng cửa'}
         </span>
       </div>
 
@@ -140,7 +212,7 @@ export const RestaurantDetail: React.FC = () => {
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2">
               <Star size={14} fill="#D49E00" stroke="#D49E00" className="flex-shrink-0" />
               <div>
-                <p className="text-xs font-mono font-bold text-amber-800">{restaurant.rating} / 5.0</p>
+                <p className="text-xs font-mono font-bold text-amber-800">{rating} / 5.0</p>
                 <p className="text-[9px] font-mono text-amber-600 uppercase">Đánh giá</p>
               </div>
             </div>
@@ -149,7 +221,7 @@ export const RestaurantDetail: React.FC = () => {
             <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-sm px-3 py-2">
               <Clock size={14} className="text-blue-600 flex-shrink-0" />
               <div>
-                <p className="text-xs font-mono font-bold text-blue-800">{restaurant.deliveryTime}</p>
+                <p className="text-xs font-mono font-bold text-blue-800">{restaurant.operatingHours ? `${restaurant.operatingHours.open} - ${restaurant.operatingHours.close}` : '-- : --'}</p>
                 <p className="text-[9px] font-mono text-blue-500 uppercase">Giao hàng</p>
               </div>
             </div>

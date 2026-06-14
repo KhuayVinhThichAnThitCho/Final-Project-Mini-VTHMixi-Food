@@ -73,6 +73,14 @@ export default {
         'retro-sm': '2px 2px 0px 0px #2C1A0E',
         'retro': '4px 4px 0px 0px #2C1A0E',
         'retro-lg': '8px 8px 0px 0px #2C1A0E',
+        // Modern premium shadows
+        'modern-sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'modern': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'modern-md': '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025)',
+        'modern-lg': '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
+        'modern-xl': '0 25px 50px -12px rgba(0, 0, 0, 0.1)',
+        'modern-card': '0 4px 24px 0 rgba(0, 0, 0, 0.04)',
+        'modern-glow': '0 0 20px rgba(191, 58, 32, 0.15)',
       },
       backgroundImage: {
         // Hoa văn hạt tròn li ti cho các dải phân cách trang trí
