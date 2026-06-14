@@ -55,6 +55,11 @@ export class Review extends Model {
   @Column(DataType.TEXT)
   comment?: string;
 
+  // Phản hồi của vendor/chủ quán
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  vendorReply?: string;
+
   // Điểm tích lũy được thưởng sau khi đánh giá thành công (ví dụ cộng 10 điểm vào ví)
   @AllowNull(false)
   @Default(0)

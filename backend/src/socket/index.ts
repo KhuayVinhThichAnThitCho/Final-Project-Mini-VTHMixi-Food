@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { Message } from '../models/Message';
 import { Conversation } from '../models/Conversation';
+import { Op } from 'sequelize';
 
 const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access_secret_123456';
 
@@ -74,6 +75,37 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
         // Phát tin nhắn cho tất cả người dùng trong phòng (bao gồm cả người gửi để xác nhận)
         io.to(conversationId).emit('receive_message', newMessage);
+
+        // AUTO-REPLY LỖI MỖI NGÀY MỚI
+        if (senderType === 'USER') {
+          const startOfToday = new Date();
+          startOfToday.setHours(0, 0, 0, 0);
+
+          const vendorMessageToday = await Message.findOne({
+            where: {
+              conversationId,
+              senderType: 'VENDOR',
+              createdAt: {
+                [Op.gte]: startOfToday
+              }
+            }
+          });
+
+          if (!vendorMessageToday) {
+            const autoReply = await Message.create({
+              conversationId,
+              senderType: 'VENDOR',
+              text: 'Chào bạn, chúng tôi đã nhận được tin nhắn và sẽ phản hồi trong ngày hôm nay nhé.'
+            });
+
+            await Conversation.update(
+              { lastMessageAt: new Date() },
+              { where: { id: conversationId } }
+            );
+
+            io.to(conversationId).emit('receive_message', autoReply);
+          }
+        }
 
       } catch (error) {
         console.error('❌ Lỗi khi gửi tin nhắn qua socket:', error);

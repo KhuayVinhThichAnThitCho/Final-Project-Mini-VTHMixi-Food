@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Image as ImageIcon, MessageCircle, Minus } from 'lucide-react';
 import { useChatStore } from '../../store/useChatStore';
-import { useAuthStore } from '../../store/useAuthStore';
 import { useSocketContext } from '../../context/SocketContext';
 
 export const ChatWidget: React.FC = () => {
   const { isChatOpen, isMinimized, setIsMinimized, activeConversation, messages, setIsChatOpen, addMessage, setActiveConversation } = useChatStore();
-  const { user } = useAuthStore();
   const { socket, isConnected } = useSocketContext();
   const [text, setText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -93,7 +91,7 @@ export const ChatWidget: React.FC = () => {
       </div>
 
       {/* Messages list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#FEFCF9] text-sm">
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#FEFCF9] text-base">
         {messages.map((msg, index) => {
           const isMine = msg.senderType === 'USER';
           return (

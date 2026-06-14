@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { orderService } from '../services/orderService';
 import { orderRepository } from '../repositories/orderRepository';
 import { AppError } from '../middlewares/errorHandler';
+import { Restaurant } from '../models/Restaurant';
+import { Order } from '../models/Order';
+import { User } from '../models/User';
 
 // Interface mở rộng định dạng Request từ Express để lưu trữ thông tin user sau khi giải mã JWT
 export interface AuthenticatedRequest extends Request {
@@ -71,6 +74,42 @@ export const orderController = {
       }
 
       const orders = await orderRepository.findByUserId(req.user.id);
+
+      res.status(200).json({
+        success: true,
+        data: orders,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Lấy danh sách đơn hàng của quán (Dành cho Vendor)
+   */
+  getRestaurantOrders: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập để xem đơn hàng.');
+      }
+
+      // Tìm quán hàng thuộc vendor đang đăng nhập
+      const restaurant = await Restaurant.findOne({ where: { ownerId: req.user.id } });
+      if (!restaurant) {
+        throw new AppError(404, 'NOT_FOUND', 'Bạn chưa có quán hàng nào trên hệ thống.');
+      }
+
+      // Lấy đơn hàng kèm thông tin khách hàng
+      const orders = await Order.findAll({
+        where: { restaurantId: restaurant.id },
+        include: [
+          {
+            model: User,
+            attributes: ['id', 'name', 'phone', 'avatar'],
+          },
+        ],
+        order: [['createdAt', 'DESC']],
+      });
 
       res.status(200).json({
         success: true,

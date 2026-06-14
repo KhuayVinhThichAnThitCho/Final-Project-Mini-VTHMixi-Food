@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, User, LogOut, Search } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import ConfirmModal from '../molecules/ConfirmModal';
 
 
 interface HeaderProps {
@@ -12,6 +13,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   return (
     <nav className="sticky top-0 z-50 h-16 bg-[#FEFCF9] border-b border-[#E8D8C6] shadow-saigon-sm">
@@ -85,9 +87,8 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
                   
                   <button
                     onClick={() => {
-                      logout();
+                      setShowLogoutModal(true);
                       setIsDropdownOpen(false);
-                      navigate('/');
                     }}
                     className="w-full text-left px-4 py-2 text-[#BF3A20] hover:bg-[#BF3A20]/5 font-bold transition-colors flex items-center gap-2"
                   >
@@ -108,6 +109,20 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
         </div>
 
       </div>
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        title="Đăng Xuất"
+        message="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
+        confirmText="Đăng Xuất"
+        cancelText="Hủy"
+        icon="logout"
+        onConfirm={() => {
+          logout();
+          setShowLogoutModal(false);
+          navigate('/');
+        }}
+        onCancel={() => setShowLogoutModal(false)}
+      />
     </nav>
   );
 };

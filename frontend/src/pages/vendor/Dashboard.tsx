@@ -36,13 +36,13 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex bg-[#FDFBF7] min-h-screen text-saigon-neutral-text font-sans texture-paper">
+    <div className="flex bg-slate-50 h-screen text-gray-800 font-sans overflow-hidden">
       {/* Menu Sidebar */}
       <Sidebar activeMenu={activeMenu} onMenuClick={setActiveMenu} isVendor={true} />
 
       {/* Main Content Area */}
-      <main className="flex-grow p-8 overflow-y-auto relative z-10">
-        <div className="max-w-6xl mx-auto">
+      <main className="flex-grow p-6 md:p-8 overflow-y-auto relative z-10 h-full w-full bg-slate-50/50">
+        <div className="max-w-7xl mx-auto">
           {renderContent()}
         </div>
       </main>
