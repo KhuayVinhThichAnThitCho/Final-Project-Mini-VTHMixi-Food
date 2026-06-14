@@ -10,6 +10,7 @@ import voucherRoutes from './voucherRoutes';
 import restaurantRoutes from './restaurantRoutes';
 import searchRoutes from './searchRoutes';
 import chatRoutes from './chatRoutes';
+import adminRoutes from './adminRoutes';
 
 const router = Router();
 
@@ -25,5 +26,7 @@ router.use('/vouchers', voucherRoutes);
 router.use('/restaurants', restaurantRoutes);
 router.use('/search', searchRoutes);
 router.use('/chats', chatRoutes);
+// Admin routes (yêu cầu JWT + role admin)
+router.use('/admin', adminRoutes);
 
 export default router;
