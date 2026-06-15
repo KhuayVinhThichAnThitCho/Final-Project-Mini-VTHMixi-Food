@@ -9,6 +9,7 @@ const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
     admin: 'bg-primary-100 text-primary-800 border-primary-300',
     manager: 'bg-secondary-100 text-secondary-800 border-secondary-300',
     vendor: 'bg-blue-100 text-blue-800 border-blue-300',
+    shipper: 'bg-orange-100 text-orange-800 border-orange-300',
     user: 'bg-neutral-100 text-neutral-700 border-neutral-300',
   };
   return (
@@ -63,7 +64,7 @@ const RoleModal: React.FC<{
               Chọn Role
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {['user', 'vendor', 'manager', 'admin'].map(r => (
+              {['user', 'vendor', 'shipper', 'manager', 'admin'].map(r => (
                 <button
                   key={r}
                   onClick={() => setRole(r)}

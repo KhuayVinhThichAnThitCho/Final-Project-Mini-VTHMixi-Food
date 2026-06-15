@@ -61,17 +61,48 @@ export class Order extends Model {
   @Column(DataType.ENUM('pending', 'confirmed', 'preparing', 'ready', 'delivering', 'completed', 'cancelled'))
   status!: OrderStatus;
 
+  // Shipper nào đã nhận đơn hàng này
+  @ForeignKey(() => User)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  shipperId?: string;
+
+  // Phí giao hàng (thu nhập của shipper mỗi đơn)
+  @AllowNull(false)
+  @Default(15000)
+  @Column(DataType.DECIMAL(12, 2))
+  shippingFee!: number;
+
+  // Ảnh xác nhận lấy hàng tại quán
+  @AllowNull(true)
+  @Column(DataType.STRING(500))
+  pickupPhotoUrl?: string;
+
+  // Ảnh xác nhận giao hàng cho khách
+  @AllowNull(true)
+  @Column(DataType.STRING(500))
+  deliveryPhotoUrl?: string;
+
+  // Khách rate shipper sau khi giao hàng (1-5 sao)
+  @AllowNull(true)
+  @Column(DataType.INTEGER)
+  shipperRating?: number;
+
   // ==========================================
   // THIẾT LẬP CÁC MỐI QUAN HỆ (ASSOCIATIONS)
   // ==========================================
 
   // Đơn hàng thuộc sở hữu của một Khách hàng đặt mua (User)
-  @BelongsTo(() => User)
+  @BelongsTo(() => User, 'userId')
   user!: User;
 
   // Đơn hàng được giao cho một Nhà hàng thực hiện (Restaurant)
   @BelongsTo(() => Restaurant)
   restaurant!: Restaurant;
+
+  // Shipper đảm nhận giao đơn hàng này
+  @BelongsTo(() => User, 'shipperId')
+  shipper?: User;
 }
 
 export default Order;

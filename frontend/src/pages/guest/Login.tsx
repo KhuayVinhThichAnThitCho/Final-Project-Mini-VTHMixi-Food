@@ -62,6 +62,8 @@ export const Login: React.FC = () => {
               navigate('/admin/dashboard');
             } else if (role === 'vendor') {
               navigate('/vendor/dashboard');
+            } else if (role === 'shipper') {
+              navigate('/shipper/dashboard');
             } else {
               navigate(redirectFrom !== '/login' ? redirectFrom : '/');
             }
@@ -97,6 +99,8 @@ export const Login: React.FC = () => {
             navigate('/admin/dashboard');
           } else if (role === 'vendor') {
             navigate('/vendor/dashboard');
+          } else if (role === 'shipper') {
+            navigate('/shipper/dashboard');
           } else {
             navigate(redirectFrom !== '/login' ? redirectFrom : '/');
           }

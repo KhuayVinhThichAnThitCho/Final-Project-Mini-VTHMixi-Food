@@ -25,6 +25,9 @@ import VendorDashboard from '../pages/vendor/Dashboard';
 // Pages - Admin
 import AdminDashboard from '../pages/admin/AdminDashboard';
 
+// Pages - Shipper
+import ShipperDashboard from '../pages/shipper/ShipperDashboard';
+
 const OrderHistory = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Lịch Sử Đơn Hàng</h2></div>;
 
 export const AppRoutes: React.FC = () => {
@@ -58,6 +61,11 @@ export const AppRoutes: React.FC = () => {
       {/* 4. Các route dành riêng cho Admin */}
       <Route element={<PrivateRoute allowedRoles={['ADMIN']} />}>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      </Route>
+
+      {/* 5. Các route dành riêng cho Shipper */}
+      <Route element={<PrivateRoute allowedRoles={['SHIPPER', 'ADMIN']} />}>
+        <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
       </Route>
 
       {/* Fallback */}

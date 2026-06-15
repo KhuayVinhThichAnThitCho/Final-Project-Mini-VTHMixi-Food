@@ -13,12 +13,15 @@ interface Order {
   createdAt: string;
   items: OrderItem[];
   totalAmount: number;
-  status: 'pending' | 'preparing' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'completed' | 'cancelled';
   user?: { name: string; phone?: string };
+  shipper?: { name: string; phone?: string; shipperRating?: number };
   deliveryAddress?: string;
+  pickupPhotoUrl?: string;
+  shippingFee?: number;
 }
 
-type StatusFilter = 'all' | 'pending' | 'preparing' | 'completed' | 'cancelled';
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'completed' | 'cancelled';
 
 export const VendorOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -66,6 +69,8 @@ export const VendorOrders: React.FC = () => {
     { key: 'all', label: 'Tất Cả', color: 'bg-gray-100 text-gray-700' },
     { key: 'pending', label: 'Chờ Duyệt', color: 'bg-amber-50 text-amber-700 border border-amber-200' },
     { key: 'preparing', label: 'Chuẩn Bị', color: 'bg-blue-50 text-blue-700 border border-blue-200' },
+    { key: 'ready', label: 'Sẵn Sàng', color: 'bg-purple-50 text-purple-700 border border-purple-200' },
+    { key: 'delivering', label: 'Đang Giao', color: 'bg-indigo-50 text-indigo-700 border border-indigo-200' },
     { key: 'completed', label: 'Hoàn Thành', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
     { key: 'cancelled', label: 'Đã Hủy', color: 'bg-gray-100 text-gray-500 border border-gray-200' },
   ];
@@ -79,7 +84,10 @@ export const VendorOrders: React.FC = () => {
 
   const getBadge = (status: string) => ({
     pending: { cls: 'bg-primary-50 text-primary-700 border-primary-200', label: 'CHỜ DUYỆT' },
+    confirmed: { cls: 'bg-yellow-50 text-yellow-700 border-yellow-200', label: 'ĐÃ XÁC NHẬN' },
     preparing: { cls: 'bg-blue-50 text-blue-700 border-blue-200', label: 'ĐANG CHUẨN BỊ' },
+    ready: { cls: 'bg-purple-50 text-purple-700 border-purple-200', label: 'SẴN SÀNG' },
+    delivering: { cls: 'bg-indigo-50 text-indigo-700 border-indigo-200', label: 'ĐANG GIAO' },
     completed: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'HOÀN THÀNH' },
     cancelled: { cls: 'bg-gray-100 text-gray-600 border-gray-200', label: 'ĐÃ HỦY' },
   }[status] || { cls: 'bg-gray-100 text-gray-600 border-gray-200', label: status.toUpperCase() });
@@ -192,6 +200,27 @@ export const VendorOrders: React.FC = () => {
                   </p>
                   {order.deliveryAddress && (
                     <p className="text-xs text-gray-400 mb-3 truncate">📍 {order.deliveryAddress}</p>
+                  )}
+                  {/* Shipper info */}
+                  {order.shipper && (
+                    <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-indigo-50 rounded-xl border border-indigo-100">
+                      <span className="text-xs font-semibold text-indigo-700">🚴 Shipper:</span>
+                      <span className="text-xs text-indigo-600 font-medium">{order.shipper.name}</span>
+                      {order.shipper.phone && (
+                        <a href={`tel:${order.shipper.phone}`} className="ml-auto text-xs text-indigo-500 hover:underline">📞</a>
+                      )}
+                    </div>
+                  )}
+                  {/* Pickup photo from shipper */}
+                  {order.pickupPhotoUrl && (
+                    <div className="mb-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">📸 Ảnh shipper lấy hàng:</p>
+                      <img
+                        src={order.pickupPhotoUrl}
+                        alt="Pickup"
+                        className="w-full h-32 object-cover rounded-xl border border-gray-200"
+                      />
+                    </div>
                   )}
                   <ul className="space-y-2 mt-2 text-sm text-gray-600 pl-4 border-l-2 border-gray-100">
                     {Array.isArray(order.items) && order.items.map((item, idx) => (

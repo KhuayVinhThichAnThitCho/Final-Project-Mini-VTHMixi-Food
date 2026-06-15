@@ -16,7 +16,7 @@ import { Wallet } from './Wallet';
 import { Order } from './Order';
 import { Conversation } from './Conversation';
 
-export type UserRole = 'guest' | 'user' | 'vendor' | 'manager' | 'admin';
+export type UserRole = 'guest' | 'user' | 'vendor' | 'shipper' | 'manager' | 'admin';
 export type UserStatus = 'pending' | 'active' | 'banned';
 
 @Table({
@@ -58,8 +58,19 @@ export class User extends Model {
 
   @AllowNull(false)
   @Default('user')
-  @Column(DataType.ENUM('guest', 'user', 'vendor', 'manager', 'admin'))
+  @Column(DataType.ENUM('guest', 'user', 'vendor', 'shipper', 'manager', 'admin'))
   role!: UserRole;
+
+  // Trạng thái online của shipper (bật/tắt nhận đơn)
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isOnline!: boolean;
+
+  // Điểm đánh giá trung bình của shipper (1.0 - 5.0)
+  @AllowNull(true)
+  @Column(DataType.FLOAT)
+  shipperRating?: number;
 
   @AllowNull(false)
   @Default('pending')
