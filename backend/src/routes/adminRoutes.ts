@@ -83,4 +83,17 @@ router.get('/analytics/vendors', adminController.getVendorAnalytics);
 // GET /api/v1/admin/analytics/users                 — Thống kê user
 router.get('/analytics/users', adminController.getUserAnalytics);
 
+// ============================================================
+// A-07: CẤU HÌNH HỆ THỐNG
+// ============================================================
+
+// GET  /api/v1/admin/settings           — Lấy toàn bộ config hệ thống
+router.get('/settings', adminController.getSystemConfigs);
+
+// POST /api/v1/admin/settings/batch     — Cập nhật nhiều config cùng lúc
+router.post('/settings/batch', adminController.batchUpdateConfigs);
+
+// PATCH /api/v1/admin/settings/:key     — Cập nhật một config theo key
+router.patch('/settings/:key', adminController.updateSystemConfig);
+
 export default router;

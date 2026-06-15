@@ -40,6 +40,13 @@ export const adminApi = {
   getVendorAnalytics: (page = 1, limit = 10) =>
     api.get('/admin/analytics/vendors', { params: { page, limit } }),
   getUserAnalytics: () => api.get('/admin/analytics/users'),
+
+  // A-07 System Settings
+  getSystemConfigs: () => api.get('/admin/settings'),
+  updateSystemConfig: (key: string, value: any) =>
+    api.patch(`/admin/settings/${key}`, { value }),
+  batchUpdateConfigs: (updates: { key: string; value: any }[]) =>
+    api.post('/admin/settings/batch', { updates }),
 };
 
 export default adminApi;

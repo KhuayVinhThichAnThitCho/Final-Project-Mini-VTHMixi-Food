@@ -5,6 +5,7 @@ import { Restaurant } from '../models/Restaurant';
 import { MenuItem } from '../models/MenuItem';
 import { Order } from '../models/Order';
 import { Wallet } from '../models/Wallet';
+import { SystemConfig } from '../models/SystemConfig';
 import { AppError } from '../middlewares/errorHandler';
 
 // ============================================================
@@ -663,6 +664,60 @@ export const adminService = {
       recentOrders,
       recentUsers,
     };
+  },
+
+  // ============================================================
+  // A-07: SYSTEM CONFIG — Cấu hình hệ thống
+  // ============================================================
+
+  /**
+   * A-07: Lấy toàn bộ cấu hình hệ thống
+   */
+  getSystemConfigs: async () => {
+    const configs = await SystemConfig.findAll({ order: [['group', 'ASC'], ['key', 'ASC']] });
+    // Parse JSON value cho từng config
+    return configs.map(c => ({
+      key: c.key,
+      value: JSON.parse(c.value),
+      group: c.group,
+      description: c.description,
+      updatedAt: c.updatedAt,
+    }));
+  },
+
+  /**
+   * A-07: Cập nhật một config theo key
+   */
+  updateSystemConfig: async (key: string, value: any) => {
+    const config = await SystemConfig.findByPk(key);
+    if (!config) {
+      throw new AppError(404, 'NOT_FOUND', `Không tìm thấy cấu hình với key: ${key}`);
+    }
+    await config.update({ value: JSON.stringify(value) });
+    return {
+      key: config.key,
+      value: JSON.parse(config.value),
+      group: config.group,
+      description: config.description,
+      updatedAt: config.updatedAt,
+    };
+  },
+
+  /**
+   * A-07: Cập nhật nhiều config cùng lúc (batch update)
+   */
+  batchUpdateConfigs: async (updates: { key: string; value: any }[]) => {
+    const results = [];
+    for (const { key, value } of updates) {
+      const config = await SystemConfig.findByPk(key);
+      if (config) {
+        await config.update({ value: JSON.stringify(value) });
+        results.push({ key, value, success: true });
+      } else {
+        results.push({ key, value, success: false, error: 'Key not found' });
+      }
+    }
+    return results;
   },
 };
 

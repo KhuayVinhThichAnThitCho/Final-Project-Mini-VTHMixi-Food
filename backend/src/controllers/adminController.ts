@@ -346,6 +346,58 @@ export const adminController = {
       next(error);
     }
   },
+
+  // ============================================================
+  // A-07: CẤU HÌNH HỆ THỐNG
+  // ============================================================
+
+  /**
+   * GET /admin/settings
+   * Lấy toàn bộ cấu hình hệ thống
+   */
+  getSystemConfigs: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await adminService.getSystemConfigs();
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * PATCH /admin/settings/:key
+   * Cập nhật một config theo key
+   */
+  updateSystemConfig: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { key } = req.params;
+      const { value } = req.body;
+      if (value === undefined) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Thiếu trường value.');
+      }
+      const data = await adminService.updateSystemConfig(key, value);
+      res.status(200).json({ success: true, message: `Đã cập nhật cấu hình "${key}".`, data });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * POST /admin/settings/batch
+   * Cập nhật nhiều config cùng lúc
+   */
+  batchUpdateConfigs: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { updates } = req.body;
+      if (!Array.isArray(updates) || updates.length === 0) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Thiếu danh sách updates.');
+      }
+      const data = await adminService.batchUpdateConfigs(updates);
+      res.status(200).json({ success: true, message: `Đã cập nhật ${updates.length} cấu hình.`, data });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default adminController;

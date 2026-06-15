@@ -1,6 +1,7 @@
 import { User } from '../models/User';
 import { Restaurant } from '../models/Restaurant';
 import { MenuItem } from '../models/MenuItem';
+import { SystemConfig } from '../models/SystemConfig';
 
 const SEED_RESTAURANTS = [
   {
@@ -465,6 +466,60 @@ export const seedDatabase = async () => {
       console.log('✅ Tạo tài khoản User mẫu thành công! Email: user@grabfood.com | Pass: User@123456');
     }
 
+    // ── Seed System Config (A-07) ─────────────────────────────
+    const configCount = await SystemConfig.count();
+    if (configCount === 0) {
+      await SystemConfig.bulkCreate([
+        {
+          key: 'platform_fee',
+          value: JSON.stringify(5),
+          group: 'fee',
+          description: 'Phí nền tảng tính trên tổng đơn hàng (%)',
+        },
+        {
+          key: 'payment_methods',
+          value: JSON.stringify({ COD: true, WALLET: true, POINTS: true }),
+          group: 'payment',
+          description: 'Các phương thức thanh toán được kích hoạt',
+        },
+        {
+          key: 'homepage_banner',
+          value: JSON.stringify({
+            title: 'GrabFood Mini',
+            subtitle: 'Đặt đồ ăn ngon, giao tận nơi',
+            imageUrl: '',
+            linkUrl: '',
+            isActive: true,
+          }),
+          group: 'banner',
+          description: 'Cấu hình banner trang chủ',
+        },
+        {
+          key: 'system_notice',
+          value: JSON.stringify({
+            message: '',
+            type: 'info',
+            isActive: false,
+          }),
+          group: 'notice',
+          description: 'Thông báo hệ thống hiển thị cho toàn bộ người dùng',
+        },
+        {
+          key: 'min_order_amount',
+          value: JSON.stringify(20000),
+          group: 'fee',
+          description: 'Giá trị đơn hàng tối thiểu (VNĐ)',
+        },
+        {
+          key: 'free_delivery_threshold',
+          value: JSON.stringify(150000),
+          group: 'fee',
+          description: 'Đơn hàng từ giá trị này sẽ được miễn phí giao hàng (VNĐ)',
+        },
+      ]);
+      console.log('Seeded default system configs!');
+    }
+
     if (restaurantCount > 0) {
       console.log('🌱 Database already seeded. Skipping restaurant/menu seeder.');
       return;
@@ -520,6 +575,7 @@ export const seedDatabase = async () => {
       }))
     );
     console.log(`Seeded ${SEED_MENU_ITEMS.length} menu items!`);
+
   } catch (error) {
     console.error('❌ Error seeding database:', error);
   }
