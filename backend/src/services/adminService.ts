@@ -580,7 +580,7 @@ export const adminService = {
       throw new AppError(400, 'BUSINESS_ERROR', 'Không thể thay đổi role của chính mình.');
     }
 
-    const validRoles = ['user', 'vendor', 'manager', 'admin'];
+    const validRoles = ['user', 'vendor', 'shipper', 'manager', 'admin'];
     if (!validRoles.includes(role)) {
       throw new AppError(400, 'VALIDATION_ERROR', `Role không hợp lệ. Chỉ chấp nhận: ${validRoles.join(', ')}`);
     }

@@ -12,6 +12,7 @@ import searchRoutes from './searchRoutes';
 import chatRoutes from './chatRoutes';
 import walletRoutes from './walletRoutes';
 import adminRoutes from './adminRoutes';
+import shipperRoutes from './shipperRoutes';
 import { SystemConfig } from '../models/SystemConfig';
 
 const router = Router();
@@ -47,5 +48,6 @@ router.use('/search', searchRoutes);
 router.use('/chats', chatRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/admin', adminRoutes);
+router.use('/shipper', shipperRoutes);
 
 export default router;
