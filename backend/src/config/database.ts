@@ -58,7 +58,8 @@ export const initializeDatabase = async (): Promise<boolean> => {
     // Dùng sequelize.sync() để chỉ tạo bảng nếu chưa có (không chạy lại các lệnh ALTER TABLE phiền phức trên mỗi lần restart).
     // Nếu bạn sửa Model (thêm cột, đổi kiểu dữ liệu) thì đổi tạm thời thành { alter: true } để DB cập nhật theo, sau đó đổi lại.
     console.log('⚙️ Đang thực hiện đồng bộ hóa cấu trúc bảng (Syncing models)...');
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
+
 
     // Seed database with mock data if tables are empty
     const { seedDatabase } = await import('./seedData');

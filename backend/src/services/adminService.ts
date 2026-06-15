@@ -375,7 +375,7 @@ export const adminService = {
         {
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['id', 'name', 'address', 'phone'],
+          attributes: ['id', 'name', 'address'],
         },
       ],
     });
@@ -387,9 +387,43 @@ export const adminService = {
     return order;
   },
 
-  // ============================================================
-  // A-05: BÁO CÁO DOANH THU TOÀN NỀN TẢNG
-  // ============================================================
+  /**
+   * A-04: Admin can thiệp / override trạng thái đơn hàng (xử lý tranh chấp)
+   * Admin có toàn quyền chuyển đơn về bất kỳ trạng thái nào
+   */
+  overrideOrderStatus: async (
+    orderId: string,
+    newStatus: string,
+    reason: string,
+    adminId: string
+  ) => {
+    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivering', 'completed', 'cancelled'];
+    if (!validStatuses.includes(newStatus)) {
+      throw new AppError(400, 'VALIDATION_ERROR', `Trạng thái không hợp lệ. Chỉ chấp nhận: ${validStatuses.join(', ')}`);
+    }
+
+    if (!reason || reason.trim().length < 5) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Lý do can thiệp phải có ít nhất 5 ký tự.');
+    }
+
+    const order = await Order.findByPk(orderId);
+    if (!order) {
+      throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy đơn hàng.');
+    }
+
+    const oldStatus = order.status;
+    await order.update({ status: newStatus as any });
+
+    return {
+      id: order.id,
+      oldStatus,
+      newStatus,
+      reason,
+      overriddenBy: adminId,
+      overriddenAt: new Date().toISOString(),
+    };
+  },
+
 
   /**
    * A-05: Thống kê tổng doanh thu theo period

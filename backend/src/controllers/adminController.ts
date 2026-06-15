@@ -273,8 +273,34 @@ export const adminController = {
     }
   },
 
-  // ============================================================
-  // A-05: BÁO CÁO DOANH THU
+  /**
+   * PATCH /admin/orders/:id/status
+   * Admin can thiệp / override trạng thái đơn hàng — xử lý tranh chấp
+   */
+  overrideOrderStatus: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Chưa xác thực.');
+      const { id } = req.params;
+      const { status, reason } = req.body;
+
+      if (!status) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Thiếu trường status.');
+      }
+      if (!reason) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Phải nhập lý do can thiệp.');
+      }
+
+      const data = await adminService.overrideOrderStatus(id, status, reason, req.user.id);
+      res.status(200).json({
+        success: true,
+        message: `Đã chuyển trạng thái đơn hàng từ "${data.oldStatus}" sang "${data.newStatus}".`,
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // ============================================================
 
   /**

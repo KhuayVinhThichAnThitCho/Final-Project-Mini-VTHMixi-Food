@@ -31,6 +31,8 @@ export const adminApi = {
   getOrders: (params?: { userId?: string; restaurantId?: string; status?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) =>
     api.get('/admin/orders', { params }),
   getOrderDetail: (id: string) => api.get(`/admin/orders/${id}`),
+  overrideOrderStatus: (id: string, status: string, reason: string) =>
+    api.patch(`/admin/orders/${id}/status`, { status, reason }),
 
   // A-05 Analytics
   getRevenueAnalytics: (period: 'day' | 'week' | 'month' | 'year' = 'month') =>

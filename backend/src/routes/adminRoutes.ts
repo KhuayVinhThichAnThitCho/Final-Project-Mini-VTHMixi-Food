@@ -67,6 +67,9 @@ router.get('/orders', adminController.getAllOrders);
 // GET /api/v1/admin/orders/:id         — Chi tiết đơn hàng
 router.get('/orders/:id', adminController.getOrderDetail);
 
+// PATCH /api/v1/admin/orders/:id/status — Admin override trạng thái đơn (can thiệp tranh chấp)
+router.patch('/orders/:id/status', adminController.overrideOrderStatus);
+
 // ============================================================
 // A-05: BÁO CÁO DOANH THU
 // ============================================================

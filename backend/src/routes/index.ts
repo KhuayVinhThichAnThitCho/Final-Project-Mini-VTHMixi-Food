@@ -11,6 +11,7 @@ import restaurantRoutes from './restaurantRoutes';
 import searchRoutes from './searchRoutes';
 import chatRoutes from './chatRoutes';
 import walletRoutes from './walletRoutes';
+import adminRoutes from './adminRoutes';
 
 const router = Router();
 
@@ -27,5 +28,6 @@ router.use('/restaurants', restaurantRoutes);
 router.use('/search', searchRoutes);
 router.use('/chats', chatRoutes);
 router.use('/wallet', walletRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;
