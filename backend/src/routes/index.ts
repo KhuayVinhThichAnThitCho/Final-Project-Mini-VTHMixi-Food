@@ -11,8 +11,27 @@ import restaurantRoutes from './restaurantRoutes';
 import searchRoutes from './searchRoutes';
 import chatRoutes from './chatRoutes';
 import walletRoutes from './walletRoutes';
+import adminRoutes from './adminRoutes';
+import { SystemConfig } from '../models/SystemConfig';
 
 const router = Router();
+
+// ─── Public: System Notice (không cần auth) ───────────────────
+// GET /api/v1/system/notice — Trả về thông báo hệ thống đang active
+router.get('/system/notice', async (req, res, next) => {
+  try {
+    const config = await SystemConfig.findByPk('system_notice');
+    if (!config) return res.json({ success: true, data: null });
+    const notice = JSON.parse(config.value);
+    // Chỉ trả về nếu đang active
+    if (!notice.isActive || !notice.message) {
+      return res.json({ success: true, data: null });
+    }
+    res.json({ success: true, data: notice });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Gắn các router con vào router tổng
 router.use('/auth', authRoutes);
@@ -27,5 +46,6 @@ router.use('/restaurants', restaurantRoutes);
 router.use('/search', searchRoutes);
 router.use('/chats', chatRoutes);
 router.use('/wallet', walletRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;

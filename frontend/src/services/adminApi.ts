@@ -31,6 +31,8 @@ export const adminApi = {
   getOrders: (params?: { userId?: string; restaurantId?: string; status?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) =>
     api.get('/admin/orders', { params }),
   getOrderDetail: (id: string) => api.get(`/admin/orders/${id}`),
+  overrideOrderStatus: (id: string, status: string, reason: string) =>
+    api.patch(`/admin/orders/${id}/status`, { status, reason }),
 
   // A-05 Analytics
   getRevenueAnalytics: (period: 'day' | 'week' | 'month' | 'year' = 'month') =>
@@ -38,6 +40,13 @@ export const adminApi = {
   getVendorAnalytics: (page = 1, limit = 10) =>
     api.get('/admin/analytics/vendors', { params: { page, limit } }),
   getUserAnalytics: () => api.get('/admin/analytics/users'),
+
+  // A-07 System Settings
+  getSystemConfigs: () => api.get('/admin/settings'),
+  updateSystemConfig: (key: string, value: any) =>
+    api.patch(`/admin/settings/${key}`, { value }),
+  batchUpdateConfigs: (updates: { key: string; value: any }[]) =>
+    api.post('/admin/settings/batch', { updates }),
 };
 
 export default adminApi;

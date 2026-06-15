@@ -109,10 +109,32 @@ const AdminVendors: React.FC = () => {
     mutationFn: ({ id, status, reason }: { id: string; status: string; reason: string }) =>
       adminApi.updateVendorStatus(id, status, reason),
     onSuccess: () => {
+      // Invalidate danh sách vendor
       queryClient.invalidateQueries({ queryKey: ['admin-vendors'] });
+      // Invalidate các ô stat cards (count theo từng status)
+      queryClient.invalidateQueries({ queryKey: ['admin-vendors-count'] });
       setModalVendor(null);
     },
   });
+
+
+  // Query đếm số lượng theo từng trạng thái
+  const { data: openData } = useQuery({
+    queryKey: ['admin-vendors-count', 'open'],
+    queryFn: () => adminApi.getVendors({ status: 'open', page: 1, limit: 1 }),
+  });
+  const { data: pendingData } = useQuery({
+    queryKey: ['admin-vendors-count', 'pending'],
+    queryFn: () => adminApi.getVendors({ status: 'pending', page: 1, limit: 1 }),
+  });
+  const { data: bannedData } = useQuery({
+    queryKey: ['admin-vendors-count', 'banned'],
+    queryFn: () => adminApi.getVendors({ status: 'banned', page: 1, limit: 1 }),
+  });
+
+  const countOpen    = (openData as any)?.pagination?.total ?? '—';
+  const countPending = (pendingData as any)?.pagination?.total ?? '—';
+  const countBanned  = (bannedData as any)?.pagination?.total ?? '—';
 
   return (
     <div className="space-y-6">
@@ -124,10 +146,10 @@ const AdminVendors: React.FC = () => {
       {/* Quick Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Tất cả', value: pagination?.total || 0, filter: '', color: 'border-neutral-300' },
-          { label: 'Đang mở', value: '—', filter: 'open', color: 'border-green-300' },
-          { label: 'Chờ duyệt', value: '—', filter: 'pending', color: 'border-secondary-300' },
-          { label: 'Bị cấm', value: '—', filter: 'banned', color: 'border-red-300' },
+          { label: 'Tất cả', value: pagination?.total ?? 0, filter: '', color: 'border-neutral-300' },
+          { label: 'Đang mở', value: countOpen, filter: 'open', color: 'border-green-300' },
+          { label: 'Chờ duyệt', value: countPending, filter: 'pending', color: 'border-secondary-300' },
+          { label: 'Bị cấm', value: countBanned, filter: 'banned', color: 'border-red-300' },
         ].map(item => (
           <button
             key={item.filter}
@@ -141,6 +163,7 @@ const AdminVendors: React.FC = () => {
           </button>
         ))}
       </div>
+
 
       {/* Filter */}
       <div className="bg-[#FEFCF9] border-2 border-neutral-200 p-4 flex gap-3">

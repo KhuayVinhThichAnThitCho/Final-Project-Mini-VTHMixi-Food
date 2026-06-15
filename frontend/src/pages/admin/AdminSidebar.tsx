@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Store, Package, ShoppingBag,
-  BarChart3, LogOut, ChevronRight, Shield
+  BarChart3, LogOut, ChevronRight, Shield, Settings
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
@@ -18,6 +18,7 @@ const menuItems = [
   { id: 'products', label: 'Sản Phẩm', icon: Package },
   { id: 'orders', label: 'Đơn Hàng', icon: ShoppingBag },
   { id: 'analytics', label: 'Báo Cáo & Doanh Thu', icon: BarChart3 },
+  { id: 'settings', label: 'Cấu Hình Hệ Thống', icon: Settings },
 ];
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeMenu, onMenuClick }) => {
