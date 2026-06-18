@@ -13,7 +13,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
@@ -153,6 +153,16 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
             <ShoppingBag size={14} strokeWidth={1.5} />
             <span>{cartCount > 0 ? `${cartCount} món` : 'Giỏ hàng'}</span>
           </button>
+
+          {/* Manager / Admin Button */}
+          {isAuthenticated && (user?.role === 'manager' || user?.role === 'admin') && (
+            <button
+              onClick={() => navigate(user.role === 'admin' ? '/admin/dashboard' : '/manager/dashboard')}
+              className="btn-retro text-xs py-1.5 px-4 bg-secondary-100 hover:bg-secondary-200 transition-colors flex items-center gap-1.5 cursor-pointer font-bold border-2 border-neutral-900 shadow-retro-sm"
+            >
+              {user.role === 'admin' ? 'Trang Admin' : 'Trang Quản Lý'}
+            </button>
+          )}
 
           {isAuthenticated ? (
             <div className="relative">

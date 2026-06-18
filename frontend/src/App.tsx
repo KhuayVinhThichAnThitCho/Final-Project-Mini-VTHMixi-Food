@@ -7,21 +7,26 @@ import SystemNoticeBanner from './components/molecules/SystemNoticeBanner';
 import { SocketProvider } from './context/SocketContext';
 import { ChatWidget } from './components/chat/ChatWidget';
 
+import { Provider } from 'react-redux';
+import { store } from './store/redux/store';
+
 const queryClient = new QueryClient();
 
 export const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SocketProvider>
-        <BrowserRouter>
-          {/* Thông báo hệ thống — hiện trên đầu tất cả các trang */}
-          <SystemNoticeBanner />
-          <AppRoutes />
-          <AuthConfirmModal />
-          <ChatWidget />
-        </BrowserRouter>
-      </SocketProvider>
-    </QueryClientProvider>
+    <Provider store={store}>
+      <QueryClientProvider client={queryClient}>
+        <SocketProvider>
+          <BrowserRouter>
+            {/* Thông báo hệ thống — hiện trên đầu tất cả các trang */}
+            <SystemNoticeBanner />
+            <AppRoutes />
+            <AuthConfirmModal />
+            <ChatWidget />
+          </BrowserRouter>
+        </SocketProvider>
+      </QueryClientProvider>
+    </Provider>
   );
 };
 

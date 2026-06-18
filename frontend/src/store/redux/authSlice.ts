@@ -5,6 +5,7 @@ interface UserState {
   name: string;
   email: string;
   role: string;
+  managedRegion?: string;
 }
 
 interface AuthState {
