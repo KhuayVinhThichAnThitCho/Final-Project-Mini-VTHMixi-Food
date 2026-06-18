@@ -47,6 +47,11 @@ export class Restaurant extends Model {
   @Column(DataType.STRING(255))
   address!: string;
 
+  // Khu vực của nhà hàng (Dùng để Manager query theo khu vực)
+  @AllowNull(true)
+  @Column(DataType.STRING(100))
+  region?: string;
+
   @AllowNull(true)
   @Column(DataType.STRING(255))
   logo?: string;

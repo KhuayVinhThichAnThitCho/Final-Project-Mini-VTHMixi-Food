@@ -25,6 +25,9 @@ import VendorDashboard from '../pages/vendor/Dashboard';
 // Pages - Admin
 import AdminDashboard from '../pages/admin/AdminDashboard';
 
+// Pages - Manager
+import ManagerDashboard from '../pages/manager/ManagerDashboard';
+
 // Pages - Shipper
 import ShipperDashboard from '../pages/shipper/ShipperDashboard';
 
@@ -61,6 +64,11 @@ export const AppRoutes: React.FC = () => {
       {/* 4. Các route dành riêng cho Admin */}
       <Route element={<PrivateRoute allowedRoles={['ADMIN']} />}>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      </Route>
+
+      {/* Các route dành riêng cho Manager */}
+      <Route element={<PrivateRoute allowedRoles={['MANAGER', 'ADMIN']} />}>
+        <Route path="/manager/dashboard" element={<ManagerDashboard />} />
       </Route>
 
       {/* 5. Các route dành riêng cho Shipper */}

@@ -61,6 +61,16 @@ export class User extends Model {
   @Column(DataType.ENUM('guest', 'user', 'vendor', 'shipper', 'manager', 'admin'))
   role!: UserRole;
 
+  // Khu vực mà Manager quản lý (Dành riêng cho role = 'manager')
+  @AllowNull(true)
+  @Column(DataType.STRING(100))
+  managedRegion?: string;
+
+  // Khu vực hoạt động chung của User (Dùng để Manager query shipper theo khu vực)
+  @AllowNull(true)
+  @Column(DataType.STRING(100))
+  region?: string;
+
   // Trạng thái online của shipper (bật/tắt nhận đơn)
   @AllowNull(false)
   @Default(false)
