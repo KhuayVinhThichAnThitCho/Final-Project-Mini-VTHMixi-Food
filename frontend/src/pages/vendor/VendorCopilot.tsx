@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, User, Loader2, Sparkles, TrendingUp } from 'lucide-react';
 import api from '../../services/api';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
 
 interface Message {
@@ -10,6 +10,8 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   chartData?: any[];
+  chartType?: string;
+  chartTitle?: string;
   actionableAdvice?: string[];
 }
 
@@ -36,6 +38,34 @@ const VendorCopilot: React.FC = () => {
   };
 
   useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await api.get('/ai/copilot/history');
+        if (res.data && res.data.data && res.data.data.length > 0) {
+          const historyMessages = res.data.data.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.role === 'user' ? msg.content : (msg.content?.insight || ''),
+            actionableAdvice: msg.role === 'assistant' ? msg.content?.actionable_advice : undefined,
+            chartData: msg.role === 'assistant' ? msg.content?.chart_data : undefined,
+            chartType: msg.role === 'assistant' ? msg.content?.chart_type : undefined,
+            chartTitle: msg.role === 'assistant' ? msg.content?.chart_title : undefined
+          }));
+          
+          setMessages(prev => {
+            // Keep the welcome message as the first item, append history
+            return [prev[0], ...historyMessages];
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch chat history:', error);
+      }
+    };
+    
+    fetchHistory();
+  }, []);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
@@ -56,7 +86,9 @@ const VendorCopilot: React.FC = () => {
         role: 'assistant',
         content: data.insight,
         actionableAdvice: data.actionable_advice,
-        chartData: data.chart_data
+        chartData: data.chart_data,
+        chartType: data.chart_type || 'bar',
+        chartTitle: data.chart_title
       };
 
       setMessages(prev => [...prev, aiMsg]);
@@ -105,23 +137,62 @@ const VendorCopilot: React.FC = () => {
                 
                 {/* Render Chart if available */}
                 {msg.chartData && msg.chartData.length > 0 && (
-                  <div className="mt-4 h-48 w-full bg-white p-2 rounded-lg border border-gray-100">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={msg.chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8D8C6" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9E6E4A', fontSize: 12}} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#9E6E4A', fontSize: 12}} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#FEFCF9', border: '1px solid #E8D8C6', borderRadius: '8px' }}
-                          itemStyle={{ color: '#BF3A20', fontWeight: 'bold' }}
-                        />
-                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                          {msg.chartData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#BF3A20' : '#E9C46A'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className="mt-4 w-full bg-white p-3 rounded-lg border border-gray-100">
+                    {msg.chartTitle && (
+                      <h4 className="text-center text-sm font-bold text-[#5C1A0A] mb-2">{msg.chartTitle}</h4>
+                    )}
+                    <div className="h-48 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        {msg.chartType === 'pie' ? (
+                          <PieChart>
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#FEFCF9', border: '1px solid #E8D8C6', borderRadius: '8px' }}
+                              itemStyle={{ color: '#BF3A20', fontWeight: 'bold' }}
+                            />
+                            <Pie 
+                              data={msg.chartData} 
+                              dataKey="value" 
+                              nameKey="name" 
+                              cx="50%" 
+                              cy="50%" 
+                              outerRadius={60}
+                              label
+                            >
+                              {msg.chartData.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#BF3A20' : '#E9C46A'} />
+                              ))}
+                            </Pie>
+                            <Legend />
+                          </PieChart>
+                        ) : msg.chartType === 'line' ? (
+                          <LineChart data={msg.chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8D8C6" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9E6E4A', fontSize: 12}} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#9E6E4A', fontSize: 12}} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#FEFCF9', border: '1px solid #E8D8C6', borderRadius: '8px' }}
+                              itemStyle={{ color: '#BF3A20', fontWeight: 'bold' }}
+                            />
+                            <Line type="monotone" dataKey="value" stroke="#BF3A20" strokeWidth={3} dot={{ fill: '#BF3A20', r: 4 }} activeDot={{ r: 6 }} />
+                          </LineChart>
+                        ) : (
+                          <BarChart data={msg.chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8D8C6" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9E6E4A', fontSize: 12}} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#9E6E4A', fontSize: 12}} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#FEFCF9', border: '1px solid #E8D8C6', borderRadius: '8px' }}
+                              itemStyle={{ color: '#BF3A20', fontWeight: 'bold' }}
+                            />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                              {msg.chartData.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#BF3A20' : '#E9C46A'} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        )}
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 )}
 

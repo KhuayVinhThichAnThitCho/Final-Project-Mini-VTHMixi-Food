@@ -4,6 +4,21 @@ import { aiService } from '../services/aiService';
 import { AppError } from '../middlewares/errorHandler';
 
 export const aiController = {
+  getHistory: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user || req.user.role !== 'vendor') {
+        throw new AppError(403, 'FORBIDDEN', 'Chỉ chủ quán mới được truy cập tính năng này.');
+      }
+      
+      const vendorId = req.user.id;
+      const history = await aiService.getChatHistory(vendorId);
+      
+      res.status(200).json({ success: true, data: history });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   askCopilot: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user || req.user.role !== 'vendor') {
