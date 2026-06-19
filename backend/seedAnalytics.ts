@@ -9,7 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 async function seedAnalytics() {
   console.log('Connecting Database...');
   await initializeDatabase();
-  
+
   const vendor = await User.findOne({ where: { role: 'vendor', email: 'vendor@saigon.com' } });
   if (!vendor) {
     console.log('Vendor not found');
@@ -44,14 +44,14 @@ async function seedAnalytics() {
   for (let i = 0; i < NUM_ORDERS; i++) {
     // Phân bổ đơn hàng trong 30 ngày qua
     // Xí Quách bán chạy trong 7 ngày gần đây
-    const isRecent = i < 20; 
+    const isRecent = i < 20;
     const randomDaysAgo = isRecent ? Math.floor(Math.random() * 7) : Math.floor(Math.random() * 23) + 7;
     const date = new Date();
     date.setDate(date.getDate() - randomDaysAgo);
-    
+
     const orderId = uuidv4();
     const isHuTieuOrder = Math.random() > 0.4;
-    
+
     const items = [];
     let totalItemsPrice = 0;
 
@@ -59,7 +59,7 @@ async function seedAnalytics() {
       items.push({ menuItemId: huTieu.id, name: huTieu.name, quantity: 1, price: huTieu.price });
       totalItemsPrice += Number(huTieu.price);
     }
-    
+
     // Xí quách order surge in recent days
     if (isRecent || Math.random() > 0.7) {
       items.push({ menuItemId: xiQuach.id, name: xiQuach.name, quantity: 2, price: xiQuach.price });
@@ -89,7 +89,7 @@ async function seedAnalytics() {
     if (Math.random() > 0.5) { // 50% orders have reviews
       let rating = 5;
       let comment = 'Ngon tuyệt cú mèo!';
-      
+
       if (isHuTieuOrder && Math.random() > 0.5) {
         rating = 3;
         const complaints = [
