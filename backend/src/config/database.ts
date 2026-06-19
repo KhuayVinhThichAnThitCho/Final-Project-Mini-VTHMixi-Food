@@ -18,6 +18,10 @@ import { SystemConfig } from '../models/SystemConfig';
 import { Report } from '../models/Report';
 import { WithdrawalRequest } from '../models/WithdrawalRequest';
 import { AdminLog } from '../models/AdminLog';
+import { AiConversation } from '../models/AiConversation';
+import { AiMessage } from '../models/AiMessage';
+import { CustomerAiConversation } from '../models/CustomerAiConversation';
+import { CustomerAiMessage } from '../models/CustomerAiMessage';
 
 // Nạp các biến môi trường từ .env
 dotenv.config();
@@ -34,7 +38,7 @@ export const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'grabfood_mini',
   
   // Đăng ký toàn bộ Model vào Sequelize Instance
-  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite, Conversation, Message, SystemConfig, Report, WithdrawalRequest, AdminLog],
+  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite, Conversation, Message, SystemConfig, Report, WithdrawalRequest, AdminLog,AiConversation, AiMessage, CustomerAiConversation, CustomerAiMessage],
   
   // Cấu hình ghi log SQL ra console trong môi trường phát triển
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
@@ -62,7 +66,7 @@ export const initializeDatabase = async (): Promise<boolean> => {
     // Dùng sequelize.sync() để chỉ tạo bảng nếu chưa có (không chạy lại các lệnh ALTER TABLE phiền phức trên mỗi lần restart).
     // Nếu bạn sửa Model (thêm cột, đổi kiểu dữ liệu) thì đổi tạm thời thành { alter: true } để DB cập nhật theo, sau đó đổi lại.
     console.log('⚙️ Đang thực hiện đồng bộ hóa cấu trúc bảng (Syncing models)...');
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
 
 
     // Seed database with mock data if tables are empty

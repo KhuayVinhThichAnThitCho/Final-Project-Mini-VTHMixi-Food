@@ -18,6 +18,8 @@ import { SystemConfig } from '../models/SystemConfig';
 
 const router = Router();
 
+import aiRoutes from './aiRoutes';
+
 // ─── Public: System Notice (không cần auth) ───────────────────
 // GET /api/v1/system/notice — Trả về thông báo hệ thống đang active
 router.get('/system/notice', async (req, res, next) => {
@@ -68,5 +70,6 @@ router.use('/wallet', walletRoutes);
 router.use('/admin', adminRoutes);
 router.use('/shipper', shipperRoutes);
 router.use('/manager', managerRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;

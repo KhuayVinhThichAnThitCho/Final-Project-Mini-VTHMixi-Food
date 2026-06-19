@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, User, LogOut, Search, Bell, Info, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { ShoppingBag, User, LogOut, Search, Bell, Info, AlertTriangle, CheckCircle, XCircle, Sparkles } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import ConfirmModal from '../molecules/ConfirmModal';
 import { useQuery } from '@tanstack/react-query';
@@ -144,6 +144,17 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
               </div>
             )}
           </div>
+
+          {/* Smart Cart Assistant Button */}
+          {isAuthenticated && user?.role === 'user' && (
+            <button
+              onClick={() => navigate('/smart-cart')}
+              className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 rounded-full px-3 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95"
+            >
+              <Sparkles size={14} strokeWidth={1.5} />
+              <span className="hidden sm:inline">Trợ lý Mua sắm</span>
+            </button>
+          )}
 
           {/* Pill-shaped Cart Button */}
           <button 

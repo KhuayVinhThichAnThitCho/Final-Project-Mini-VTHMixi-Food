@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, ShoppingBag, Settings, LogOut, Wallet, Store, Tag, MessageSquare, MessageCircle, Users, CheckSquare } from 'lucide-react';
+import { Home, ShoppingBag, Settings, LogOut, Wallet, Store, Tag, MessageSquare, MessageCircle, Users, CheckSquare, Sparkles } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import ConfirmModal from '../molecules/ConfirmModal';
 
@@ -53,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu = 'overview', onMen
       { id: 'wallet', label: 'Ví & Doanh Thu', icon: Wallet },
       { id: 'reviews', label: 'Đánh Giá', icon: MessageSquare },
       { id: 'chat', label: 'Tin Nhắn', icon: MessageCircle },
+      { id: 'copilot', label: 'AI Co-pilot', icon: Sparkles },
       { id: 'settings', label: 'Cài Đặt Quán', icon: Settings },
     ];
   } else {

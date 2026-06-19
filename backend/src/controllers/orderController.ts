@@ -106,6 +106,7 @@ export const orderController = {
         include: [
           {
             model: User,
+            as: 'user',
             attributes: ['id', 'name', 'phone', 'avatar'],
           },
         ],
