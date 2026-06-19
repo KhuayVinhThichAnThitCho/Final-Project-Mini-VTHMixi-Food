@@ -123,6 +123,10 @@ const AdminVendors: React.FC = () => {
     queryKey: ['admin-vendors-count', 'open'],
     queryFn: () => adminApi.getVendors({ status: 'open', page: 1, limit: 1 }),
   });
+  const { data: closedData } = useQuery({
+    queryKey: ['admin-vendors-count', 'closed'],
+    queryFn: () => adminApi.getVendors({ status: 'closed', page: 1, limit: 1 }),
+  });
   const { data: pendingData } = useQuery({
     queryKey: ['admin-vendors-count', 'pending'],
     queryFn: () => adminApi.getVendors({ status: 'pending', page: 1, limit: 1 }),
@@ -133,6 +137,7 @@ const AdminVendors: React.FC = () => {
   });
 
   const countOpen    = (openData as any)?.pagination?.total ?? '—';
+  const countClosed  = (closedData as any)?.pagination?.total ?? '—';
   const countPending = (pendingData as any)?.pagination?.total ?? '—';
   const countBanned  = (bannedData as any)?.pagination?.total ?? '—';
 
@@ -144,10 +149,11 @@ const AdminVendors: React.FC = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         {[
           { label: 'Tất cả', value: pagination?.total ?? 0, filter: '', color: 'border-neutral-300' },
           { label: 'Đang mở', value: countOpen, filter: 'open', color: 'border-green-300' },
+          { label: 'Đã đóng cửa', value: countClosed, filter: 'closed', color: 'border-neutral-300' },
           { label: 'Chờ duyệt', value: countPending, filter: 'pending', color: 'border-secondary-300' },
           { label: 'Bị cấm', value: countBanned, filter: 'banned', color: 'border-red-300' },
         ].map(item => (
@@ -183,9 +189,10 @@ const AdminVendors: React.FC = () => {
           className="px-4 py-2.5 bg-neutral-50 border-2 border-neutral-200 font-mono text-sm text-neutral-700 focus:outline-none focus:border-primary-500 transition-colors"
         >
           <option value="">Tất cả Status</option>
-          {['open', 'closed', 'pending', 'banned'].map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          <option value="open">🟢 Đang mở</option>
+          <option value="closed">⭕ Đã đóng</option>
+          <option value="pending">⏳ Chờ duyệt</option>
+          <option value="banned">🚫 Bị cấm</option>
         </select>
       </div>
 

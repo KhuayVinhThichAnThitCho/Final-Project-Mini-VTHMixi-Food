@@ -84,6 +84,13 @@ router.get('/analytics/vendors', adminController.getVendorAnalytics);
 router.get('/analytics/users', adminController.getUserAnalytics);
 
 // ============================================================
+// LỊCH SỬ HOẠT ĐỘNG
+// ============================================================
+
+// GET /api/v1/admin/activity-logs — Lịch sử hành động Admin (query: action, adminId, dateFrom, dateTo, page, limit)
+router.get('/activity-logs', adminController.getActivityLogs);
+
+// ============================================================
 // A-07: CẤU HÌNH HỆ THỐNG
 // ============================================================
 

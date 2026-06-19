@@ -6,7 +6,31 @@ import { MenuItem } from '../models/MenuItem';
 import { Order } from '../models/Order';
 import { Wallet } from '../models/Wallet';
 import { SystemConfig } from '../models/SystemConfig';
+import { AdminLog } from '../models/AdminLog';
 import { AppError } from '../middlewares/errorHandler';
+
+// ============================================================
+// HELPER: Ghi log hành động Admin
+// ============================================================
+const createAdminLog = async (data: {
+  adminId: string;
+  action: string;
+  targetType: string;
+  targetId?: string;
+  description: string;
+  details?: any;
+  ipAddress?: string;
+}) => {
+  try {
+    await AdminLog.create({
+      ...data,
+      details: data.details ? JSON.stringify(data.details) : null,
+    });
+  } catch (error) {
+    // Log lỗi nhưng không throw để không ảnh hưởng đến hành động chính
+    console.error('⚠️ Lỗi ghi admin log:', error);
+  }
+};
 
 // ============================================================
 // A-01: QUẢN LÝ USER
@@ -99,7 +123,18 @@ export const adminService = {
       throw new AppError(403, 'FORBIDDEN', 'Không thể thay đổi trạng thái tài khoản Admin khác.');
     }
 
+    const oldStatus = user.status;
     await user.update({ status });
+
+    // Ghi log
+    await createAdminLog({
+      adminId,
+      action: 'USER_STATUS_CHANGE',
+      targetType: 'user',
+      targetId: userId,
+      description: `${status === 'banned' ? 'Khóa' : 'Mở khóa'} tài khoản "${user.name}" (${user.email})`,
+      details: { oldStatus, newStatus: status, userName: user.name, userEmail: user.email },
+    });
 
     return {
       id: user.id,
@@ -205,14 +240,28 @@ export const adminService = {
   updateVendorStatus: async (
     restaurantId: string,
     status: 'pending' | 'open' | 'closed' | 'banned',
-    reason?: string
+    reason?: string,
+    adminId?: string
   ) => {
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy nhà hàng.');
     }
 
+    const oldStatus = restaurant.status;
     await restaurant.update({ status });
+
+    // Ghi log
+    if (adminId) {
+      await createAdminLog({
+        adminId,
+        action: 'VENDOR_STATUS_CHANGE',
+        targetType: 'restaurant',
+        targetId: restaurantId,
+        description: `Chuyển trạng thái nhà hàng "${restaurant.name}" từ "${oldStatus}" sang "${status}"${reason ? ` — Lý do: ${reason}` : ''}`,
+        details: { oldStatus, newStatus: status, restaurantName: restaurant.name, reason },
+      });
+    }
 
     return {
       id: restaurant.id,
@@ -274,13 +323,30 @@ export const adminService = {
   /**
    * A-03: Xóa vĩnh viễn sản phẩm vi phạm (Hard Delete)
    */
-  permanentDeleteProduct: async (menuItemId: string) => {
-    const item = await MenuItem.findByPk(menuItemId);
+  permanentDeleteProduct: async (menuItemId: string, adminId?: string) => {
+    const item = await MenuItem.findByPk(menuItemId, {
+      include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name'] }],
+    });
     if (!item) {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy sản phẩm.');
     }
 
+    const itemName = item.name;
+    const restaurantName = (item as any).restaurant?.name || 'N/A';
+
     await item.destroy();
+
+    // Ghi log
+    if (adminId) {
+      await createAdminLog({
+        adminId,
+        action: 'PRODUCT_HARD_DELETE',
+        targetType: 'menuItem',
+        targetId: menuItemId,
+        description: `Xóa vĩnh viễn sản phẩm "${itemName}" của nhà hàng "${restaurantName}"`,
+        details: { productName: itemName, restaurantName },
+      });
+    }
 
     return { deleted: true, id: menuItemId };
   },
@@ -288,13 +354,25 @@ export const adminService = {
   /**
    * A-03: Ẩn / Hiện sản phẩm (Soft hide via isDeleted flag)
    */
-  toggleProductVisibility: async (menuItemId: string, hide: boolean) => {
+  toggleProductVisibility: async (menuItemId: string, hide: boolean, adminId?: string) => {
     const item = await MenuItem.findByPk(menuItemId);
     if (!item) {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy sản phẩm.');
     }
 
     await item.update({ isDeleted: hide });
+
+    // Ghi log
+    if (adminId) {
+      await createAdminLog({
+        adminId,
+        action: 'PRODUCT_VISIBILITY_TOGGLE',
+        targetType: 'menuItem',
+        targetId: menuItemId,
+        description: `${hide ? 'Ẩn' : 'Hiện'} sản phẩm "${item.name}"`,
+        details: { productName: item.name, hide },
+      });
+    }
 
     return {
       id: item.id,
@@ -414,6 +492,16 @@ export const adminService = {
 
     const oldStatus = order.status;
     await order.update({ status: newStatus as any });
+
+    // Ghi log
+    await createAdminLog({
+      adminId,
+      action: 'ORDER_STATUS_OVERRIDE',
+      targetType: 'order',
+      targetId: orderId,
+      description: `Can thiệp đơn hàng #${orderId.slice(0, 8)}... từ "${oldStatus}" sang "${newStatus}" — Lý do: ${reason}`,
+      details: { oldStatus, newStatus, reason },
+    });
 
     return {
       id: order.id,
@@ -590,7 +678,18 @@ export const adminService = {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy người dùng.');
     }
 
+    const oldRole = user.role;
     await user.update({ role: role as any });
+
+    // Ghi log
+    await createAdminLog({
+      adminId,
+      action: 'USER_ROLE_ASSIGN',
+      targetType: 'user',
+      targetId: userId,
+      description: `Gán role "${role}" cho "${user.name}" (trước đó: ${oldRole})`,
+      details: { oldRole, newRole: role, userName: user.name, userEmail: user.email },
+    });
 
     return {
       id: user.id,
@@ -688,12 +787,26 @@ export const adminService = {
   /**
    * A-07: Cập nhật một config theo key
    */
-  updateSystemConfig: async (key: string, value: any) => {
+  updateSystemConfig: async (key: string, value: any, adminId?: string) => {
     const config = await SystemConfig.findByPk(key);
     if (!config) {
       throw new AppError(404, 'NOT_FOUND', `Không tìm thấy cấu hình với key: ${key}`);
     }
+    const oldValue = config.value;
     await config.update({ value: JSON.stringify(value) });
+
+    // Ghi log
+    if (adminId) {
+      await createAdminLog({
+        adminId,
+        action: 'SYSTEM_CONFIG_UPDATE',
+        targetType: 'config',
+        targetId: key,
+        description: `Cập nhật cấu hình "${key}" (nhóm: ${config.group})`,
+        details: { key, group: config.group, oldValue, newValue: JSON.stringify(value) },
+      });
+    }
+
     return {
       key: config.key,
       value: JSON.parse(config.value),
@@ -706,7 +819,7 @@ export const adminService = {
   /**
    * A-07: Cập nhật nhiều config cùng lúc (batch update)
    */
-  batchUpdateConfigs: async (updates: { key: string; value: any }[]) => {
+  batchUpdateConfigs: async (updates: { key: string; value: any }[], adminId?: string) => {
     const results = [];
     for (const { key, value } of updates) {
       const config = await SystemConfig.findByPk(key);
@@ -717,7 +830,86 @@ export const adminService = {
         results.push({ key, value, success: false, error: 'Key not found' });
       }
     }
+
+    // Ghi log
+    if (adminId) {
+      const successKeys = results.filter(r => r.success).map(r => r.key);
+      if (successKeys.length > 0) {
+        await createAdminLog({
+          adminId,
+          action: 'SYSTEM_CONFIG_BATCH_UPDATE',
+          targetType: 'config',
+          targetId: successKeys.join(','),
+          description: `Cập nhật hàng loạt ${successKeys.length} cấu hình: ${successKeys.join(', ')}`,
+          details: { updatedKeys: successKeys, totalRequested: updates.length },
+        });
+      }
+    }
+
     return results;
+  },
+
+  // ============================================================
+  // LỊCH SỬ HOẠT ĐỘNG (Activity Log)
+  // ============================================================
+
+  /**
+   * Lấy danh sách lịch sử hoạt động Admin (có phân trang, lọc)
+   */
+  getActivityLogs: async (options: {
+    action?: string;
+    adminId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const { action, adminId, dateFrom, dateTo, page = 1, limit = 20 } = options;
+    const offset = (page - 1) * limit;
+
+    const where: any = {};
+    if (action) where.action = action;
+    if (adminId) where.adminId = adminId;
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt[Op.gte] = new Date(dateFrom);
+      if (dateTo) where.createdAt[Op.lte] = new Date(dateTo + 'T23:59:59');
+    }
+
+    const { count, rows } = await AdminLog.findAndCountAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: 'admin',
+          attributes: ['id', 'name', 'email', 'avatar'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+    });
+
+    return {
+      logs: rows.map(log => ({
+        id: log.id,
+        adminId: log.adminId,
+        admin: (log as any).admin,
+        action: log.action,
+        targetType: log.targetType,
+        targetId: log.targetId,
+        description: log.description,
+        details: log.details ? JSON.parse(log.details) : null,
+        ipAddress: log.ipAddress,
+        createdAt: log.createdAt,
+      })),
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
+    };
   },
 };
 

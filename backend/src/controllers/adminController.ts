@@ -152,6 +152,7 @@ export const adminController = {
    */
   updateVendorStatus: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
+      if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Chưa xác thực.');
       const { id } = req.params;
       const { status, reason } = req.body;
 
@@ -160,7 +161,7 @@ export const adminController = {
         throw new AppError(400, 'VALIDATION_ERROR', `Trạng thái không hợp lệ. Chỉ chấp nhận: ${validStatuses.join(', ')}`);
       }
 
-      const data = await adminService.updateVendorStatus(id, status, reason);
+      const data = await adminService.updateVendorStatus(id, status, reason, req.user.id);
       res.status(200).json({
         success: true,
         message: 'Cập nhật trạng thái nhà hàng thành công.',
@@ -201,8 +202,9 @@ export const adminController = {
    */
   permanentDeleteProduct: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
+      if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Chưa xác thực.');
       const { id } = req.params;
-      const data = await adminService.permanentDeleteProduct(id);
+      const data = await adminService.permanentDeleteProduct(id, req.user.id);
       res.status(200).json({
         success: true,
         message: 'Đã xóa vĩnh viễn sản phẩm.',
@@ -219,10 +221,11 @@ export const adminController = {
    */
   toggleProductVisibility: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
+      if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Chưa xác thực.');
       const { id } = req.params;
       const { hide } = req.body;
 
-      const data = await adminService.toggleProductVisibility(id, hide === true || hide === 'true');
+      const data = await adminService.toggleProductVisibility(id, hide === true || hide === 'true', req.user.id);
       res.status(200).json({
         success: true,
         message: hide ? 'Đã ẩn sản phẩm.' : 'Đã hiện sản phẩm.',
@@ -370,12 +373,13 @@ export const adminController = {
    */
   updateSystemConfig: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
+      if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Chưa xác thực.');
       const { key } = req.params;
       const { value } = req.body;
       if (value === undefined) {
         throw new AppError(400, 'VALIDATION_ERROR', 'Thiếu trường value.');
       }
-      const data = await adminService.updateSystemConfig(key, value);
+      const data = await adminService.updateSystemConfig(key, value, req.user.id);
       res.status(200).json({ success: true, message: `Đã cập nhật cấu hình "${key}".`, data });
     } catch (error) {
       next(error);
@@ -388,12 +392,38 @@ export const adminController = {
    */
   batchUpdateConfigs: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
+      if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Chưa xác thực.');
       const { updates } = req.body;
       if (!Array.isArray(updates) || updates.length === 0) {
         throw new AppError(400, 'VALIDATION_ERROR', 'Thiếu danh sách updates.');
       }
-      const data = await adminService.batchUpdateConfigs(updates);
+      const data = await adminService.batchUpdateConfigs(updates, req.user.id);
       res.status(200).json({ success: true, message: `Đã cập nhật ${updates.length} cấu hình.`, data });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ============================================================
+  // LỊCH SỬ HOẠT ĐỘNG
+  // ============================================================
+
+  /**
+   * GET /admin/activity-logs
+   * Lấy danh sách lịch sử hoạt động Admin
+   */
+  getActivityLogs: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { action, adminId, dateFrom, dateTo, page, limit } = req.query;
+      const result = await adminService.getActivityLogs({
+        action: action as string,
+        adminId: adminId as string,
+        dateFrom: dateFrom as string,
+        dateTo: dateTo as string,
+        page: page ? parseInt(page as string) : 1,
+        limit: limit ? parseInt(limit as string) : 20,
+      });
+      res.status(200).json({ success: true, ...result });
     } catch (error) {
       next(error);
     }
