@@ -15,7 +15,7 @@ import { MenuItem } from './MenuItem';
 import { Order } from './Order';
 import { Conversation } from './Conversation';
 
-export type RestaurantStatus = 'pending' | 'open' | 'closed' | 'banned';
+export type RestaurantStatus = 'pending' | 'open' | 'closed' | 'banned' | 'rejected';
 
 export interface IOperatingHours {
   open: string;  // Ví dụ: "07:00"
@@ -77,8 +77,12 @@ export class Restaurant extends Model {
 
   @AllowNull(false)
   @Default('pending')
-  @Column(DataType.ENUM('pending', 'open', 'closed', 'banned'))
+  @Column(DataType.ENUM('pending', 'open', 'closed', 'banned', 'rejected'))
   status!: RestaurantStatus;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  rejectionReason?: string;
 
   @AllowNull(false)
   @Default(0.0)

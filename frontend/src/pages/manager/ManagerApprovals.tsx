@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldBan, Check } from 'lucide-react';
+import { ShieldBan, Check, X, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 
 const ManagerApprovals: React.FC = () => {
   const [pendingRestaurants, setPendingRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [rejectModal, setRejectModal] = useState<{isOpen: boolean, restaurantId: string}>({ isOpen: false, restaurantId: '' });
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -32,11 +35,28 @@ const ManagerApprovals: React.FC = () => {
     }
   };
 
+  const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      alert('Vui lòng nhập lý do từ chối.');
+      return;
+    }
+    try {
+      await api.post(`/manager/restaurants/${rejectModal.restaurantId}/reject`, { reason: rejectReason });
+      fetchData();
+      setRejectModal({ isOpen: false, restaurantId: '' });
+      setRejectReason('');
+    } catch (error) {
+      alert('Có lỗi xảy ra khi từ chối nhà hàng.');
+    }
+  };
+
   const handleBanUser = async () => {
     const userId = prompt('Nhập ID User/Vendor/Shipper cần khóa:');
     if (!userId) return;
+    const reason = prompt('Nhập lý do khóa:');
+    if (!reason) return;
     try {
-      await api.patch(`/manager/users/${userId}/status`, { status: 'banned' });
+      await api.patch(`/manager/users/${userId}/status`, { status: 'banned', reason });
       alert('Đã khóa tài khoản thành công!');
     } catch (error) {
       alert('Có lỗi xảy ra, kiểm tra xem người dùng có thuộc khu vực của bạn không.');
@@ -104,13 +124,22 @@ const ManagerApprovals: React.FC = () => {
                       {restaurant.owner?.phone || 'N/A'}
                     </td>
                     <td className="p-4 text-right">
-                      <button 
-                        onClick={() => handleApprove(restaurant.id)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#BF3A20] text-white rounded-md hover:bg-[#D44B2F] transition-all font-body font-bold tracking-widest uppercase text-[10px] shadow-sm active:scale-95"
-                      >
-                        <Check size={14} strokeWidth={2} />
-                        Duyệt
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => handleApprove(restaurant.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all font-body font-bold tracking-widest uppercase text-[10px] shadow-sm"
+                        >
+                          <Check size={14} strokeWidth={2} />
+                          Duyệt
+                        </button>
+                        <button 
+                          onClick={() => setRejectModal({ isOpen: true, restaurantId: restaurant.id })}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#BF3A20] text-white rounded-md hover:bg-[#D44B2F] transition-all font-body font-bold tracking-widest uppercase text-[10px] shadow-sm"
+                        >
+                          <X size={14} strokeWidth={2} />
+                          Từ Chối
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -118,18 +147,51 @@ const ManagerApprovals: React.FC = () => {
             </tbody>
           </table>
         </div>
-        
-        {/* Pagination */}
-        {!loading && pendingRestaurants.length > 0 && (
-          <div className="p-4 border-t border-[#E8D8C6] bg-[#FAF7F3] flex justify-between items-center text-xs font-mono text-[#9E6E4A]">
-            <span>Trang 1 / 1, hiển thị {pendingRestaurants.length} kết quả</span>
-            <div className="flex gap-2">
-              <button className="px-3 py-1 border border-[#E8D8C6] bg-[#FEFCF9] rounded text-neutral-400 hover:bg-[#F5EFE6] disabled:opacity-50 cursor-not-allowed" disabled>← Trước</button>
-              <button className="px-3 py-1 border border-[#E8D8C6] bg-[#FEFCF9] rounded text-neutral-400 hover:bg-[#F5EFE6] disabled:opacity-50 cursor-not-allowed" disabled>Tiếp →</button>
+      </div>
+
+      {/* Modal Reject */}
+      {rejectModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#FEFCF9] rounded-xl shadow-2xl max-w-md w-full border-2 border-saigon-neutral-text overflow-hidden scale-in">
+            <div className="p-4 border-b-2 border-saigon-neutral-text bg-[#FAE4E0]">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="text-[#BF3A20]" size={24} />
+                <h3 className="font-display font-bold text-lg text-[#5C1A0A]">
+                  Từ Chối Nhà Hàng
+                </h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-[#7A5235] font-body mb-4">
+                Vui lòng cung cấp lý do từ chối để Vendor có thể cập nhật thông tin và gửi lại yêu cầu.
+              </p>
+              
+              <textarea
+                className="w-full p-3 border-2 border-[#E8D8C6] rounded-lg focus:outline-none focus:border-[#BF3A20] bg-white font-body mb-4"
+                rows={3}
+                placeholder="Nhập lý do (VD: Giấy phép bị mờ, địa chỉ sai...)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              ></textarea>
+
+              <div className="flex justify-end gap-3 mt-2">
+                <button
+                  onClick={() => setRejectModal({ isOpen: false, restaurantId: '' })}
+                  className="px-4 py-2 font-mono font-bold text-[#7A5235] border-2 border-[#E8D8C6] rounded-lg hover:bg-[#E8D8C6]/30 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleReject}
+                  className="px-4 py-2 font-mono font-bold text-[#FEFCF9] rounded-lg shadow-retro-sm transition-all active:translate-y-[2px] active:translate-x-[2px] active:shadow-none border-2 border-saigon-neutral-text bg-[#BF3A20] hover:bg-[#A02D16]"
+                >
+                  Xác Nhận Từ Chối
+                </button>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

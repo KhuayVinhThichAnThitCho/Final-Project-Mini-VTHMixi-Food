@@ -97,7 +97,7 @@ const ManagerOverview: React.FC = () => {
                 contentStyle={{ backgroundColor: '#1A1008', border: '1px solid #BF3A20', borderRadius: '8px', color: '#E9C46A' }}
                 itemStyle={{ color: '#E9C46A', fontWeight: 'bold' }}
                 labelStyle={{ color: '#D0B89A', marginBottom: '5px' }}
-                formatter={(value: number) => [`${value.toLocaleString('vi-VN')}đ`, 'Doanh Thu']}
+                formatter={(value: any) => [`${Number(value || 0).toLocaleString('vi-VN')}đ`, 'Doanh Thu']}
               />
               <Area type="monotone" dataKey="sales" stroke="#BF3A20" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
             </AreaChart>

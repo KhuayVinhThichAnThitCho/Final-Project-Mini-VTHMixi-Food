@@ -85,6 +85,10 @@ export class MenuItem extends Model {
   @Column(DataType.BOOLEAN)
   isDeleted!: boolean;
 
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  banReason?: string;
+
   // ==========================================
   // THIẾT LẬP CÁC MỐI QUAN HỆ (ASSOCIATIONS)
   // ==========================================
