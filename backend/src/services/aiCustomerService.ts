@@ -38,7 +38,7 @@ const callLLM = async (prompt: string, expectJson: boolean = true) => {
 
 export const aiCustomerService = {
   getChatHistory: async (userId: string) => {
-    const conversation = await CustomerAiConversation.findOne({ 
+    const conversation = await CustomerAiConversation.findOne({
       where: { userId },
       include: [{
         model: CustomerAiMessage,
@@ -55,7 +55,7 @@ export const aiCustomerService = {
       if (msg.role === 'assistant' && msg.content) {
         try {
           parsedContent = JSON.parse(msg.content);
-        } catch (e) {}
+        } catch (e) { }
       }
       return {
         id: msg.id,
@@ -102,7 +102,7 @@ Trả về JSON duy nhất:
 }
 Nếu không cần gọi, trả về: { "tools": [] }
 `;
-    
+
     let toolDecision;
     try {
       const toolResponseText = await callLLM(toolPrompt, true);
@@ -154,7 +154,7 @@ Hãy định dạng câu trả lời dưới dạng JSON (không markdown):
 {
   "message": "Phân tích kế hoạch ăn uống rõ ràng, tính toán ngân sách chi tiết...",
   "recommended_items": [
-    { "name": "Tên món", "price": 100000, "reason": "Lý do khuyên dùng & Đề xuất số lượng (VD: Gợi ý 4 phần cho 4 người, tiết kiệm...)" }
+    { "id": "LẤY TRƯỜNG id TỪ KẾT QUẢ SEARCH", "restaurantId": "LẤY TRƯỜNG restaurantId TỪ KẾT QUẢ SEARCH", "name": "Tên món", "price": 100000, "reason": "Lý do khuyên dùng & Đề xuất số lượng (VD: Gợi ý 4 phần cho 4 người, tiết kiệm...)" }
   ]
 }
 `;
