@@ -8,6 +8,7 @@ import VendorPromotions from './VendorPromotions';
 import VendorWallet from './VendorWallet';
 import VendorReviews from './VendorReviews';
 import VendorChat from './VendorChat';
+import VendorCopilot from './VendorCopilot';
 
 export const Dashboard: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState('overview');
@@ -28,6 +29,8 @@ export const Dashboard: React.FC = () => {
         return <VendorReviews />;
       case 'chat':
         return <VendorChat />;
+      case 'copilot':
+        return <VendorCopilot />;
       case 'settings':
         return <VendorSettings />;
       default:
