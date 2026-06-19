@@ -5,9 +5,15 @@ import { authorize } from '../middlewares/rbacMiddleware';
 
 const router = Router();
 
+// Bắt buộc đăng nhập
+router.use(authMiddleware);
+
 // Route cho Copilot (Chỉ dành cho Vendor)
-router.use(authMiddleware, authorize(['vendor']));
-router.get('/copilot/history', aiController.getHistory);
-router.post('/copilot/ask', aiController.askCopilot);
+router.get('/copilot/history', authorize(['vendor']), aiController.getHistory);
+router.post('/copilot/ask', authorize(['vendor']), aiController.askCopilot);
+
+// Route cho Smart Cart (Chỉ dành cho Customer)
+router.get('/customer/history', authorize(['user']), aiController.getCustomerHistory);
+router.post('/customer/ask', authorize(['user']), aiController.askCustomerAssistant);
 
 export default router;

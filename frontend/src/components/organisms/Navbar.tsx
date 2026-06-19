@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShoppingBag, MapPin, Menu, User } from 'lucide-react';
+import { ShoppingBag, MapPin, Menu, User, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Button from '../atoms/Button';
 
 interface NavbarProps {
@@ -42,15 +43,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, cartCount = 0 }) =
 
         {/* Cụm chức năng */}
         <div className="flex items-center gap-4">
+          {/* Smart Cart AI */}
+          <Link to="/smart-cart" className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors shadow-sm">
+            <Sparkles size={16} />
+            <span className="hidden sm:inline text-sm font-bold">Trợ lý Mua sắm</span>
+          </Link>
+
           {/* Giỏ hàng */}
-          <button className="relative p-2 hover:bg-saigon-neutral-bg transition-colors border border-transparent hover:border-saigon-neutral-border rounded-sm">
+          <Link to="/cart" className="relative p-2 hover:bg-saigon-neutral-bg transition-colors border border-transparent hover:border-saigon-neutral-border rounded-sm">
             <ShoppingBag size={20} className="text-saigon-neutral-text" />
             {cartCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-saigon-primary text-saigon-neutral-surface text-[10px] font-mono font-bold w-4.5 h-4.5 flex items-center justify-center rounded-full border border-saigon-neutral-text">
                 {cartCount}
               </span>
             )}
-          </button>
+          </Link>
 
           {/* User Profile / Login button */}
           <div className="flex items-center gap-2">

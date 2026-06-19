@@ -18,6 +18,7 @@ import SearchPage from '../pages/guest/Search';
 import Profile from '../pages/user/Profile';
 import CheckoutTracking from '../pages/user/CheckoutTracking';
 import Favorites from '../pages/user/Favorites';
+import SmartCartAssistant from '../pages/user/SmartCartAssistant';
 
 // Pages - Vendor
 import VendorDashboard from '../pages/vendor/Dashboard';
@@ -54,6 +55,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/orders/history" element={<OrderHistory />} />
         <Route path="/cart" element={<Cart />} />
+        <Route path="/smart-cart" element={<SmartCartAssistant />} />
       </Route>
 
       {/* 3. Các route dành riêng cho Vendor */}
