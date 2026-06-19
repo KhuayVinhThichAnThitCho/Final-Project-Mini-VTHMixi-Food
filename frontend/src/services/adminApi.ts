@@ -47,6 +47,10 @@ export const adminApi = {
     api.patch(`/admin/settings/${key}`, { value }),
   batchUpdateConfigs: (updates: { key: string; value: any }[]) =>
     api.post('/admin/settings/batch', { updates }),
+
+  // Activity Logs
+  getActivityLogs: (params?: { action?: string; adminId?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) =>
+    api.get('/admin/activity-logs', { params }),
 };
 
 export default adminApi;

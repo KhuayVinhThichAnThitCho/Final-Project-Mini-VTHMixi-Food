@@ -17,6 +17,7 @@ import { Message } from '../models/Message';
 import { SystemConfig } from '../models/SystemConfig';
 import { Report } from '../models/Report';
 import { WithdrawalRequest } from '../models/WithdrawalRequest';
+import { AdminLog } from '../models/AdminLog';
 import { AiConversation } from '../models/AiConversation';
 import { AiMessage } from '../models/AiMessage';
 import { CustomerAiConversation } from '../models/CustomerAiConversation';
@@ -37,7 +38,7 @@ export const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'grabfood_mini',
   
   // Đăng ký toàn bộ Model vào Sequelize Instance
-  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite, Conversation, Message, SystemConfig, Report, WithdrawalRequest, AiConversation, AiMessage, CustomerAiConversation, CustomerAiMessage],
+  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite, Conversation, Message, SystemConfig, Report, WithdrawalRequest, AdminLog,AiConversation, AiMessage, CustomerAiConversation, CustomerAiMessage],
   
   // Cấu hình ghi log SQL ra console trong môi trường phát triển
   logging: process.env.NODE_ENV === 'development' ? console.log : false,

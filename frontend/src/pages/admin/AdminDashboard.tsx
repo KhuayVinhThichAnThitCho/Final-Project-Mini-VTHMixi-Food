@@ -7,8 +7,9 @@ import AdminProducts from './AdminProducts';
 import AdminOrders from './AdminOrders';
 import AdminAnalytics from './AdminAnalytics';
 import AdminSettings from './AdminSettings';
+import AdminActivityLog from './AdminActivityLog';
 
-type AdminMenu = 'dashboard' | 'users' | 'vendors' | 'products' | 'orders' | 'analytics' | 'settings';
+type AdminMenu = 'dashboard' | 'users' | 'vendors' | 'products' | 'orders' | 'analytics' | 'settings' | 'activity-log';
 
 const AdminDashboard: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState<AdminMenu>('dashboard');
@@ -22,6 +23,7 @@ const AdminDashboard: React.FC = () => {
       case 'orders':     return <AdminOrders />;
       case 'analytics':  return <AdminAnalytics />;
       case 'settings':   return <AdminSettings />;
+      case 'activity-log': return <AdminActivityLog />;
       default:           return <AdminOverview />;
     }
   };

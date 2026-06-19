@@ -37,6 +37,23 @@ router.get('/system/notice', async (req, res, next) => {
   }
 });
 
+// GET /api/v1/system/payment-methods — Trả về cấu hình phương thức thanh toán
+router.get('/system/payment-methods', async (req, res, next) => {
+  try {
+    const config = await SystemConfig.findByPk('payment_methods');
+    if (!config) {
+      return res.json({
+        success: true,
+        data: { COD: true, WALLET: true, POINTS: true }
+      });
+    }
+    const methods = JSON.parse(config.value);
+    res.json({ success: true, data: methods });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Gắn các router con vào router tổng
 router.use('/auth', authRoutes);
 router.use('/orders', orderRoutes);

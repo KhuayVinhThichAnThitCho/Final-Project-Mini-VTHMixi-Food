@@ -13,6 +13,7 @@ import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
 import orderApi from '../../services/orderApi';
 import voucherApi from '../../services/voucherApi';
+import api from '../../services/api';
 
 interface CheckoutItem {
   id: string;
@@ -32,6 +33,11 @@ export const CheckoutTracking: React.FC = () => {
 
   // Form states
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'WALLET' | 'POINTS'>('COD');
+  const [activePaymentMethods, setActivePaymentMethods] = useState<{ COD: boolean; WALLET: boolean; POINTS: boolean }>({
+    COD: true,
+    WALLET: true,
+    POINTS: true
+  });
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [appliedCode, setAppliedCode] = useState('');
@@ -69,6 +75,34 @@ export const CheckoutTracking: React.FC = () => {
       }
     };
     fetchVouchers();
+  }, []);
+
+  // Fetch active payment methods configuration
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        console.log('Fetching payment methods configuration...');
+        const res = await api.get('/system/payment-methods');
+        console.log('Payment methods response:', res);
+        if (res && (res as any).success && (res as any).data) {
+          const data = (res as any).data;
+          console.log('Setting active payment methods state to:', data);
+          setActivePaymentMethods(data);
+          
+          // Set default payment method to the first enabled one
+          if (!data.COD) {
+            if (data.WALLET) {
+              setPaymentMethod('WALLET');
+            } else if (data.POINTS) {
+              setPaymentMethod('POINTS');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi lấy cấu hình phương thức thanh toán:', err);
+      }
+    };
+    fetchPaymentMethods();
   }, []);
 
   // Address state setup
@@ -484,11 +518,17 @@ export const CheckoutTracking: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Method COD */}
                     <label 
-                      onClick={() => setPaymentMethod('COD')}
-                      className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
-                        paymentMethod === 'COD'
-                          ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
-                          : 'border-neutral-200 bg-white hover:bg-neutral-50'
+                      onClick={() => {
+                        if (!activePaymentMethods.COD) return;
+                        setPaymentMethod('COD');
+                      }}
+                      title={!activePaymentMethods.COD ? "Phương thức thanh toán này hiện không hỗ trợ" : undefined}
+                      className={`flex items-center justify-between p-4 border-2 rounded-md select-none transition-all ${
+                        !activePaymentMethods.COD
+                          ? 'border-neutral-200 bg-neutral-100 opacity-40 cursor-not-allowed'
+                          : paymentMethod === 'COD'
+                            ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10 cursor-pointer'
+                            : 'border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -496,12 +536,25 @@ export const CheckoutTracking: React.FC = () => {
                           type="radio"
                           name="payment"
                           checked={paymentMethod === 'COD'}
-                          onChange={() => setPaymentMethod('COD')}
-                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer"
+                          disabled={!activePaymentMethods.COD}
+                          onChange={() => {
+                            if (!activePaymentMethods.COD) return;
+                            setPaymentMethod('COD');
+                          }}
+                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer disabled:cursor-not-allowed"
                         />
                         <div>
-                          <p className="text-sm font-semibold font-body text-neutral-800">Tiền mặt (COD)</p>
-                          <p className="text-[10px] font-mono text-neutral-400">Trả khi nhận món</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold font-body text-neutral-800">Tiền mặt (COD)</p>
+                            {!activePaymentMethods.COD && (
+                              <span className="text-[8px] font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                TẠM THỜI KHÔNG HỖ TRỢ
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-mono text-neutral-400">
+                            {!activePaymentMethods.COD ? "Tạm thời không hỗ trợ..." : "Trả khi nhận món"}
+                          </p>
                         </div>
                       </div>
                       <DollarSign size={20} strokeWidth={1.5} className="text-neutral-500" />
@@ -509,11 +562,17 @@ export const CheckoutTracking: React.FC = () => {
 
                     {/* Method Internal Wallet */}
                     <label 
-                      onClick={() => setPaymentMethod('WALLET')}
-                      className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
-                        paymentMethod === 'WALLET'
-                          ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
-                          : 'border-neutral-200 bg-white hover:bg-neutral-50'
+                      onClick={() => {
+                        if (!activePaymentMethods.WALLET) return;
+                        setPaymentMethod('WALLET');
+                      }}
+                      title={!activePaymentMethods.WALLET ? "Phương thức thanh toán này hiện không hỗ trợ" : undefined}
+                      className={`flex items-center justify-between p-4 border-2 rounded-md select-none transition-all ${
+                        !activePaymentMethods.WALLET
+                          ? 'border-neutral-200 bg-neutral-100 opacity-40 cursor-not-allowed'
+                          : paymentMethod === 'WALLET'
+                            ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10 cursor-pointer'
+                            : 'border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -521,12 +580,25 @@ export const CheckoutTracking: React.FC = () => {
                           type="radio"
                           name="payment"
                           checked={paymentMethod === 'WALLET'}
-                          onChange={() => setPaymentMethod('WALLET')}
-                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer"
+                          disabled={!activePaymentMethods.WALLET}
+                          onChange={() => {
+                            if (!activePaymentMethods.WALLET) return;
+                            setPaymentMethod('WALLET');
+                          }}
+                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer disabled:cursor-not-allowed"
                         />
                         <div>
-                          <p className="text-sm font-semibold font-body text-neutral-800">Ví Saigon-Pay</p>
-                          <p className="text-[10px] font-mono text-neutral-400">Số dư: 150.000đ</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold font-body text-neutral-800">Ví Saigon-Pay</p>
+                            {!activePaymentMethods.WALLET && (
+                              <span className="text-[8px] font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                KHÔNG HỖ TRỢ
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-mono text-neutral-400">
+                            {!activePaymentMethods.WALLET ? "Tạm thời không hỗ trợ..." : "Số dư: 150.000đ"}
+                          </p>
                         </div>
                       </div>
                       <CreditCard size={20} strokeWidth={1.5} className="text-neutral-500" />
@@ -535,6 +607,7 @@ export const CheckoutTracking: React.FC = () => {
                     {/* Method Points Wallet */}
                     <label 
                       onClick={() => {
+                        if (!activePaymentMethods.POINTS) return;
                         const pointsNeeded = Math.ceil(finalTotal / 1000);
                         const userPoints = user?.points || 0;
                         if (userPoints < pointsNeeded) {
@@ -543,25 +616,41 @@ export const CheckoutTracking: React.FC = () => {
                         }
                         setPaymentMethod('POINTS');
                       }}
-                      className={`flex items-center justify-between p-4 border-2 rounded-md cursor-pointer select-none transition-all ${
-                        paymentMethod === 'POINTS'
-                          ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
-                          : 'border-neutral-200 bg-white hover:bg-neutral-50'
-                      } ${(user?.points || 0) < Math.ceil(finalTotal / 1000) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      title={!activePaymentMethods.POINTS ? "Phương thức thanh toán này hiện không hỗ trợ" : undefined}
+                      className={`flex items-center justify-between p-4 border-2 rounded-md select-none transition-all ${
+                        !activePaymentMethods.POINTS
+                          ? 'border-neutral-200 bg-neutral-100 opacity-40 cursor-not-allowed'
+                          : paymentMethod === 'POINTS'
+                            ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10 cursor-pointer'
+                            : 'border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer'
+                      } ${((user?.points || 0) < Math.ceil(finalTotal / 1000) && activePaymentMethods.POINTS) ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       <div className="flex items-center gap-3">
                         <input
                           type="radio"
                           name="payment"
                           checked={paymentMethod === 'POINTS'}
-                          disabled={(user?.points || 0) < Math.ceil(finalTotal / 1000)}
-                          onChange={() => setPaymentMethod('POINTS')}
+                          disabled={!activePaymentMethods.POINTS || (user?.points || 0) < Math.ceil(finalTotal / 1000)}
+                          onChange={() => {
+                            if (!activePaymentMethods.POINTS) return;
+                            setPaymentMethod('POINTS');
+                          }}
                           className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer disabled:cursor-not-allowed"
                         />
                         <div>
-                          <p className="text-sm font-semibold font-body text-neutral-800">Điểm Tích Lũy</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold font-body text-neutral-800">Điểm Tích Lũy</p>
+                            {!activePaymentMethods.POINTS && (
+                              <span className="text-[8px] font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                TẠM THỜI KHÔNG HỖ TRỢ
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[10px] font-mono text-neutral-400">
-                            Số dư: {user?.points || 0} điểm (cần {Math.ceil(finalTotal / 1000)}đ)
+                            {!activePaymentMethods.POINTS
+                              ? "Tạm thời không hỗ trợ..."
+                              : `Số dư: ${user?.points || 0} điểm (cần ${Math.ceil(finalTotal / 1000)}đ)`
+                            }
                           </p>
                         </div>
                       </div>
