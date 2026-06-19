@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store/redux/store';
 import Sidebar from '../../components/organisms/Sidebar';
 import ManagerOverview from './ManagerOverview';
 import ManagerApprovals from './ManagerApprovals';
 
+import ManagerVendors from './ManagerVendors';
+import ManagerProducts from './ManagerProducts';
+import ManagerReports from './ManagerReports';
+import ManagerWithdrawals from './ManagerWithdrawals';
+
 export const ManagerDashboard: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState('overview');
-  const { user } = useSelector((state: RootState) => state.auth);
 
   const renderContent = () => {
     switch (activeMenu) {
@@ -15,6 +17,14 @@ export const ManagerDashboard: React.FC = () => {
         return <ManagerOverview />;
       case 'approvals':
         return <ManagerApprovals />;
+      case 'vendors':
+        return <ManagerVendors />;
+      case 'products':
+        return <ManagerProducts />;
+      case 'reports':
+        return <ManagerReports />;
+      case 'withdrawals':
+        return <ManagerWithdrawals />;
       case 'accounts':
         return (
           <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-[#E8D8C6] rounded-xl bg-[#FEFCF9] animate-fade-in mt-8">

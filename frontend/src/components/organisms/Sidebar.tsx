@@ -38,6 +38,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu = 'overview', onMen
     menuItems = [
       { id: 'overview', label: 'Tổng Quan', icon: Home },
       { id: 'approvals', label: 'Duyệt Nhà Hàng', icon: CheckSquare },
+      { id: 'vendors', label: 'Quản Lý Vendor', icon: Store },
+      { id: 'products', label: 'Quản Lý Sản Phẩm', icon: ShoppingBag },
+      { id: 'reports', label: 'Báo Cáo Vi Phạm', icon: MessageSquare },
+      { id: 'withdrawals', label: 'Yêu Cầu Rút Tiền', icon: Wallet },
       { id: 'accounts', label: 'Tài Khoản', icon: Users },
     ];
   } else if (isVendor) {

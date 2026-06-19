@@ -87,6 +87,10 @@ export class User extends Model {
   @Column(DataType.ENUM('pending', 'active', 'banned'))
   status!: UserStatus;
 
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  banReason?: string;
+
   @AllowNull(false)
   @Default(0)
   @Column(DataType.INTEGER)
