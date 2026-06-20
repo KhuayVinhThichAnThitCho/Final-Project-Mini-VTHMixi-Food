@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Star, MessageSquare, Users, CheckCircle, Heart, XCircle } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import ImageSwiper from '../../components/molecules/ImageSwiper';
-import { MOCK_MENU_ITEMS } from '../../utils/mockData';
+import { MOCK_MENU_ITEMS, MOCK_RESTAURANTS } from '../../utils/mockData';
 import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
 import menuItemApi from '../../services/menuItemApi';
@@ -26,11 +26,8 @@ export const ProductDetail: React.FC = () => {
   const { addToCart, allCartItemsCount } = useCart();
   const { isAuthenticated } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
-
-  // Find product detail from mock menu items
-  const item = useMemo(() => {
-    return MOCK_MENU_ITEMS.find((m) => m.id === id) || MOCK_MENU_ITEMS[0];
-  }, [id]);
+  const [dbItem, setDbItem] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   // States
   const [quantity, setQuantity] = useState(1);
@@ -39,6 +36,50 @@ export const ProductDetail: React.FC = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Tải chi tiết món ăn từ backend hoặc dùng mock dự phòng
+  useEffect(() => {
+    if (!id || id.startsWith('menu-')) {
+      setDbItem(null);
+      setLoading(false);
+      return;
+    }
+    const fetchItemDetail = async () => {
+      try {
+        setLoading(true);
+        const res = await menuItemApi.getMenuItemDetail(id);
+        if (res && res.success && res.data) {
+          setDbItem(res.data);
+        } else {
+          setDbItem(null);
+        }
+      } catch (err) {
+        console.warn('Lỗi khi tải chi tiết món ăn từ API. Dùng dữ liệu mock.', err);
+        setDbItem(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItemDetail();
+  }, [id]);
+
+  // Find product detail from backend or mock menu items
+  const item = useMemo(() => {
+    if (dbItem) {
+      const rest = dbItem.restaurant || {};
+      const mockRest = (MOCK_RESTAURANTS.find((r: any) => r.id === dbItem.restaurantId) || {}) as any;
+      return {
+        ...dbItem,
+        imageUrl: dbItem.image || dbItem.imageUrl,
+        restaurantName: rest.name || dbItem.restaurantName || mockRest.name || 'Quán ăn',
+        restaurantRating: rest.ratingAvg !== undefined ? Number(rest.ratingAvg) : (mockRest.rating || 0),
+        restaurantDeliveryFee: rest.deliveryFee !== undefined ? Number(rest.deliveryFee) : (mockRest.deliveryFee || 0),
+        restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open') : (mockRest.isOpen || false),
+        toppings: dbItem.toppings || [],
+      };
+    }
+    return MOCK_MENU_ITEMS.find((m) => m.id === id) || MOCK_MENU_ITEMS[0];
+  }, [id, dbItem]);
 
   // Hiện toast notification tự động ẩn sau 2.5 giây
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
@@ -135,7 +176,8 @@ export const ProductDetail: React.FC = () => {
   // Real-time total price calculation using useMemo
   const totalPrice = useMemo(() => {
     const toppingsCost = selectedToppings.reduce((sum, toppingId) => {
-      const topping = item.toppings.find((t) => t.id === toppingId);
+      const toppings = item.toppings || [];
+      const topping = toppings.find((t: any) => t.id === toppingId);
       return sum + (topping ? topping.price : 0);
     }, 0);
     return (item.price + toppingsCost) * quantity;
@@ -153,8 +195,8 @@ export const ProductDetail: React.FC = () => {
   // Handle add item to global cart
   const handleAddToCart = () => {
     const toppingsList = selectedToppings
-      .map((toppingId) => item.toppings.find((t) => t.id === toppingId))
-      .filter(Boolean) as { id: string; name: string; price: number }[];
+      .map((toppingId) => (item.toppings || []).find((t: any) => t.id === toppingId))
+      .filter((t): t is Exclude<typeof t, undefined> => t !== undefined);
 
     const unitPrice = item.price + toppingsList.reduce((sum, t) => sum + t.price, 0);
     
@@ -175,6 +217,18 @@ export const ProductDetail: React.FC = () => {
       showToast(`🛵 Đã thêm ${quantity}x "${item.name}" vào giỏ hàng!`);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="texture-paper min-h-screen bg-[#FAF7F3] flex flex-col">
+        <Header cartCount={allCartItemsCount} />
+        <div className="flex-1 flex flex-col items-center justify-center py-20 font-mono text-xs text-neutral-500">
+          <div className="w-8 h-8 border-4 border-[#BF3A20] border-t-transparent rounded-full animate-spin mb-4" />
+          <span>Đang tải thông tin món ăn...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
@@ -279,7 +333,7 @@ export const ProductDetail: React.FC = () => {
                 </h3>
                 
                 <div className="space-y-2.5">
-                  {item.toppings.map((topping) => {
+                  {item.toppings.map((topping: any) => {
                     const isChecked = selectedToppings.includes(topping.id);
                     return (
                       <label

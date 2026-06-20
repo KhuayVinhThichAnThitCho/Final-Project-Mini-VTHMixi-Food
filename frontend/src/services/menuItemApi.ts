@@ -162,6 +162,19 @@ export const menuItemApi = {
       return { buyerCount: 0, reviewCount: 0 };
     }
   },
+
+  /**
+   * Lấy chi tiết món ăn theo ID
+   */
+  getMenuItemDetail: async (id: string) => {
+    try {
+      const response = await api.get(`/menu-items/${id}`) as any;
+      return response;
+    } catch (error) {
+      console.warn(`Backend API /menu-items/${id} failed.`, error);
+      return null;
+    }
+  },
 };
 
 export default menuItemApi;

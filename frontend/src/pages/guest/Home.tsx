@@ -9,6 +9,9 @@ import SaigonDivider from '../../components/molecules/SaigonDivider';
 import { MOCK_CATEGORIES, MOCK_RESTAURANTS, MOCK_MENU_ITEMS, MenuItemDetail } from '../../utils/mockData';
 import useCart from '../../hooks/useCart';
 import menuItemApi from '../../services/menuItemApi';
+import { VoucherCard, VoucherData } from '../../components/molecules/VoucherCard';
+import voucherApi from '../../services/voucherApi';
+import { useAuthStore } from '../../store/useAuthStore';
 
 // Swiper component and modules
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -24,6 +27,58 @@ export const Home: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { allCartItemsCount } = useCart();
+  const { isAuthenticated } = useAuthStore();
+
+  // States cho hệ thống Voucher ở trang chủ
+  const [vouchers, setVouchers] = useState<VoucherData[]>([]);
+  const [collectedIds, setCollectedIds] = useState<string[]>([]);
+  const [collectingId, setCollectingId] = useState<string | null>(null);
+
+  // Fetch danh sách voucher trang chủ
+  useEffect(() => {
+    const loadVouchers = async () => {
+      try {
+        const res = await voucherApi.getVouchers();
+        if (res && res.success) {
+          // Lấy tối đa 6 voucher hoạt động để hiển thị ở carousel
+          setVouchers((res.data || []).slice(0, 6));
+        }
+
+        if (isAuthenticated) {
+          const collRes = await voucherApi.getMyCollectedVouchers();
+          if (collRes && collRes.success) {
+            const ids = (collRes.data || [])
+              .filter((item: any) => !item.isUsed)
+              .map((item: any) => item.voucherId);
+            setCollectedIds(ids);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading homepage vouchers:', err);
+      }
+    };
+    loadVouchers();
+  }, [isAuthenticated]);
+
+  const handleCollectVoucher = async (voucherId: string) => {
+    if (!isAuthenticated) {
+      alert('Vui lòng đăng nhập để thu thập mã giảm giá.');
+      navigate('/login');
+      return;
+    }
+    setCollectingId(voucherId);
+    try {
+      const res = await voucherApi.collectVoucher(voucherId);
+      if (res && res.success) {
+        setCollectedIds(prev => [...prev, voucherId]);
+        alert(res.message || 'Đã lưu mã giảm giá vào ví!');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi thu thập mã giảm giá.');
+    } finally {
+      setCollectingId(null);
+    }
+  };
 
   // States for Top 10 lists (món ăn - menu items)
   const [topBestSellers, setTopBestSellers] = useState<MenuItemDetail[]>([]);
@@ -116,6 +171,50 @@ export const Home: React.FC = () => {
         setSearchQuery={setSearchQuery}
         onExploreMenu={() => navigate('/menu')}
       />
+
+      {/* Voucher Carousel Section */}
+      {vouchers.length > 0 && (
+        <section className="max-w-6xl w-full mx-auto px-4 mt-8 select-none">
+          <div className="mb-4 flex items-center justify-between border-b-2 border-neutral-900 pb-2">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-neutral-900 flex items-center gap-1.5">
+              <span>🎁</span>
+              Mã Giảm Giá Hot Hôm Nay
+            </h2>
+            <button
+              onClick={() => navigate('/vouchers')}
+              className="text-[11px] font-mono font-bold text-[#BF3A20] hover:underline"
+            >
+              Xem thêm voucher ›
+            </button>
+          </div>
+
+          <Swiper
+            modules={[Navigation]}
+            spaceBetween={16}
+            navigation
+            breakpoints={{
+              320: { slidesPerView: 1.1, spaceBetween: 10 },
+              640: { slidesPerView: 1.8, spaceBetween: 12 },
+              768: { slidesPerView: 2.3, spaceBetween: 16 },
+              1024: { slidesPerView: 3, spaceBetween: 16 },
+            }}
+            style={{ '--swiper-navigation-color': '#BF3A20', padding: '4px 4px 10px 4px' } as React.CSSProperties}
+            className="pb-4"
+          >
+            {vouchers.map((voucher) => (
+              <SwiperSlide key={voucher.id}>
+                <VoucherCard
+                  voucher={voucher}
+                  isCollected={collectedIds.includes(voucher.id)}
+                  onCollect={() => handleCollectVoucher(voucher.id)}
+                  onUse={() => navigate(voucher.restaurantId ? `/restaurants/${voucher.restaurantId}` : '/')}
+                  loading={collectingId === voucher.id}
+                />
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        </section>
+      )}
 
       {/* 3. CATEGORY STRIP — Click để xem món theo danh mục tại /menu */}
       <CategoryStrip

@@ -13,12 +13,14 @@ import ProductDetail from '../pages/guest/ProductDetail';
 import Cart from '../pages/guest/Cart';
 import MenuCatalog from '../pages/guest/MenuCatalog';
 import SearchPage from '../pages/guest/Search';
+import VouchersPage from '../pages/guest/VouchersPage';
 
 // Pages - User
 import Profile from '../pages/user/Profile';
 import CheckoutTracking from '../pages/user/CheckoutTracking';
 import Favorites from '../pages/user/Favorites';
 import SmartCartAssistant from '../pages/user/SmartCartAssistant';
+import MyVouchers from '../pages/user/MyVouchers';
 
 // Pages - Vendor
 import VendorDashboard from '../pages/vendor/Dashboard';
@@ -47,6 +49,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/menu-items/:id" element={<ProductDetail />} />
       <Route path="/menu" element={<MenuCatalog />} />
       <Route path="/search" element={<SearchPage />} />
+      <Route path="/vouchers" element={<VouchersPage />} />
 
       {/* 2. Các route cần đăng nhập */}
       <Route element={<PrivateRoute allowedRoles={['USER', 'VENDOR', 'MANAGER', 'ADMIN']} />}>
@@ -56,6 +59,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/orders/history" element={<OrderHistory />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/smart-cart" element={<SmartCartAssistant />} />
+        <Route path="/my-vouchers" element={<MyVouchers />} />
       </Route>
 
       {/* 3. Các route dành riêng cho Vendor */}

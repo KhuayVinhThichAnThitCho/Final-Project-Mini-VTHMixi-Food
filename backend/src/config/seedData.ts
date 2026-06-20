@@ -2,6 +2,7 @@ import { User } from '../models/User';
 import { Restaurant } from '../models/Restaurant';
 import { MenuItem } from '../models/MenuItem';
 import { SystemConfig } from '../models/SystemConfig';
+import { Voucher } from '../models/Voucher';
 
 const SEED_RESTAURANTS = [
   {
@@ -92,7 +93,16 @@ const SEED_RESTAURANTS = [
     deliveryFee: 10000,
     isOpen: true,
   },
+  {
+    id: 'rest-central',
+    name: 'Quán Ăn Miền Trung O Nở',
+    address: '145 Bành Văn Trân, Tân Bình, TP.HCM',
+    rating: 4.8,
+    deliveryFee: 15000,
+    isOpen: true,
+  },
 ];
+
 
 const SEED_MENU_ITEMS = [
   {
@@ -414,7 +424,64 @@ const SEED_MENU_ITEMS = [
     category: 'coffee',
     viewCount: 2900,
   },
+  {
+    id: 'menu-central-1',
+    restaurantId: 'rest-central',
+    name: 'Bún Bò Huế Đặc Biệt',
+    price: 50000,
+    description: 'Sợi bún to, thịt bò nạm, chả cua Huế thơm nồng, nước dùng đậm đà, cay xè đặc trưng vị Huế.',
+    imageUrl: '',
+    images: [],
+    isAvailable: true,
+    stock: 50,
+    soldCount: 142,
+    category: 'pho',
+    viewCount: 320,
+  },
+  {
+    id: 'menu-central-2',
+    restaurantId: 'rest-central',
+    name: 'Mì Quảng Gà Ta',
+    price: 45000,
+    description: 'Sợi mì Quảng vàng dai ngon kết hợp thịt gà ta dai ngọt, nước lèo xâm xấp đậm đà ăn kèm bánh đa giòn rụm và rau sống ngon chuẩn vị miền Trung.',
+    imageUrl: '',
+    images: [],
+    isAvailable: true,
+    stock: 40,
+    soldCount: 98,
+    category: 'pho',
+    viewCount: 210,
+  },
+  {
+    id: 'menu-central-3',
+    restaurantId: 'rest-central',
+    name: 'Bánh Bèo Chén Miền Trung',
+    price: 35000,
+    description: 'Mâm bánh bèo chén nhân tôm chấy, mỡ hành beo béo ăn kèm nước mắm ớt tỏi Lý Sơn cay mặn đậm đà.',
+    imageUrl: '',
+    images: [],
+    isAvailable: true,
+    stock: 30,
+    soldCount: 180,
+    category: 'snack',
+    viewCount: 420,
+  },
+  {
+    id: 'menu-central-4',
+    restaurantId: 'rest-central',
+    name: 'Bún Lòng Nghệ Xào Hẹ',
+    price: 40000,
+    description: 'Bún xào lòng heo tươi giòn quyện với bột nghệ vàng tươi, hẹ lá thơm nồng nàn cay ấm bụng đúng vị miền Trung mặn mà.',
+    imageUrl: '',
+    images: [],
+    isAvailable: true,
+    stock: 25,
+    soldCount: 65,
+    category: 'pho',
+    viewCount: 180,
+  },
 ];
+
 
 export const seedDatabase = async () => {
   try {
@@ -575,6 +642,91 @@ export const seedDatabase = async () => {
       }))
     );
     console.log(`Seeded ${SEED_MENU_ITEMS.length} menu items!`);
+
+    // 4. Seed Vouchers
+    const voucherCount = await Voucher.count();
+    if (voucherCount === 0) {
+      console.log('🌱 Seeding sample vouchers...');
+      const admin = await User.findOne({ where: { role: 'admin' } });
+      const vendor = await User.findOne({ where: { role: 'vendor' } });
+      const now = new Date();
+      const nextMonth = new Date();
+      nextMonth.setMonth(now.getMonth() + 1);
+
+      await Voucher.bulkCreate([
+        // Platform wide
+        {
+          code: 'SAIGON90S',
+          discountType: 'fixed_amount',
+          discountValue: 15000,
+          minOrderAmount: 40000,
+          startDate: now,
+          endDate: nextMonth,
+          isActive: true,
+          createdBy: admin?.id || null,
+          restaurantId: null,
+        },
+        {
+          code: 'FREESHIP',
+          discountType: 'percentage',
+          discountValue: 100,
+          maxDiscountAmount: 15000,
+          minOrderAmount: 50000,
+          startDate: now,
+          endDate: nextMonth,
+          isActive: true,
+          createdBy: admin?.id || null,
+          restaurantId: null,
+        },
+        {
+          code: 'ANRATNGON',
+          discountType: 'fixed_amount',
+          discountValue: 20000,
+          minOrderAmount: 80000,
+          startDate: now,
+          endDate: nextMonth,
+          isActive: true,
+          createdBy: admin?.id || null,
+          restaurantId: null,
+        },
+        // Restaurant specific
+        {
+          code: 'HUTIEU10',
+          discountType: 'percentage',
+          discountValue: 10,
+          maxDiscountAmount: 10000,
+          minOrderAmount: 30000,
+          startDate: now,
+          endDate: nextMonth,
+          isActive: true,
+          createdBy: vendor?.id || null,
+          restaurantId: 'rest-1',
+        },
+        {
+          code: 'COMTAM15',
+          discountType: 'fixed_amount',
+          discountValue: 15000,
+          minOrderAmount: 50000,
+          startDate: now,
+          endDate: nextMonth,
+          isActive: true,
+          createdBy: vendor?.id || null,
+          restaurantId: 'rest-2',
+        },
+        {
+          code: 'BANHMI5K',
+          discountType: 'fixed_amount',
+          discountValue: 5000,
+          minOrderAmount: 20000,
+          startDate: now,
+          endDate: nextMonth,
+          isActive: true,
+          createdBy: vendor?.id || null,
+          restaurantId: 'rest-5',
+        }
+      ]);
+      console.log('Seeded sample vouchers!');
+    }
 
   } catch (error) {
     console.error('❌ Error seeding database:', error);

@@ -19,37 +19,140 @@ export const searchController = {
         return;
       }
 
-      const likeQuery = { [Op.like]: `%${q}%` };
+      const keywords = q.split(/\s+/).filter(kw => kw.trim().length > 0);
       let menuItems: any[] = [];
       let restaurants: any[] = [];
 
       if (type === 'all' || type === 'menu') {
+        const keywordConditions = keywords.map(kw => ({
+          [Op.or]: [
+            { name: { [Op.like]: `%${kw}%` } },
+            { description: { [Op.like]: `%${kw}%` } }
+          ]
+        }));
+
+        const menuWhereClause: any = {
+          isDeleted: false,
+          isAvailable: true,
+          [Op.or]: [
+            { name: { [Op.like]: `%${q}%` } },
+            { description: { [Op.like]: `%${q}%` } }
+          ]
+        };
+
+        if (keywordConditions.length > 0) {
+          menuWhereClause[Op.or].push({ [Op.and]: keywordConditions });
+        }
+
         menuItems = await MenuItem.findAll({
-          where: {
-            isDeleted: false,
-            isAvailable: true,
-            [Op.or]: [
-              { name: likeQuery },
-              { description: likeQuery },
-            ],
-          },
-          limit,
-          order: [['soldCount', 'DESC']],
+          where: menuWhereClause,
+          limit: limit * 2, // Fetch double the limit to allow re-ranking in memory
         });
+
+        // Smart re-ranking in memory
+        menuItems.sort((a: any, b: any) => {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          const qLower = q.toLowerCase();
+
+          // Rule 1: Exact matches or exact starts-with
+          const aExact = aName === qLower;
+          const bExact = bName === qLower;
+          if (aExact && !bExact) return -1;
+          if (!aExact && bExact) return 1;
+
+          const aStarts = aName.startsWith(qLower);
+          const bStarts = bName.startsWith(qLower);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+
+          const aContains = aName.includes(qLower);
+          const bContains = bName.includes(qLower);
+          if (aContains && !bContains) return -1;
+          if (!aContains && bContains) return 1;
+
+          // Rule 2: Count matched keywords
+          let aMatchCount = 0;
+          let bMatchCount = 0;
+          keywords.forEach(kw => {
+            const kwL = kw.toLowerCase();
+            if (aName.includes(kwL)) aMatchCount++;
+            if (bName.includes(kwL)) bMatchCount++;
+          });
+
+          if (aMatchCount !== bMatchCount) {
+            return bMatchCount - aMatchCount; // Descending
+          }
+
+          // Rule 3: soldCount
+          return b.soldCount - a.soldCount;
+        });
+
+        // Trim to desired limit
+        menuItems = menuItems.slice(0, limit);
       }
 
       if (type === 'all' || type === 'restaurant') {
+        const keywordConditions = keywords.map(kw => ({
+          [Op.or]: [
+            { name: { [Op.like]: `%${kw}%` } },
+            { address: { [Op.like]: `%${kw}%` } }
+          ]
+        }));
+
+        const restaurantWhereClause: any = {
+          status: { [Op.ne]: 'banned' },
+          [Op.or]: [
+            { name: { [Op.like]: `%${q}%` } },
+            { address: { [Op.like]: `%${q}%` } }
+          ]
+        };
+
+        if (keywordConditions.length > 0) {
+          restaurantWhereClause[Op.or].push({ [Op.and]: keywordConditions });
+        }
+
         restaurants = await Restaurant.findAll({
-          where: {
-            status: { [Op.ne]: 'banned' },
-            [Op.or]: [
-              { name: likeQuery },
-              { address: likeQuery },
-            ],
-          },
-          limit,
-          order: [['ratingAvg', 'DESC']],
+          where: restaurantWhereClause,
+          limit: limit * 2,
         });
+
+        restaurants.sort((a: any, b: any) => {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          const qLower = q.toLowerCase();
+
+          const aExact = aName === qLower;
+          const bExact = bName === qLower;
+          if (aExact && !bExact) return -1;
+          if (!aExact && bExact) return 1;
+
+          const aStarts = aName.startsWith(qLower);
+          const bStarts = bName.startsWith(qLower);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+
+          const aContains = aName.includes(qLower);
+          const bContains = bName.includes(qLower);
+          if (aContains && !bContains) return -1;
+          if (!aContains && bContains) return 1;
+
+          let aMatchCount = 0;
+          let bMatchCount = 0;
+          keywords.forEach(kw => {
+            const kwL = kw.toLowerCase();
+            if (aName.includes(kwL)) aMatchCount++;
+            if (bName.includes(kwL)) bMatchCount++;
+          });
+
+          if (aMatchCount !== bMatchCount) {
+            return bMatchCount - aMatchCount;
+          }
+
+          return b.ratingAvg - a.ratingAvg;
+        });
+
+        restaurants = restaurants.slice(0, limit);
       }
 
       res.status(200).json({

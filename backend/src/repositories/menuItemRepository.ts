@@ -65,6 +65,22 @@ export const menuItemRepository = {
   },
 
   /**
+   * Lấy chi tiết món ăn theo ID
+   */
+  findById: async (id: string): Promise<MenuItem | null> => {
+    return await MenuItem.findOne({
+      where: { id, isDeleted: false },
+      include: [
+        {
+          model: Restaurant,
+          as: 'restaurant',
+          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg'],
+        },
+      ],
+    });
+  },
+
+  /**
    * Tăng lượt xem sản phẩm
    */
   incrementViewCount: async (id: string): Promise<MenuItem | null> => {

@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShoppingBag, Send, User, Sparkles, CheckCircle2, Plus } from 'lucide-react';
+import { Send, User, Sparkles, CheckCircle2, Plus } from 'lucide-react';
 import api from '../../services/api';
+import Header from '../../components/organisms/Header';
+import { useNavigate } from 'react-router-dom';
+import searchApi from '../../services/searchApi';
+import useCart from '../../hooks/useCart';
 
 interface RecommendedItem {
   name: string;
@@ -16,9 +20,12 @@ interface Message {
 }
 
 const SmartCartAssistant: React.FC = () => {
+  const navigate = useNavigate();
+  const { allCartItemsCount } = useCart();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [navigatingItem, setNavigatingItem] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
@@ -89,6 +96,46 @@ const SmartCartAssistant: React.FC = () => {
     }
   };
 
+  const handleItemClick = async (item: RecommendedItem) => {
+    setNavigatingItem(item.name);
+    try {
+      const result = await searchApi.search(item.name, 'menu');
+      if (result.menuItems && result.menuItems.length > 0) {
+        const found = result.menuItems[0];
+        
+        // Tính toán tỷ lệ khớp từ khóa để tránh chuyển hướng sai món (mismatched redirect)
+        const queryLower = item.name.toLowerCase().trim();
+        const foundNameLower = found.name.toLowerCase();
+        
+        const queryKeywords = queryLower.split(/\s+/).filter(kw => kw.length > 0);
+        let matchedCount = 0;
+        queryKeywords.forEach(kw => {
+          if (foundNameLower.includes(kw)) {
+            matchedCount++;
+          }
+        });
+        
+        const matchRatio = queryKeywords.length > 0 ? matchedCount / queryKeywords.length : 0;
+        const isPhraseMatch = foundNameLower.includes(queryLower);
+
+        // Chỉ chuyển thẳng đến chi tiết nếu trùng khớp cụm từ hoặc khớp >= 70% số từ khóa
+        if (isPhraseMatch || matchRatio >= 0.7) {
+          const itemId = found.id || found._id;
+          if (itemId) {
+            navigate(`/menu-items/${itemId}`);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Search failed, fallback to search page:', err);
+    } finally {
+      setNavigatingItem(null);
+    }
+    // Fallback: sang trang kết quả tìm kiếm nếu không có món trùng khớp đáng tin cậy
+    navigate(`/search?q=${encodeURIComponent(item.name)}`);
+  };
+
   const handleAddToCart = async (item: RecommendedItem) => {
     alert(`Đã thêm ${item.name} vào giỏ hàng! (Chức năng gọi API giỏ hàng)`);
   };
@@ -99,8 +146,11 @@ const SmartCartAssistant: React.FC = () => {
 
   return (
     <div className="w-full h-screen flex flex-col bg-[#FAF7F3] relative overflow-hidden">
-      {/* Header */}
-      <div className="bg-[#FEFCF9] border-b border-[#E8D8C6] px-4 py-2 flex items-center justify-center sticky top-0 z-20 shadow-sm">
+      {/* Sticky Header – giữ điều hướng */}
+      <Header cartCount={allCartItemsCount} />
+
+      {/* Page sub-header */}
+      <div className="bg-[#FEFCF9] border-b border-[#E8D8C6] px-4 py-2 flex items-center justify-center z-20 shadow-sm animate-fade-in">
         <div className="max-w-5xl w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#BF3A20] to-[#E9C46A] flex items-center justify-center shadow-inner">
@@ -111,13 +161,6 @@ const SmartCartAssistant: React.FC = () => {
               <p className="font-mono text-[10px] font-bold text-[#9E6E4A]">Lập thực đơn bằng AI</p>
             </div>
           </div>
-          <button 
-            className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#FAF7F3] text-[#7A5235] border border-[#E8D8C6] rounded-xl font-bold hover:bg-[#E8D8C6] transition-colors shadow-sm text-sm"
-            onClick={() => window.location.href = '/cart'}
-          >
-            <ShoppingBag size={18} />
-            <span className="hidden sm:inline">Xem Giỏ Hàng</span>
-          </button>
         </div>
       </div>
 
@@ -178,7 +221,12 @@ const SmartCartAssistant: React.FC = () => {
                       {/* Grid 3 cột theo đề xuất */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {msg.recommendedItems.map((item, idx) => (
-                          <div key={idx} className="bg-[#FAF7F3] border border-[#E8D8C6] p-3 rounded-xl flex flex-col justify-between hover:-translate-y-1 hover:shadow-md transition-all relative overflow-hidden group">
+                          <div 
+                            key={idx} 
+                            onClick={() => handleItemClick(item)}
+                            className="bg-[#FAF7F3] border border-[#E8D8C6] p-3 rounded-xl flex flex-col justify-between hover:-translate-y-1 hover:shadow-md hover:border-[#BF3A20] transition-all relative overflow-hidden group cursor-pointer"
+                            title="Nhấp để xem chi tiết món ăn"
+                          >
                             {/* Dấu tem xéo */}
                             <div className="absolute -top-1 -right-4 bg-[#BF3A20] text-white font-display italic text-[10px] px-5 py-0.5 rotate-[45deg] shadow-sm z-10">
                               Ngon!
@@ -186,7 +234,12 @@ const SmartCartAssistant: React.FC = () => {
                             
                             <div className="flex flex-col h-full">
                               <div>
-                                <h4 className="font-bold font-body text-[#2C1A0E] text-[15px] pr-4">{item.name}</h4>
+                                <h4 className="font-bold font-body text-[#2C1A0E] text-[15px] pr-4 group-hover:text-[#BF3A20] transition-colors flex items-center gap-1">
+                                  <span>{item.name}</span>
+                                  {navigatingItem === item.name && (
+                                    <span className="w-3 h-3 border-2 border-t-transparent border-[#BF3A20] rounded-full animate-spin flex-shrink-0" />
+                                  )}
+                                </h4>
                                 <div className="flex text-[#E9C46A] text-[10px] mt-1 mb-2">
                                   {'★'.repeat(5)}
                                 </div>
@@ -196,8 +249,11 @@ const SmartCartAssistant: React.FC = () => {
                               <div className="mt-auto flex items-center justify-between">
                                 <span className="font-mono font-bold text-[#BF3A20]">{formatPrice(item.price)}</span>
                                 <button 
-                                  onClick={() => handleAddToCart(item)}
-                                  className="w-8 h-8 rounded-full bg-[#E8D8C6] hover:bg-[#BF3A20] hover:text-white text-[#5C1A0A] flex items-center justify-center transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToCart(item);
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-[#E8D8C6] hover:bg-[#BF3A20] hover:text-white text-[#5C1A0A] flex items-center justify-center transition-colors relative z-10"
                                   title="Thêm vào giỏ"
                                 >
                                   <Plus size={16} />

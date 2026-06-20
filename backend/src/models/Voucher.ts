@@ -7,7 +7,11 @@ import {
   Default,
   AllowNull,
   Unique,
+  ForeignKey,
+  BelongsTo,
 } from 'sequelize-typescript';
+import { Restaurant } from './Restaurant';
+import { User } from './User';
 
 export type DiscountType = 'percentage' | 'fixed_amount';
 
@@ -62,6 +66,24 @@ export class Voucher extends Model {
   @Default(true)
   @Column(DataType.BOOLEAN)
   isActive!: boolean;
+
+  // Liên kết đến nhà hàng (nếu có, null nghĩa là voucher toàn hệ thống)
+  @ForeignKey(() => Restaurant)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  restaurantId?: string;
+
+  @BelongsTo(() => Restaurant)
+  restaurant?: Restaurant;
+
+  // Người tạo ra voucher này (Admin hoặc Vendor)
+  @ForeignKey(() => User)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  createdBy?: string;
+
+  @BelongsTo(() => User)
+  creator?: User;
 }
 
 export default Voucher;
