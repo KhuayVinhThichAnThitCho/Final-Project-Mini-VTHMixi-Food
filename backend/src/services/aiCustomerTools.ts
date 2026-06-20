@@ -25,11 +25,32 @@ export const aiCustomerTools = {
 
     const items = await MenuItem.findAll({
       where: whereClause,
-      limit: 50,
+      limit: 100,
       attributes: ['id', 'name', 'description', 'price', 'restaurantId', 'category']
     });
 
-    return items;
+    if (items.length === 0) return [];
+
+    // Group items by restaurantId
+    const itemsByRestaurant = items.reduce((acc: any, item) => {
+      if (!acc[item.restaurantId]) acc[item.restaurantId] = [];
+      acc[item.restaurantId].push(item);
+      return acc;
+    }, {});
+
+    // Find the restaurant with the most items
+    let maxRestaurantId = Object.keys(itemsByRestaurant)[0];
+    let maxItemsCount = itemsByRestaurant[maxRestaurantId].length;
+
+    for (const rId in itemsByRestaurant) {
+      if (itemsByRestaurant[rId].length > maxItemsCount) {
+        maxItemsCount = itemsByRestaurant[rId].length;
+        maxRestaurantId = rId;
+      }
+    }
+
+    // Chỉ trả về các món của 1 nhà hàng duy nhất để AI không bị nhầm lẫn
+    return itemsByRestaurant[maxRestaurantId];
   },
 
   addItemsToCart: async (userId: string, itemsToAdd: { menuItemId: string, quantity: number, restaurantId: string }[]) => {

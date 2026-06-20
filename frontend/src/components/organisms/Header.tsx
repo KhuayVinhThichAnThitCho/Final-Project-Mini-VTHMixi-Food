@@ -66,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 h-16 bg-[#FEFCF9] border-b border-[#E8D8C6] shadow-saigon-sm">
+    <nav className="sticky top-0 z-[9999] h-16 bg-[#FEFCF9] border-b border-[#E8D8C6] shadow-saigon-sm">
       <div className="max-w-6xl mx-auto h-full px-4 flex items-center justify-between gap-4">
         
         {/* Left: Logo "GrabFood Mini" */}
