@@ -119,6 +119,30 @@ export const menuItemController = {
       next(error);
     }
   },
+
+  /**
+   * Lấy chi tiết món ăn theo ID
+   */
+  getMenuItemById: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const item = await menuItemRepository.findById(id);
+      if (!item) {
+        res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy sản phẩm.',
+        });
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        message: 'Lấy chi tiết món ăn thành công.',
+        data: item,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default menuItemController;

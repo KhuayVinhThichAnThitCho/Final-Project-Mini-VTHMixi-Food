@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Store, Package, ShoppingBag,
-  BarChart3, LogOut, ChevronRight, Shield, Settings, ClipboardList
+  BarChart3, LogOut, ChevronRight, Shield, Settings, ClipboardList, Tag
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
@@ -17,6 +17,7 @@ const menuItems = [
   { id: 'vendors', label: 'Quản Lý Vendor', icon: Store },
   { id: 'products', label: 'Sản Phẩm', icon: Package },
   { id: 'orders', label: 'Đơn Hàng', icon: ShoppingBag },
+  { id: 'vouchers', label: 'Mã Giảm Giá', icon: Tag },
   { id: 'analytics', label: 'Báo Cáo & Doanh Thu', icon: BarChart3 },
   { id: 'settings', label: 'Cấu Hình Hệ Thống', icon: Settings },
   { id: 'activity-log', label: 'Lịch Sử Hoạt Động', icon: ClipboardList },

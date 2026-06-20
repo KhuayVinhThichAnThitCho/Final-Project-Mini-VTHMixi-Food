@@ -6,13 +6,16 @@ import {
   DollarSign, 
   ArrowLeft,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Ticket,
+  X
 } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
 import orderApi from '../../services/orderApi';
 import voucherApi from '../../services/voucherApi';
+import { VoucherCard } from '../../components/molecules/VoucherCard';
 import api from '../../services/api';
 
 interface CheckoutItem {
@@ -46,6 +49,31 @@ export const CheckoutTracking: React.FC = () => {
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [vouchersLoading, setVouchersLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Ví voucher states
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [collectedVouchers, setCollectedVouchers] = useState<any[]>([]);
+  const [loadingCollected, setLoadingCollected] = useState(false);
+
+  // Load ví voucher
+  useEffect(() => {
+    if (user) {
+      const fetchCollected = async () => {
+        try {
+          setLoadingCollected(true);
+          const res = await voucherApi.getMyCollectedVouchers();
+          if (res && res.success) {
+            setCollectedVouchers(res.data || []);
+          }
+        } catch (err) {
+          console.error('Error fetching collected vouchers in checkout:', err);
+        } finally {
+          setLoadingCollected(false);
+        }
+      };
+      fetchCollected();
+    }
+  }, [user]);
 
   // Custom Alert Modal state
   const [alertConfig, setAlertConfig] = useState<{ isOpen: boolean; title: string; message: string; type?: 'info' | 'warning' | 'error' }>({
@@ -217,6 +245,11 @@ export const CheckoutTracking: React.FC = () => {
 
     if (now < startDate || now > endDate) {
       setCouponError('Mã giảm giá này chưa có hiệu lực hoặc đã hết hạn.');
+      return;
+    }
+
+    if (voucher.restaurantId && voucher.restaurantId !== restaurantId) {
+      setCouponError('Mã giảm giá này không áp dụng cho quán ăn này.');
       return;
     }
 
@@ -682,6 +715,16 @@ export const CheckoutTracking: React.FC = () => {
                         ÁP DỤNG
                       </button>
                     </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsVoucherModalOpen(true)}
+                        className="flex items-center justify-center gap-2 border-2 border-dashed border-[#BF3A20] text-[#BF3A20] bg-[#BF3A20]/5 hover:bg-[#BF3A20]/10 font-mono text-xs py-2 px-4 font-bold transition-all rounded-sm cursor-pointer"
+                      >
+                        <Ticket size={14} />
+                        {appliedCode ? 'Thay đổi voucher' : 'Chọn từ ví Voucher'}
+                      </button>
+                    </div>
                     {couponError && (
                       <p className="text-[10px] font-mono font-bold text-[#BF3A20] flex items-center gap-0.5 mt-1">
                         <AlertTriangle size={11} /> {couponError}
@@ -1056,6 +1099,94 @@ export const CheckoutTracking: React.FC = () => {
                 className="py-2 px-6 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all min-w-[100px]"
               >
                 Đồng ý (OK)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Voucher Selection Modal */}
+      {isVoucherModalOpen && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#FEFCF9] border-4 border-neutral-900 shadow-retro w-full max-w-lg rounded-sm overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-4 border-b-4 border-neutral-900 bg-[#FAF7F3] flex justify-between items-center select-none">
+              <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-neutral-900 flex items-center gap-1.5">
+                <Ticket size={16} className="text-[#BF3A20]" />
+                Chọn mã giảm giá của bạn
+              </h2>
+              <button
+                onClick={() => setIsVoucherModalOpen(false)}
+                className="p-1 hover:bg-neutral-200 border-2 border-neutral-900 bg-white rounded-sm active:translate-y-[1px]"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-grow bg-neutral-50/50">
+              {loadingCollected ? (
+                <div className="flex justify-center items-center py-12 gap-2 text-xs font-mono text-[#BF3A20] font-bold">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent border-[#BF3A20]"></div>
+                  <span>Đang tải ví voucher...</span>
+                </div>
+              ) : collectedVouchers.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-xs text-neutral-500 font-mono">Ví voucher của bạn trống rỗng.</p>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <p className="text-[10px] font-mono font-bold text-neutral-450 uppercase tracking-widest">
+                    Voucher của bạn ({collectedVouchers.length})
+                  </p>
+                  
+                  {collectedVouchers.map((wrapper) => {
+                    const v = wrapper.voucher;
+                    const isApplicable = subtotal >= Number(v.minOrderAmount) && (!v.restaurantId || v.restaurantId === restaurantId);
+                    const isUsed = wrapper.isUsed;
+                    const isExpired = new Date(v.endDate) < new Date();
+
+                    return (
+                      <div
+                        key={wrapper.id}
+                        onClick={() => {
+                          if (isApplicable && !isUsed && !isExpired) {
+                            applyVoucherObj(v);
+                            setIsVoucherModalOpen(false);
+                          }
+                        }}
+                        className={`transition-all ${
+                          isApplicable && !isUsed && !isExpired
+                            ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99]'
+                            : 'opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        <VoucherCard
+                          voucher={v}
+                          isCollected={true}
+                          isUsed={isUsed}
+                          compact={true}
+                        />
+                        {!isApplicable && !isUsed && !isExpired && (
+                          <p className="text-[9px] font-mono text-[#BF3A20] font-bold mt-1 pl-1">
+                            * {v.restaurantId && v.restaurantId !== restaurantId 
+                              ? `Chỉ áp dụng tại quán: ${v.restaurant?.name || 'Quán riêng'}` 
+                              : `Đơn tối thiểu chưa đủ (cần ${Number(v.minOrderAmount).toLocaleString('vi-VN')}đ)`}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="p-3 border-t-2 border-neutral-900 bg-[#FAF7F3] flex justify-end">
+              <button
+                onClick={() => setIsVoucherModalOpen(false)}
+                className="btn-retro text-[10px] py-1 bg-white"
+              >
+                Đóng
               </button>
             </div>
           </div>

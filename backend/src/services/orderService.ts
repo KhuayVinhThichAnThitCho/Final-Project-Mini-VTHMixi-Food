@@ -4,6 +4,7 @@ import { Order, OrderStatus, PaymentMethod } from '../models/Order';
 import { AppError } from '../middlewares/errorHandler';
 import { User } from '../models/User';
 import { Voucher } from '../models/Voucher';
+import { UserVoucher } from '../models/UserVoucher';
 
 export const orderService = {
   /**
@@ -26,6 +27,8 @@ export const orderService = {
 
     // 2. Tính số tiền giảm giá nếu áp dụng voucher
     let discount = 0;
+    let userVoucherToUpdate: any = null;
+
     if (voucherCode) {
       const voucher = await Voucher.findOne({ where: { code: voucherCode, isActive: true } });
       if (!voucher) {
@@ -37,8 +40,34 @@ export const orderService = {
         throw new AppError(400, 'BUSINESS_ERROR', 'Mã giảm giá không nằm trong thời gian áp dụng.');
       }
 
+      if (voucher.restaurantId && voucher.restaurantId !== restaurantId) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Mã giảm giá này không áp dụng cho quán ăn này.');
+      }
+
       if (totalPrice < Number(voucher.minOrderAmount)) {
         throw new AppError(400, 'BUSINESS_ERROR', `Đơn hàng chưa đạt giá trị tối thiểu ${Number(voucher.minOrderAmount).toLocaleString('vi-VN')} đ để áp dụng mã này.`);
+      }
+
+      // Kiểm tra trạng thái trong ví voucher của người dùng
+      const userVoucher = await UserVoucher.findOne({
+        where: {
+          userId,
+          voucherId: voucher.id,
+        }
+      });
+
+      if (userVoucher) {
+        if (userVoucher.isUsed) {
+          throw new AppError(400, 'BUSINESS_ERROR', 'Bạn đã sử dụng mã giảm giá này rồi.');
+        }
+        userVoucherToUpdate = userVoucher;
+      } else {
+        // Tự động thu thập và đánh dấu sử dụng
+        userVoucherToUpdate = {
+          autoCreate: true,
+          userId,
+          voucherId: voucher.id,
+        };
       }
 
       if (voucher.discountType === 'fixed_amount') {
@@ -79,6 +108,23 @@ export const orderService = {
       deliveryAddress,
       paymentMethod,
     });
+
+    // 5. Đánh dấu voucher đã dùng trong ví
+    if (userVoucherToUpdate) {
+      const now = new Date();
+      if (userVoucherToUpdate.autoCreate) {
+        await UserVoucher.create({
+          userId: userVoucherToUpdate.userId,
+          voucherId: userVoucherToUpdate.voucherId,
+          isUsed: true,
+          usedAt: now,
+        });
+      } else {
+        userVoucherToUpdate.isUsed = true;
+        userVoucherToUpdate.usedAt = now;
+        await userVoucherToUpdate.save();
+      }
+    }
 
     return order;
   },

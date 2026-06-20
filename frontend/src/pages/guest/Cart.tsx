@@ -5,9 +5,17 @@ import Header from '../../components/organisms/Header';
 import SaigonDivider from '../../components/molecules/SaigonDivider';
 import useCart from '../../hooks/useCart';
 import { MOCK_RESTAURANTS } from '../../utils/mockData';
+import { VoucherCard } from '../../components/molecules/VoucherCard';
+import voucherApi from '../../services/voucherApi';
+import { useAuthStore } from '../../store/useAuthStore';
+import { X } from 'lucide-react';
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+  const [collectedVouchers, setCollectedVouchers] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
   const { 
     items, 
     restaurantId, 
@@ -61,6 +69,53 @@ export const Cart: React.FC = () => {
     } else {
       setCouponError('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
     }
+  };
+
+  // Fetch collected vouchers
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      const fetchVouchers = async () => {
+        try {
+          setLoadingVouchers(true);
+          const res = await voucherApi.getMyCollectedVouchers();
+          if (res && res.success) {
+            setCollectedVouchers(res.data || []);
+          }
+        } catch (err) {
+          console.error('Error fetching cart vouchers:', err);
+        } finally {
+          setLoadingVouchers(false);
+        }
+      };
+      fetchVouchers();
+    }
+  }, [isAuthenticated]);
+
+  const handleApplyCollectedVoucher = (wrapper: any) => {
+    const v = wrapper.voucher;
+    setCouponError('');
+    
+    if (totalPrice < Number(v.minOrderAmount)) {
+      setCouponError(`Đơn chưa đạt tối thiểu ${Number(v.minOrderAmount).toLocaleString('vi-VN')}đ.`);
+      return;
+    }
+    
+    if (v.restaurantId && v.restaurantId !== restaurantId) {
+      setCouponError(`Mã này chỉ dùng cho quán: ${v.restaurant?.name || 'Quán riêng'}.`);
+      return;
+    }
+
+    let discount = 0;
+    if (v.discountType === 'fixed_amount') {
+      discount = Number(v.discountValue);
+    } else if (v.discountType === 'percentage') {
+      const calculated = (totalPrice * Number(v.discountValue)) / 105; // standard calc
+      discount = v.maxDiscountAmount ? Math.min(calculated, Number(v.maxDiscountAmount)) : calculated;
+    }
+
+    setDiscountAmount(discount);
+    setAppliedCode(v.code);
+    setIsModalOpen(false);
   };
 
   // Calculations using useMemo
@@ -306,6 +361,16 @@ export const Cart: React.FC = () => {
                 <p className="text-[9px] font-mono text-neutral-400 italic">
                   * Nhập mã "SAIGON90S" để nhận ưu đãi 15.000đ
                 </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-[#BF3A20] text-[#BF3A20] bg-[#BF3A20]/5 hover:bg-[#BF3A20]/10 font-mono text-xs py-2 font-bold transition-all rounded-sm cursor-pointer"
+                  >
+                    <Ticket size={14} />
+                    {appliedCode ? `Thay đổi voucher` : `Chọn từ ví Voucher`}
+                  </button>
+                </div>
               </form>
 
               {/* Saigon Divider decoration */}
@@ -356,6 +421,112 @@ export const Cart: React.FC = () => {
         </div>
 
       </main>
+
+      {/* Voucher Selection Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#FEFCF9] border-4 border-neutral-900 shadow-retro w-full max-w-lg rounded-sm overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-4 border-b-4 border-neutral-900 bg-[#FAF7F3] flex justify-between items-center select-none">
+              <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-neutral-900 flex items-center gap-1.5">
+                <Ticket size={16} className="text-[#BF3A20]" />
+                Chọn mã giảm giá của bạn
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 hover:bg-neutral-200 border-2 border-neutral-900 bg-white rounded-sm active:translate-y-[1px]"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-grow bg-neutral-50/50">
+              {!isAuthenticated ? (
+                <div className="text-center py-8">
+                  <p className="text-xs text-neutral-500 font-mono">Vui lòng đăng nhập để sử dụng ví Voucher.</p>
+                  <button
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      navigate('/login');
+                    }}
+                    className="btn-retro text-xs mt-3 bg-[#BF3A20] text-white"
+                  >
+                    Đăng nhập ngay
+                  </button>
+                </div>
+              ) : loadingVouchers ? (
+                <div className="flex justify-center items-center py-12 gap-2 text-xs font-mono text-[#BF3A20] font-bold">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent border-[#BF3A20]"></div>
+                  <span>Đang tải ví voucher...</span>
+                </div>
+              ) : collectedVouchers.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-xs text-neutral-500 font-mono">Ví voucher của bạn trống rỗng.</p>
+                  <button
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      navigate('/vouchers');
+                    }}
+                    className="btn-retro text-xs mt-3 bg-[#E9C46A] text-neutral-900"
+                  >
+                    Đến kho voucher hệ thống
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <p className="text-[10px] font-mono font-bold text-neutral-450 uppercase tracking-widest">
+                    Voucher của bạn ({collectedVouchers.length})
+                  </p>
+                  
+                  {collectedVouchers.map((wrapper) => {
+                    const v = wrapper.voucher;
+                    const isApplicable = totalPrice >= Number(v.minOrderAmount) && (!v.restaurantId || v.restaurantId === restaurantId);
+                    const isUsed = wrapper.isUsed;
+                    const isExpired = new Date(v.endDate) < new Date();
+
+                    return (
+                      <div
+                        key={wrapper.id}
+                        onClick={() => isApplicable && !isUsed && !isExpired && handleApplyCollectedVoucher(wrapper)}
+                        className={`transition-all ${
+                          isApplicable && !isUsed && !isExpired
+                            ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99]'
+                            : 'opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        <VoucherCard
+                          voucher={v}
+                          isCollected={true}
+                          isUsed={isUsed}
+                          compact={true}
+                        />
+                        {!isApplicable && !isUsed && !isExpired && (
+                          <p className="text-[9px] font-mono text-[#BF3A20] font-bold mt-1 pl-1">
+                            * {v.restaurantId && v.restaurantId !== restaurantId 
+                              ? `Chỉ áp dụng tại quán: ${v.restaurant?.name || 'Quán riêng'}` 
+                              : `Đơn tối thiểu chưa đủ (cần ${Number(v.minOrderAmount).toLocaleString('vi-VN')}đ)`}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="p-3 border-t-2 border-neutral-900 bg-[#FAF7F3] flex justify-end">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="btn-retro text-[10px] py-1 bg-white"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

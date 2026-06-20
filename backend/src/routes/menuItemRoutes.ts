@@ -12,6 +12,9 @@ router.post('/:id/view', menuItemController.incrementView);
 // Route: Lấy thống kê của sản phẩm
 router.get('/:id/stats', menuItemController.getMenuItemStats);
 
+// Route: Lấy chi tiết món ăn theo ID
+router.get('/:id', menuItemController.getMenuItemById);
+
 // Route: Lấy danh sách sản phẩm phân trang theo danh mục (Lazy loading)
 router.get('/', menuItemController.getMenuItems);
 
