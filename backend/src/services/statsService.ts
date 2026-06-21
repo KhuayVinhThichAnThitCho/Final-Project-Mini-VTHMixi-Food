@@ -19,11 +19,11 @@ export const statsService = {
       group: ['status'],
     });
 
-    // 2. Tổng doanh thu (Chỉ tính các đơn hàng có status là 'completed')
+    // 2. Tổng doanh thu (Chỉ tính các đơn hàng có status là 'completed', đã khấu trừ phí nền tảng trích lại cho hệ thống)
     const totalRevenueResult = await Order.findOne({
       where: { restaurantId, status: 'completed' },
       attributes: [
-        [sequelize.fn('SUM', sequelize.col('total_amount')), 'revenue'],
+        [sequelize.literal('SUM(total_amount - platform_fee)'), 'revenue'],
       ],
     });
     const totalRevenue = Number(totalRevenueResult?.getDataValue('revenue') || 0);
@@ -59,10 +59,11 @@ export const statsService = {
   getSystemStats: async () => {
     const totalUsers = await Wallet.count(); // Ví dụ đếm số ví đại diện user
     
+    // Doanh thu hệ thống thực tế là tổng phí nền tảng thu được từ các đơn hàng hoàn thành
     const totalRevenueResult = await Order.findOne({
       where: { status: 'completed' },
       attributes: [
-        [sequelize.fn('SUM', sequelize.col('total_amount')), 'revenue'],
+        [sequelize.fn('SUM', sequelize.col('platform_fee')), 'revenue'],
       ],
     });
     

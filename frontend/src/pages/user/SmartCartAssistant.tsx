@@ -23,13 +23,13 @@ interface Message {
 
 const SmartCartAssistant: React.FC = () => {
   const navigate = useNavigate();
-  const { allCartItemsCount } = useCart();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [navigatingItem, setNavigatingItem] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { addToCart, allCartItemsCount } = useCart();
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'warning' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'warning' = 'success') => {
     setToast({ msg, type });

@@ -1,4 +1,6 @@
 import { Op } from 'sequelize';
+import fs from 'fs';
+import path from 'path';
 import { sequelize } from '../config/database';
 import { User } from '../models/User';
 import { Restaurant } from '../models/Restaurant';
@@ -8,6 +10,7 @@ import { Wallet } from '../models/Wallet';
 import { SystemConfig } from '../models/SystemConfig';
 import { AdminLog } from '../models/AdminLog';
 import { AppError } from '../middlewares/errorHandler';
+import { notificationService } from './notificationService';
 
 // ============================================================
 // HELPER: Ghi log hành động Admin
@@ -30,6 +33,44 @@ const createAdminLog = async (data: {
     // Log lỗi nhưng không throw để không ảnh hưởng đến hành động chính
     console.error('⚠️ Lỗi ghi admin log:', error);
   }
+};
+
+// Helper: Xử lý lưu ảnh banner dạng base64
+const processBannerBase64 = (key: string, value: any): any => {
+  if (key === 'homepage_banner') {
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'banners');
+
+    const saveBase64 = (imageUrl: string, prefixId: string): string => {
+      if (imageUrl && imageUrl.startsWith('data:image/')) {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const ext = imageUrl.split(';')[0].split('/')[1] || 'jpg';
+        const filename = `banner_${prefixId}_${Date.now()}.${ext}`;
+        const filepath = path.join(uploadsDir, filename);
+        const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
+        fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+        return `/uploads/banners/${filename}`;
+      }
+      return imageUrl;
+    };
+
+    if (Array.isArray(value)) {
+      return value.map((banner, index) => {
+        const id = banner.id || `b_${index}`;
+        return {
+          ...banner,
+          imageUrl: saveBase64(banner.imageUrl, id),
+        };
+      });
+    } else if (value && typeof value === 'object') {
+      return {
+        ...value,
+        imageUrl: saveBase64(value.imageUrl, 'single'),
+      };
+    }
+  }
+  return value;
 };
 
 // ============================================================
@@ -288,8 +329,16 @@ export const adminService = {
     const { search, restaurantId, includeDeleted = false, page = 1, limit = 10 } = options;
     const offset = (page - 1) * limit;
 
-    const where: any = {};
-    if (!includeDeleted) where.isDeleted = false;
+    // Luôn lọc bỏ sản phẩm đã bị xóa mềm (isDeleted: true) ra khỏi danh sách hiển thị
+    const where: any = { isDeleted: false };
+    
+    // Nếu includeDeleted = true (Bật 'Hiển thị đã ẩn'): CHỈ lấy sản phẩm đang ẩn (isAvailable = false)
+    // Nếu includeDeleted = false: CHỈ lấy sản phẩm đang hoạt động (isAvailable = true)
+    if (includeDeleted) {
+      where.isAvailable = false;
+    } else {
+      where.isAvailable = true;
+    }
     if (restaurantId) where.restaurantId = restaurantId;
     if (search) {
       where.name = { [Op.like]: `%${search}%` };
@@ -321,7 +370,7 @@ export const adminService = {
   },
 
   /**
-   * A-03: Xóa vĩnh viễn sản phẩm vi phạm (Hard Delete)
+   * A-03: Xóa mềm sản phẩm vi phạm (Soft Delete)
    */
   permanentDeleteProduct: async (menuItemId: string, adminId?: string) => {
     const item = await MenuItem.findByPk(menuItemId, {
@@ -334,7 +383,8 @@ export const adminService = {
     const itemName = item.name;
     const restaurantName = (item as any).restaurant?.name || 'N/A';
 
-    await item.destroy();
+    // Xóa mềm sản phẩm bằng cách set isDeleted = true
+    await item.update({ isDeleted: true });
 
     // Ghi log
     if (adminId) {
@@ -343,7 +393,7 @@ export const adminService = {
         action: 'PRODUCT_HARD_DELETE',
         targetType: 'menuItem',
         targetId: menuItemId,
-        description: `Xóa vĩnh viễn sản phẩm "${itemName}" của nhà hàng "${restaurantName}"`,
+        description: `Xóa (ẩn) sản phẩm "${itemName}" của nhà hàng "${restaurantName}"`,
         details: { productName: itemName, restaurantName },
       });
     }
@@ -352,7 +402,7 @@ export const adminService = {
   },
 
   /**
-   * A-03: Ẩn / Hiện sản phẩm (Soft hide via isDeleted flag)
+   * A-03: Ẩn / Hiện sản phẩm (Soft hide via isAvailable flag)
    */
   toggleProductVisibility: async (menuItemId: string, hide: boolean, adminId?: string) => {
     const item = await MenuItem.findByPk(menuItemId);
@@ -360,7 +410,8 @@ export const adminService = {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy sản phẩm.');
     }
 
-    await item.update({ isDeleted: hide });
+    // Cập nhật trạng thái hiển thị qua isAvailable
+    await item.update({ isAvailable: !hide });
 
     // Ghi log
     if (adminId) {
@@ -377,7 +428,7 @@ export const adminService = {
     return {
       id: item.id,
       name: item.name,
-      isDeleted: item.isDeleted,
+      isAvailable: item.isAvailable,
     };
   },
 
@@ -681,6 +732,18 @@ export const adminService = {
     const oldRole = user.role;
     await user.update({ role: role as any });
 
+    // Gửi thông báo đến user
+    try {
+      await notificationService.sendSystemNotification(
+        user.id,
+        user.email,
+        'Thay đổi vai trò tài khoản',
+        `Tài khoản của bạn đã được quản trị viên thay đổi vai trò từ "${oldRole}" sang "${role}". Vui lòng đăng nhập lại để cập nhật quyền truy cập mới.`
+      );
+    } catch (notiError) {
+      console.error('⚠️ Lỗi gửi thông báo đổi vai trò tài khoản:', notiError);
+    }
+
     // Ghi log
     await createAdminLog({
       adminId,
@@ -793,7 +856,8 @@ export const adminService = {
       throw new AppError(404, 'NOT_FOUND', `Không tìm thấy cấu hình với key: ${key}`);
     }
     const oldValue = config.value;
-    await config.update({ value: JSON.stringify(value) });
+    const processedValue = processBannerBase64(key, value);
+    await config.update({ value: JSON.stringify(processedValue) });
 
     // Ghi log
     if (adminId) {
@@ -803,7 +867,7 @@ export const adminService = {
         targetType: 'config',
         targetId: key,
         description: `Cập nhật cấu hình "${key}" (nhóm: ${config.group})`,
-        details: { key, group: config.group, oldValue, newValue: JSON.stringify(value) },
+        details: { key, group: config.group, oldValue, newValue: JSON.stringify(processedValue) },
       });
     }
 
@@ -824,8 +888,9 @@ export const adminService = {
     for (const { key, value } of updates) {
       const config = await SystemConfig.findByPk(key);
       if (config) {
-        await config.update({ value: JSON.stringify(value) });
-        results.push({ key, value, success: true });
+        const processedValue = processBannerBase64(key, value);
+        await config.update({ value: JSON.stringify(processedValue) });
+        results.push({ key, value: processedValue, success: true });
       } else {
         results.push({ key, value, success: false, error: 'Key not found' });
       }

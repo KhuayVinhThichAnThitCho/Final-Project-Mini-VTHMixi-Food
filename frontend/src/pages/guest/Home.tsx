@@ -12,6 +12,7 @@ import menuItemApi from '../../services/menuItemApi';
 import { VoucherCard, VoucherData } from '../../components/molecules/VoucherCard';
 import voucherApi from '../../services/voucherApi';
 import { useAuthStore } from '../../store/useAuthStore';
+import api from '../../services/api';
 
 // Swiper component and modules
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -34,8 +35,23 @@ export const Home: React.FC = () => {
   const [collectedIds, setCollectedIds] = useState<string[]>([]);
   const [collectingId, setCollectingId] = useState<string | null>(null);
 
-  // Fetch danh sách voucher trang chủ
+  // State cấu hình banner trang chủ từ Admin
+  const [bannerConfig, setBannerConfig] = useState<any>(null);
+
+  // Fetch danh sách voucher trang chủ và cấu hình banner
   useEffect(() => {
+    const loadBannerConfig = async () => {
+      try {
+        const res = (await api.get('/system/banner')) as any;
+        if (res && res.success && res.data) {
+          setBannerConfig(res.data);
+        }
+      } catch (err) {
+        console.error('Error loading homepage banner config:', err);
+      }
+    };
+    loadBannerConfig();
+
     const loadVouchers = async () => {
       try {
         const res = await voucherApi.getVouchers();
@@ -170,6 +186,7 @@ export const Home: React.FC = () => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onExploreMenu={() => navigate('/menu')}
+        bannerConfig={bannerConfig}
       />
 
       {/* Voucher Carousel Section */}

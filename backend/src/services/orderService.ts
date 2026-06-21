@@ -5,6 +5,7 @@ import { AppError } from '../middlewares/errorHandler';
 import { User } from '../models/User';
 import { Voucher } from '../models/Voucher';
 import { UserVoucher } from '../models/UserVoucher';
+import { SystemConfig } from '../models/SystemConfig';
 
 export const orderService = {
   /**
@@ -24,6 +25,18 @@ export const orderService = {
 
     // 1. Tính tổng tiền gốc của món ăn
     const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    // Lấy cấu hình phí từ hệ thống
+    const platformFeeConfig = await SystemConfig.findByPk('platform_fee');
+    const minOrderAmountConfig = await SystemConfig.findByPk('min_order_amount');
+
+    const platformFeePercent = platformFeeConfig ? Number(JSON.parse(platformFeeConfig.value)) : 5;
+    const minOrderAmount = minOrderAmountConfig ? Number(JSON.parse(minOrderAmountConfig.value)) : 20000;
+
+    // Kiểm tra giá trị đơn hàng tối thiểu
+    if (totalPrice < minOrderAmount) {
+      throw new AppError(400, 'BUSINESS_ERROR', `Đơn hàng chưa đạt giá trị tối thiểu ${minOrderAmount.toLocaleString('vi-VN')} đ để đặt hàng.`);
+    }
 
     // 2. Tính số tiền giảm giá nếu áp dụng voucher
     let discount = 0;
@@ -78,7 +91,12 @@ export const orderService = {
       }
     }
 
-    const finalAmount = Math.max(totalPrice - discount, 0);
+    // Tính toán phí vận chuyển và phí nền tảng
+    const platformFee = Math.round(totalPrice * (platformFeePercent / 100));
+    const customerDeliveryFee = 15000;
+
+    // Khách hàng không phải chịu phí nền tảng, phí này do nhà hàng chịu (trích khấu trừ từ doanh thu)
+    const finalAmount = Math.max(totalPrice + customerDeliveryFee - discount, 0);
 
     // 3. Xử lý thanh toán theo phương thức chọn
     if (paymentMethod === 'WALLET') {
@@ -107,6 +125,8 @@ export const orderService = {
       totalAmount: finalAmount,
       deliveryAddress,
       paymentMethod,
+      shippingFee: 15000, // Shipper vẫn được 15000đ
+      platformFee: platformFee // Phí nền tảng do nhà hàng chịu (lưu vết)
     });
 
     // 5. Đánh dấu voucher đã dùng trong ví

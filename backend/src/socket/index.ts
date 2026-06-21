@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { Message } from '../models/Message';
 import { Conversation } from '../models/Conversation';
 import { Op } from 'sequelize';
+import { socketConfig } from '../config/socket';
 
 const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access_secret_123456';
 
@@ -14,6 +15,9 @@ export const initializeSocket = (httpServer: HttpServer) => {
       credentials: true,
     },
   });
+
+  // Thiết lập instance io cho socketConfig để dùng chung cho việc gửi notification ở các service khác
+  socketConfig.setIO(io);
 
   // Middleware xác thực socket
   io.use((socket, next) => {
@@ -40,7 +44,18 @@ export const initializeSocket = (httpServer: HttpServer) => {
   });
 
   io.on('connection', (socket: Socket) => {
-    console.log(`🔌 Người dùng kết nối Socket: ${socket.id} (User ID: ${socket.data.user.id})`);
+    const userId = socket.data.user?.id;
+    console.log(`🔌 Người dùng kết nối Socket: ${socket.id} (User ID: ${userId})`);
+
+    // Tự động đăng ký user online nếu có thông tin từ JWT
+    if (userId) {
+      socketConfig.registerUser(userId, socket.id);
+    }
+
+    // Lắng nghe sự kiện đăng ký tường minh (được gọi từ Frontend)
+    socket.on('register_user', (regUserId: string) => {
+      socketConfig.registerUser(regUserId, socket.id);
+    });
 
     // Tham gia phòng chat của 1 conversation cụ thể
     socket.on('join_room', (conversationId: string) => {
@@ -115,6 +130,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
     socket.on('disconnect', () => {
       console.log(`🔌 Người dùng ngắt kết nối Socket: ${socket.id}`);
+      socketConfig.removeUserBySocketId(socket.id);
     });
   });
 

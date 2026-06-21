@@ -199,15 +199,20 @@ const AdminProducts: React.FC = () => {
           </div>
 
           {/* Toggle hiển thị đã ẩn */}
-          <label className="flex items-center gap-2 cursor-pointer select-none">
+          <div
+            onClick={() => {
+              setIncludeDeleted(v => !v);
+              setPage(1);
+            }}
+            className="flex items-center gap-2 cursor-pointer select-none"
+          >
             <div
-              onClick={() => setIncludeDeleted(v => !v)}
               className={`w-10 h-5 border-2 relative transition-colors ${includeDeleted ? 'bg-primary-600 border-primary-700' : 'bg-neutral-200 border-neutral-300'}`}
             >
               <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white transition-transform ${includeDeleted ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </div>
             <span className="font-mono text-xs text-neutral-600 font-bold uppercase tracking-wide">Hiển thị đã ẩn</span>
-          </label>
+          </div>
         </div>
 
         {/* Active filter info bar */}
@@ -267,7 +272,7 @@ const AdminProducts: React.FC = () => {
             <div
               key={product.id}
               className={`bg-[#FEFCF9] border-2 border-neutral-200 shadow-saigon-card hover:shadow-saigon-card-hover transition-all duration-200 overflow-hidden ${
-                product.isDeleted ? 'opacity-60' : ''
+                !product.isAvailable ? 'opacity-60' : ''
               }`}
             >
               {/* Image */}
@@ -284,12 +289,12 @@ const AdminProducts: React.FC = () => {
                     <span className="text-4xl">🍜</span>
                   </div>
                 )}
-                {product.isDeleted && (
+                {!product.isAvailable && (
                   <div className="absolute inset-0 bg-neutral-900/40 flex items-center justify-center">
-                    <span className="font-mono text-xs font-bold text-white uppercase tracking-widest bg-red-600/90 px-3 py-1">Đã ẩn</span>
+                    <span className="font-mono text-xs font-bold text-red-600 uppercase tracking-widest bg-[#FEFCF9] border-2 border-red-600 px-3 py-1 shadow-retro-sm">Đã ẩn</span>
                   </div>
                 )}
-                {!product.isAvailable && !product.isDeleted && (
+                {product.stock === 0 && product.isAvailable && (
                   <div className="absolute top-2 right-2 bg-neutral-900/80 px-2 py-0.5">
                     <span className="font-mono text-[10px] text-white uppercase">Hết hàng</span>
                   </div>
@@ -323,14 +328,14 @@ const AdminProducts: React.FC = () => {
                 {/* Actions */}
                 <div className="flex gap-2 mt-4 pt-3 border-t border-neutral-100">
                   <button
-                    onClick={() => setConfirmHide({ item: product, hide: !product.isDeleted })}
+                    onClick={() => setConfirmHide({ item: product, hide: product.isAvailable })}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 border-2 font-mono text-xs font-bold uppercase tracking-wide transition-all ${
-                      product.isDeleted
+                      !product.isAvailable
                         ? 'border-green-300 text-green-700 hover:bg-green-50'
                         : 'border-secondary-300 text-secondary-700 hover:bg-secondary-50'
                     }`}
                   >
-                    {product.isDeleted
+                    {!product.isAvailable
                       ? <><Eye size={13} strokeWidth={1.5} /> Hiện</>
                       : <><EyeOff size={13} strokeWidth={1.5} /> Ẩn</>}
                   </button>
@@ -379,9 +384,9 @@ const AdminProducts: React.FC = () => {
       )}
       {confirmDelete && (
         <ConfirmDialog
-          title="Xóa vĩnh viễn?"
-          message={`Xóa vĩnh viễn sản phẩm "${confirmDelete.name}"? Hành động này không thể hoàn tác!`}
-          confirmLabel="Xóa vĩnh viễn"
+          title="Xóa sản phẩm?"
+          message={`Bạn có chắc chắn muốn xóa sản phẩm "${confirmDelete.name}"? Món ăn này sẽ được ẩn khỏi menu của khách hàng và lưu trữ lại trong cơ sở dữ liệu.`}
+          confirmLabel="Xóa sản phẩm"
           isDanger
           onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
           onCancel={() => setConfirmDelete(null)}

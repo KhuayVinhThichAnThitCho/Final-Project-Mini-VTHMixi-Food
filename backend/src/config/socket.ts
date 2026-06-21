@@ -47,6 +47,34 @@ export const socketConfig = {
   },
 
   /**
+   * Thiết lập instance Socket.io Server từ bên ngoài
+   */
+  setIO: (ioInstance: SocketIOServer) => {
+    io = ioInstance;
+  },
+
+  /**
+   * Đăng ký người dùng online
+   */
+  registerUser: (userId: string, socketId: string) => {
+    onlineUsers.set(userId, socketId);
+    console.log(`👤 Người dùng ${userId} đã đăng ký Socket với ID: ${socketId}`);
+  },
+
+  /**
+   * Gỡ đăng ký người dùng bằng socketId
+   */
+  removeUserBySocketId: (socketId: string) => {
+    for (const [userId, id] of onlineUsers.entries()) {
+      if (id === socketId) {
+        onlineUsers.delete(userId);
+        console.log(`🔌 Client ${userId} đã ngắt kết nối.`);
+        break;
+      }
+    }
+  },
+
+  /**
    * Lấy socketId của một User cụ thể đang online
    */
   getUserSocketId: (userId: string): string | undefined => {

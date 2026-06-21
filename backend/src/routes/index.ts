@@ -26,12 +26,32 @@ router.get('/system/notice', async (req, res, next) => {
   try {
     const config = await SystemConfig.findByPk('system_notice');
     if (!config) return res.json({ success: true, data: null });
-    const notice = JSON.parse(config.value);
-    // Chỉ trả về nếu đang active
-    if (!notice.isActive || !notice.message) {
+    const parsed = JSON.parse(config.value);
+
+    // Hỗ trợ cả 2 format: mảng (CRUD mới) và object đơn (cũ)
+    if (Array.isArray(parsed)) {
+      // Tìm thông báo active đầu tiên trong mảng
+      const active = parsed.find((n: any) => n.isActive && n.message);
+      return res.json({ success: true, data: active || null });
+    }
+
+    // Legacy: single object
+    if (!parsed.isActive || !parsed.message) {
       return res.json({ success: true, data: null });
     }
-    res.json({ success: true, data: notice });
+    res.json({ success: true, data: parsed });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/system/banner — Trả về cấu hình banner trang chủ công khai
+router.get('/system/banner', async (req, res, next) => {
+  try {
+    const config = await SystemConfig.findByPk('homepage_banner');
+    if (!config) return res.json({ success: true, data: null });
+    const banner = JSON.parse(config.value);
+    res.json({ success: true, data: banner });
   } catch (error) {
     next(error);
   }
@@ -49,6 +69,26 @@ router.get('/system/payment-methods', async (req, res, next) => {
     }
     const methods = JSON.parse(config.value);
     res.json({ success: true, data: methods });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/system/fees — Trả về cấu hình phí nền tảng, đơn hàng tối thiểu, ngưỡng freeship
+router.get('/system/fees', async (req, res, next) => {
+  try {
+    const platformFeeConfig = await SystemConfig.findByPk('platform_fee');
+    const minOrderAmountConfig = await SystemConfig.findByPk('min_order_amount');
+    const freeDeliveryThresholdConfig = await SystemConfig.findByPk('free_delivery_threshold');
+
+    res.json({
+      success: true,
+      data: {
+        platformFee: platformFeeConfig ? Number(JSON.parse(platformFeeConfig.value)) : 5,
+        minOrderAmount: minOrderAmountConfig ? Number(JSON.parse(minOrderAmountConfig.value)) : 20000,
+        freeDeliveryThreshold: freeDeliveryThresholdConfig ? Number(JSON.parse(freeDeliveryThresholdConfig.value)) : 150000
+      }
+    });
   } catch (error) {
     next(error);
   }

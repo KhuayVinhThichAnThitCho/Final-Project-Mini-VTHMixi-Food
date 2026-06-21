@@ -54,26 +54,26 @@ const SimpleBarChart: React.FC<{ data: any[]; valueKey: string; labelKey: string
   const max = Math.max(...values, 1);
 
   return (
-    <div className="flex items-end gap-1 h-48 px-2">
+    <div className="flex items-end gap-1 h-48 px-2 border-b border-neutral-200 pb-2">
       {data.map((item, i) => {
         const h = (Number(item[valueKey]) / max) * 100;
         return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-            <div className="relative w-full">
+          <div key={i} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end">
+            <div className="relative w-full h-36 flex items-end">
               {/* Tooltip */}
               <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10">
                 <div className="bg-neutral-900 text-white font-mono text-xs px-2 py-1 whitespace-nowrap">
-                  {formatVND(Number(item[valueKey]) || 0)}
+                  {valueKey === 'revenue' ? formatVND(Number(item[valueKey]) || 0) : `${item[valueKey]} lượt`}
                 </div>
                 <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-neutral-900" />
               </div>
               {/* Bar */}
               <div
                 className="w-full bg-primary-600 hover:bg-primary-500 transition-all duration-300"
-                style={{ height: `${Math.max(h, 2)}%`, minHeight: '4px' }}
+                style={{ height: `${Math.max(h, 2)}%` }}
               />
             </div>
-            <span className="text-[9px] font-mono text-neutral-400 truncate w-full text-center leading-none">
+            <span className="text-[9px] font-mono text-neutral-400 truncate w-full text-center leading-none mt-1">
               {String(item[labelKey] || '').slice(-5)}
             </span>
           </div>
