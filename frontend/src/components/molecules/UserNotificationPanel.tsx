@@ -156,7 +156,43 @@ interface UserNotificationPanelProps {
 export const UserNotificationPanel: React.FC<UserNotificationPanelProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('all');
-  const [notifications, setNotifications] = useState<UserNotification[]>(MOCK_NOTIFICATIONS);
+  
+  const loadNotifications = (): UserNotification[] => {
+    try {
+      const stored = localStorage.getItem('user_notifications');
+      const customNotis: UserNotification[] = stored ? JSON.parse(stored) : [];
+      return [...customNotis, ...MOCK_NOTIFICATIONS];
+    } catch (e) {
+      console.error(e);
+      return MOCK_NOTIFICATIONS;
+    }
+  };
+
+  const updateStoredNotificationRead = (id: string, isRead: boolean) => {
+    try {
+      const stored = localStorage.getItem('user_notifications');
+      if (!stored) return;
+      const customNotis: UserNotification[] = JSON.parse(stored);
+      const updated = customNotis.map(n => n.id === id ? { ...n, isRead } : n);
+      localStorage.setItem('user_notifications', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const updateAllStoredNotificationsRead = () => {
+    try {
+      const stored = localStorage.getItem('user_notifications');
+      if (!stored) return;
+      const customNotis: UserNotification[] = JSON.parse(stored);
+      const updated = customNotis.map(n => ({ ...n, isRead: true }));
+      localStorage.setItem('user_notifications', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const [notifications, setNotifications] = useState<UserNotification[]>(loadNotifications);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -166,11 +202,21 @@ export const UserNotificationPanel: React.FC<UserNotificationPanelProps> = ({ is
     if (isOpen) {
       const timer = setTimeout(() => {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        updateAllStoredNotificationsRead();
       }, 1500);
       return () => clearTimeout(timer);
     }
     return undefined;
   }, [isOpen]);
+
+  // Listen for real-time notifications saved to localStorage
+  useEffect(() => {
+    const handleNewNoti = () => {
+      setNotifications(loadNotifications());
+    };
+    window.addEventListener('new_notification', handleNewNoti);
+    return () => window.removeEventListener('new_notification', handleNewNoti);
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -196,6 +242,7 @@ export const UserNotificationPanel: React.FC<UserNotificationPanelProps> = ({ is
     setNotifications((prev) =>
       prev.map((n) => (n.id === noti.id ? { ...n, isRead: true } : n))
     );
+    updateStoredNotificationRead(noti.id, true);
     if (noti.actionUrl) {
       navigate(noti.actionUrl);
     }
@@ -338,6 +385,7 @@ export const UserNotificationPanel: React.FC<UserNotificationPanelProps> = ({ is
         <button
           onClick={() => {
             setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+            updateAllStoredNotificationsRead();
           }}
           className="text-[10px] font-mono text-neutral-400 hover:text-[#BF3A20] transition-colors"
         >
