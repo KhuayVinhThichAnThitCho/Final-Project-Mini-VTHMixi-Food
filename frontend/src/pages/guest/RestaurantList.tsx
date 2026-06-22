@@ -63,13 +63,13 @@ export const RestaurantList: React.FC = () => {
     // Filter by rating
     if (minRating > 0) result = result.filter((r) => r.rating >= minRating);
     // Filter by deliveryFee
-    if (maxDeliveryFee > 0) result = result.filter((r) => r.deliveryFee <= maxDeliveryFee);
+    if (maxDeliveryFee > 0) result = result.filter((r) => Number(r.deliveryFee) <= maxDeliveryFee);
     // Filter open only
     if (isOpenOnly) result = result.filter((r) => r.isOpen);
     // Sort
     if (sortBy === 'rating') result.sort((a, b) => b.rating - a.rating);
-    if (sortBy === 'delivery_fee_asc') result.sort((a, b) => a.deliveryFee - b.deliveryFee);
-    if (sortBy === 'delivery_fee_desc') result.sort((a, b) => b.deliveryFee - a.deliveryFee);
+    if (sortBy === 'delivery_fee_asc') result.sort((a, b) => Number(a.deliveryFee) - Number(b.deliveryFee));
+    if (sortBy === 'delivery_fee_desc') result.sort((a, b) => Number(b.deliveryFee) - Number(a.deliveryFee));
 
     return result;
   }, [allRestaurants, selectedTag, searchQuery, minRating, maxDeliveryFee, isOpenOnly, sortBy]);
@@ -284,7 +284,7 @@ export const RestaurantList: React.FC = () => {
                         </span>
                         {/* Delivery fee */}
                         <span className="flex items-center gap-1 text-[10px] font-mono font-bold text-[#BF3A20]">
-                          <Bike size={9} /> {restaurant.deliveryFee > 0 ? `${(restaurant.deliveryFee / 1000).toFixed(0)}k` : 'Free'}
+                          <Bike size={9} /> {Number(restaurant.deliveryFee) > 0 ? `${(Number(restaurant.deliveryFee) / 1000).toFixed(0)}k` : 'Free'}
                         </span>
                       </div>
                     </div>

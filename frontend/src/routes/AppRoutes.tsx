@@ -34,8 +34,6 @@ import ManagerDashboard from '../pages/manager/ManagerDashboard';
 // Pages - Shipper
 import ShipperDashboard from '../pages/shipper/ShipperDashboard';
 
-const OrderHistory = () => <div className="p-8 text-center"><h2 className="text-2xl font-serif">Lịch Sử Đơn Hàng</h2></div>;
-
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -56,7 +54,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/checkout" element={<CheckoutTracking />} />
         <Route path="/favorites" element={<Favorites />} />
-        <Route path="/orders/history" element={<OrderHistory />} />
+        <Route path="/orders/history" element={<Navigate to="/profile?tab=orders" replace />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/smart-cart" element={<SmartCartAssistant />} />
         <Route path="/my-vouchers" element={<MyVouchers />} />

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Sparkles, CheckCircle2, Plus } from 'lucide-react';
+import { Send, User, Sparkles, CheckCircle2, Plus, ShoppingCart } from 'lucide-react';
 import api from '../../services/api';
 import Header from '../../components/organisms/Header';
 import { useNavigate } from 'react-router-dom';
@@ -23,10 +23,13 @@ interface Message {
 
 const SmartCartAssistant: React.FC = () => {
   const navigate = useNavigate();
+  const { allCartItemsCount, addToCart } = useCart();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [navigatingItem, setNavigatingItem] = useState<string | null>(null);
+  const [addingItem, setAddingItem] = useState<string | null>(null);
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { addToCart, allCartItemsCount } = useCart();
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'warning' } | null>(null);
@@ -104,39 +107,48 @@ const SmartCartAssistant: React.FC = () => {
     }
   };
 
-  const handleItemClick = async (item: RecommendedItem) => {
-    setNavigatingItem(item.name);
+  /**
+   * Tìm món ăn khớp nhất với tên gợi ý từ AI
+   * Trả về món khớp (cụm từ hoặc >= 70% keyword), hoặc null nếu không tìm thấy
+   */
+  const findBestMatchItem = async (itemName: string) => {
     try {
-      const result = await searchApi.search(item.name, 'menu');
+      const result = await searchApi.search(itemName, 'menu');
       if (result.menuItems && result.menuItems.length > 0) {
-        const found = result.menuItems[0];
-        
-        // Tính toán tỷ lệ khớp từ khóa để tránh chuyển hướng sai món (mismatched redirect)
-        const queryLower = item.name.toLowerCase().trim();
-        const foundNameLower = found.name.toLowerCase();
-        
+        const queryLower = itemName.toLowerCase().trim();
         const queryKeywords = queryLower.split(/\s+/).filter(kw => kw.length > 0);
-        let matchedCount = 0;
-        queryKeywords.forEach(kw => {
-          if (foundNameLower.includes(kw)) {
-            matchedCount++;
-          }
-        });
-        
-        const matchRatio = queryKeywords.length > 0 ? matchedCount / queryKeywords.length : 0;
-        const isPhraseMatch = foundNameLower.includes(queryLower);
 
-        // Chỉ chuyển thẳng đến chi tiết nếu trùng khớp cụm từ hoặc khớp >= 70% số từ khóa
-        if (isPhraseMatch || matchRatio >= 0.7) {
-          const itemId = found.id || found._id;
-          if (itemId) {
-            navigate(`/menu-items/${itemId}`);
-            return;
+        for (const found of result.menuItems) {
+          const foundNameLower = (found.name || '').toLowerCase();
+          let matchedCount = 0;
+          queryKeywords.forEach(kw => {
+            if (foundNameLower.includes(kw)) matchedCount++;
+          });
+          const matchRatio = queryKeywords.length > 0 ? matchedCount / queryKeywords.length : 0;
+          const isPhraseMatch = foundNameLower.includes(queryLower);
+
+          if (isPhraseMatch || matchRatio >= 0.7) {
+            return found;
           }
         }
       }
     } catch (err) {
-      console.warn('Search failed, fallback to search page:', err);
+      console.warn('Search failed:', err);
+    }
+    return null;
+  };
+
+  const handleItemClick = async (item: RecommendedItem) => {
+    setNavigatingItem(item.name);
+    try {
+      const found = await findBestMatchItem(item.name);
+      if (found) {
+        const itemId = found.id || found._id;
+        if (itemId) {
+          navigate(`/menu-items/${itemId}`);
+          return;
+        }
+      }
     } finally {
       setNavigatingItem(null);
     }
@@ -145,18 +157,35 @@ const SmartCartAssistant: React.FC = () => {
   };
 
   const handleAddToCart = async (item: RecommendedItem) => {
-    if (!item.id || !item.restaurantId) {
-      showToast(`Không thể thêm món này vào giỏ hàng vì thiếu thông tin. Vui lòng thử yêu cầu mới!`, 'warning');
-      return;
-    }
-    const success = addToCart({
-      id: item.id,
-      name: item.name,
-      price: item.price
-    }, item.restaurantId, 1);
-
-    if (success) {
-      showToast(`Đã thêm ${item.name} vào giỏ hàng!`);
+    setAddingItem(item.name);
+    try {
+      const found = await findBestMatchItem(item.name);
+      if (found) {
+        const itemId = found.id || found._id;
+        const restaurantId = found.restaurantId || found.restaurant?.id || '';
+        if (itemId && restaurantId) {
+          const success = addToCart(
+            {
+              id: itemId,
+              name: found.name || item.name,
+              price: found.price ?? item.price,
+              imageUrl: found.imageUrl || found.image,
+            },
+            restaurantId,
+            1
+          );
+          if (success) {
+            setAddedItems(prev => new Set(prev).add(item.name));
+            return;
+          }
+          // Nếu addToCart trả về false → người dùng chưa đăng nhập (modal đã hiện)
+          return;
+        }
+      }
+      // Không tìm thấy món phù hợp → điều hướng sang trang tìm kiếm
+      navigate(`/search?q=${encodeURIComponent(item.name)}`);
+    } finally {
+      setAddingItem(null);
     }
   };
 
@@ -280,10 +309,21 @@ const SmartCartAssistant: React.FC = () => {
                                     e.stopPropagation();
                                     handleAddToCart(item);
                                   }}
-                                  className="w-8 h-8 rounded-full bg-[#E8D8C6] hover:bg-[#BF3A20] hover:text-white text-[#5C1A0A] flex items-center justify-center transition-colors relative z-10"
-                                  title="Thêm vào giỏ"
+                                  disabled={addingItem === item.name}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors relative z-10 ${
+                                    addedItems.has(item.name)
+                                      ? 'bg-green-500 text-white cursor-default'
+                                      : 'bg-[#E8D8C6] hover:bg-[#BF3A20] hover:text-white text-[#5C1A0A]'
+                                  } disabled:opacity-60`}
+                                  title={addedItems.has(item.name) ? 'Đã thêm vào giỏ' : 'Thêm vào giỏ'}
                                 >
-                                  <Plus size={16} />
+                                  {addingItem === item.name ? (
+                                    <span className="w-3 h-3 border-2 border-t-transparent border-current rounded-full animate-spin" />
+                                  ) : addedItems.has(item.name) ? (
+                                    <ShoppingCart size={14} />
+                                  ) : (
+                                    <Plus size={16} />
+                                  )}
                                 </button>
                               </div>
                             </div>

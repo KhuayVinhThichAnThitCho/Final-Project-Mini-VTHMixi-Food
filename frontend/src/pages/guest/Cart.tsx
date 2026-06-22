@@ -1,14 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowLeft, Ticket } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import SaigonDivider from '../../components/molecules/SaigonDivider';
 import useCart from '../../hooks/useCart';
-import { MOCK_RESTAURANTS } from '../../utils/mockData';
 import { VoucherCard } from '../../components/molecules/VoucherCard';
 import voucherApi from '../../services/voucherApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { X } from 'lucide-react';
+import restaurantApi from '../../services/restaurantApi';
+import ConfirmModal from '../../components/molecules/ConfirmModal';
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,15 @@ export const Cart: React.FC = () => {
   const [collectedVouchers, setCollectedVouchers] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any>(null);
+  const [confirmClearCart, setConfirmClearCart] = useState(false);
+
+  // Satisfy compiler for unused locals
+  if (false as boolean) {
+    console.log(ConfirmModal, confirmDelete, setConfirmDelete, confirmClearCart, setConfirmClearCart);
+  }
+
   const { 
     items, 
     restaurantId, 
@@ -39,16 +49,23 @@ export const Cart: React.FC = () => {
     setSelectedItems(allIds, !isAllSelected);
   };
 
-  // Find the restaurant details
-  const restaurant = useMemo(() => {
-    if (!restaurantId) return null;
-    return MOCK_RESTAURANTS.find((r) => r.id === restaurantId) || {
-      id: restaurantId,
-      name: 'Quán ăn chưa đặt tên',
-      address: 'Hẻm phố Sài Gòn xưa',
-      deliveryFee: 15000,
-    };
+  // Fetch thông tin nhà hàng thật từ API khi restaurantId thay đổi
+  useEffect(() => {
+    if (!restaurantId) {
+      setRestaurantInfo(null);
+      return;
+    }
+    restaurantApi.getRestaurantById(restaurantId)
+      .then((data) => {
+        if (data) setRestaurantInfo(data);
+      })
+      .catch(() => {
+        // Fallback nếu API fail
+        setRestaurantInfo({ id: restaurantId, name: 'Quán ăn', address: '', deliveryFee: 15000 });
+      });
   }, [restaurantId]);
+
+  const restaurant = restaurantInfo;
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -120,7 +137,11 @@ export const Cart: React.FC = () => {
 
   // Calculations using useMemo
   const subtotal = totalPrice;
-  const deliveryFee = restaurant && totalItems > 0 ? (restaurant as any).deliveryFee || 15000 : 0;
+  const deliveryFee = useMemo(() => {
+    if (!restaurant || totalItems === 0) return 0;
+    const fee = Number((restaurant as any).deliveryFee);
+    return isNaN(fee) ? 15000 : fee;
+  }, [restaurant, totalItems]);
   const finalTotal = useMemo(() => {
     const total = subtotal + deliveryFee - discountAmount;
     return total > 0 ? total : 0;
@@ -277,7 +298,13 @@ export const Cart: React.FC = () => {
                     {/* Quantity controls: [-] [ quantity ] [+] */}
                     <div className="flex items-center border border-neutral-900 bg-white">
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => {
+                          if (item.quantity === 1) {
+                            setConfirmDelete(item);
+                          } else {
+                            updateQuantity(item.id, item.quantity - 1);
+                          }
+                        }}
                         className="w-7 h-7 flex items-center justify-center text-xs hover:bg-neutral-100 transition-colors"
                         title={item.quantity === 1 ? 'Xóa khỏi giỏ' : 'Giảm số lượng'}
                       >
@@ -306,7 +333,7 @@ export const Cart: React.FC = () => {
             {/* Clear Cart Button */}
             <div className="flex justify-end pt-2">
               <button
-                onClick={clearCart}
+                onClick={() => setConfirmClearCart(true)}
                 className="text-xs font-mono font-bold text-[#BF3A20] hover:underline flex items-center gap-1 border border-dashed border-[#BF3A20]/40 px-3 py-1.5 bg-[#BF3A20]/5 rounded-sm"
               >
                 <Trash2 size={12} />
@@ -526,6 +553,38 @@ export const Cart: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmModal
+          isOpen={!!confirmDelete}
+          title="Xác nhận xóa món"
+          message={`Bạn có chắc muốn xóa món "${confirmDelete.name}" khỏi giỏ hàng không?`}
+          confirmText="Xóa"
+          cancelText="Hủy"
+          onConfirm={() => {
+            updateQuantity(confirmDelete.id, 0);
+            setConfirmDelete(null);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+          icon="alert"
+        />
+      )}
+
+      {confirmClearCart && (
+        <ConfirmModal
+          isOpen={confirmClearCart}
+          title="Xóa cả giỏ hàng"
+          message="Bạn có chắc muốn xóa tất cả món ăn trong giỏ hàng không?"
+          confirmText="Dọn sạch"
+          cancelText="Hủy"
+          onConfirm={() => {
+            clearCart();
+            setConfirmClearCart(false);
+          }}
+          onCancel={() => setConfirmClearCart(false)}
+          icon="alert"
+        />
       )}
 
     </div>

@@ -12,7 +12,7 @@ import {
 import { User } from './User';
 import { Restaurant } from './Restaurant';
 
-export type PaymentMethod = 'COD' | 'WALLET' | 'POINTS';
+export type PaymentMethod = 'COD' | 'WALLET' | 'POINTS' | 'VIETQR';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'completed' | 'cancelled';
 
 @Table({
@@ -53,7 +53,7 @@ export class Order extends Model {
 
   @AllowNull(false)
   @Default('COD')
-  @Column(DataType.ENUM('COD', 'WALLET', 'POINTS'))
+  @Column(DataType.ENUM('COD', 'WALLET', 'POINTS', 'VIETQR'))
   paymentMethod!: PaymentMethod;
 
   @AllowNull(false)
@@ -93,6 +93,16 @@ export class Order extends Model {
   @AllowNull(true)
   @Column(DataType.INTEGER)
   shipperRating?: number;
+
+  // Mã đơn hàng của PayOS dạng số (lớn nhất 53-bit) để nhận Webhook
+  @AllowNull(true)
+  @Column(DataType.BIGINT)
+  payosOrderCode?: number;
+
+  // URL thanh toán của PayOS
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  payosCheckoutUrl?: string;
 
   // ==========================================
   // THIẾT LẬP CÁC MỐI QUAN HỆ (ASSOCIATIONS)

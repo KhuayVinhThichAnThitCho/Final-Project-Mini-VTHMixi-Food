@@ -99,6 +99,8 @@ export const orderService = {
     const finalAmount = Math.max(totalPrice + customerDeliveryFee - discount, 0);
 
     // 3. Xử lý thanh toán theo phương thức chọn
+    let payosOrderCode: number | undefined;
+
     if (paymentMethod === 'WALLET') {
       // Thanh toán qua ví điện tử
       await walletService.payWithWallet(userId, finalAmount, `Thanh toán đơn hàng tại nhà hàng ${restaurantId}`);
@@ -115,6 +117,10 @@ export const orderService = {
       user.points -= pointsNeeded;
       await user.save();
       console.log(`🪙 User ${userId} đã thanh toán ${pointsNeeded} điểm tích lũy cho đơn hàng.`);
+    } else if (paymentMethod === 'VIETQR') {
+      // Sinh mã số orderCode duy nhất cho PayOS (phải là số, tối đa 53-bit)
+      // Dùng 9 chữ số cuối của timestamp + số ngẫu nhiên 3 chữ số
+      payosOrderCode = Number(String(Date.now()).slice(-9)) + Math.floor(Math.random() * 1000);
     }
 
     // 4. Tạo đơn hàng lưu vào database
@@ -125,9 +131,45 @@ export const orderService = {
       totalAmount: finalAmount,
       deliveryAddress,
       paymentMethod,
-      shippingFee: 15000, // Shipper vẫn được 15000đ
-      platformFee: platformFee // Phí nền tảng do nhà hàng chịu (lưu vết)
+      payosOrderCode,
     });
+
+    // 4b. Sinh link thanh toán PayOS nếu chọn phương thức VIETQR
+    if (paymentMethod === 'VIETQR' && payosOrderCode) {
+      const isMockMode = !process.env.PAYOS_CLIENT_ID || 
+                         process.env.PAYOS_CLIENT_ID === 'your_payos_client_id';
+
+      if (isMockMode) {
+        console.log("⚠️  [PayOS Mock] Đang chạy ở chế độ GIẢ LẬP thanh toán VietQR.");
+        order.payosCheckoutUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/checkout?status=pending&payment=vietqr&orderId=${order.id}&amount=${finalAmount}&code=${payosOrderCode}`;
+        await order.save();
+      } else {
+        try {
+          const { payos } = await import('./payosService');
+          // Nội dung thanh toán tối đa 25 ký tự không dấu/kí tự đặc biệt
+          const description = `Gfood ${payosOrderCode}`.substring(0, 25);
+          
+          const returnUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/checkout?status=success&orderId=${order.id}`;
+          const cancelUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/checkout?status=cancelled&orderId=${order.id}`;
+
+          const paymentLinkData = {
+            orderCode: payosOrderCode,
+            amount: finalAmount,
+            description,
+            cancelUrl,
+            returnUrl,
+          };
+
+          const paymentLink = await payos.paymentRequests.create(paymentLinkData);
+          order.payosCheckoutUrl = paymentLink.checkoutUrl;
+          await order.save();
+        } catch (err: any) {
+          console.error("❌ Lỗi khi sinh link thanh toán PayOS:", err);
+          order.payosCheckoutUrl = "ERROR_CREATING_LINK";
+          await order.save();
+        }
+      }
+    }
 
     // 5. Đánh dấu voucher đã dùng trong ví
     if (userVoucherToUpdate) {

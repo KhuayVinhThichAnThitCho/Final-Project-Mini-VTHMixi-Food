@@ -160,6 +160,17 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
 
                   <button
                     onClick={() => {
+                      navigate('/profile?tab=orders');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-neutral-800 hover:bg-[#BF3A20]/5 hover:text-[#BF3A20] font-semibold transition-colors flex items-center gap-2"
+                  >
+                    <ShoppingBag size={13} strokeWidth={1.5} />
+                    <span>Lịch Sử Đơn Hàng</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
                       navigate('/my-vouchers');
                       setIsDropdownOpen(false);
                     }}
@@ -193,65 +204,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
               Đăng Nhập
             </button>
           )}
-
-          {/* System Notification Bell */}
-          <div className="relative">
-            <button
-              onClick={handleOpenNoti}
-              className="relative flex items-center justify-center w-8 h-8 border-2 border-neutral-900 hover:border-[#BF3A20] bg-white rounded-sm text-neutral-850 hover:text-[#BF3A20] transition-all cursor-pointer shadow-retro-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
-              title="Thông báo hệ thống"
-            >
-              <Info size={14} strokeWidth={1.8} />
-              {hasNewNoti && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white animate-pulse" />
-              )}
-            </button>
-
-            {isNotiOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro z-[60] rounded-sm font-body text-xs overflow-hidden">
-                <div className="bg-neutral-100 border-b border-neutral-200 px-4 py-2.5 flex items-center justify-between font-mono font-bold uppercase tracking-wider text-neutral-700">
-                  <span>📢 Thông báo hệ thống</span>
-                </div>
-                <div className="p-3 max-h-64 overflow-y-auto space-y-2.5">
-                  {notice && notice.isActive && notice.message ? (
-                    <div className={`p-3 border rounded-sm flex gap-2.5 items-start ${
-                      notice.type === 'warning' ? 'bg-amber-50 border-amber-200 text-neutral-800' :
-                      notice.type === 'error' ? 'bg-red-50 border-red-200 text-neutral-800' :
-                      notice.type === 'success' ? 'bg-green-50 border-green-200 text-neutral-800' :
-                      'bg-blue-50 border-blue-200 text-neutral-800'
-                    }`}>
-                      <span className="mt-0.5 flex-shrink-0">
-                        {notice.type === 'warning' ? <AlertTriangle size={14} className="text-amber-600" /> :
-                         notice.type === 'error' ? <XCircle size={14} className="text-red-600" /> :
-                         notice.type === 'success' ? <CheckCircle size={14} className="text-green-600" /> :
-                         <Info size={14} className="text-blue-600" />}
-                      </span>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-[10px] font-mono uppercase tracking-wider text-neutral-500">
-                          {notice.type === 'warning' ? 'Cảnh báo' :
-                           notice.type === 'error' ? 'Hệ thống bảo trì' :
-                           notice.type === 'success' ? 'Thành công' :
-                           'Tin tức'}
-                        </p>
-                        <p className="text-xs leading-normal">{notice.message}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-6 text-center text-neutral-400 font-mono">
-                      <p className="text-lg mb-1">📭</p>
-                      <p>Không có thông báo mới.</p>
-                      {noticeError && (
-                        <p className="text-[10px] text-red-500 mt-2 bg-red-50 border border-red-200 p-2 rounded-sm select-all">
-                          Lỗi: {(noticeError as any)?.message || noticeError.toString()}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Personal Notification Bell – chỉ hiện khi đã đăng nhập */}
           {isAuthenticated && (
             <div className="relative">
@@ -273,6 +225,66 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
                 isOpen={isUserNotiOpen}
                 onClose={() => setIsUserNotiOpen(false)}
               />
+            </div>
+          )}
+
+          {/* System Notification Bell – chỉ hiện khi đã đăng nhập */}
+          {isAuthenticated && (
+            <div className="relative">
+              <button
+                onClick={handleOpenNoti}
+                className="relative flex items-center justify-center w-8 h-8 border-2 border-neutral-900 hover:border-[#BF3A20] bg-white rounded-sm text-neutral-850 hover:text-[#BF3A20] transition-all cursor-pointer shadow-retro-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+                title="Thông báo hệ thống"
+              >
+                <Info size={14} strokeWidth={1.8} />
+                {hasNewNoti && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white animate-pulse" />
+                )}
+              </button>
+
+              {isNotiOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro z-[60] rounded-sm font-body text-xs overflow-hidden">
+                  <div className="bg-neutral-100 border-b border-neutral-200 px-4 py-2.5 flex items-center justify-between font-mono font-bold uppercase tracking-wider text-neutral-700">
+                    <span>📢 Thông báo hệ thống</span>
+                  </div>
+                  <div className="p-3 max-h-64 overflow-y-auto space-y-2.5">
+                    {notice && notice.isActive && notice.message ? (
+                      <div className={`p-3 border rounded-sm flex gap-2.5 items-start ${
+                        notice.type === 'warning' ? 'bg-amber-50 border-amber-200 text-neutral-800' :
+                        notice.type === 'error' ? 'bg-red-50 border-red-200 text-neutral-800' :
+                        notice.type === 'success' ? 'bg-green-50 border-green-200 text-neutral-800' :
+                        'bg-blue-50 border-blue-200 text-neutral-800'
+                      }`}>
+                        <span className="mt-0.5 flex-shrink-0">
+                          {notice.type === 'warning' ? <AlertTriangle size={14} className="text-amber-600" /> :
+                           notice.type === 'error' ? <XCircle size={14} className="text-red-600" /> :
+                           notice.type === 'success' ? <CheckCircle size={14} className="text-green-600" /> :
+                           <Info size={14} className="text-blue-600" />}
+                        </span>
+                        <div className="space-y-1">
+                          <p className="font-semibold text-[10px] font-mono uppercase tracking-wider text-neutral-500">
+                            {notice.type === 'warning' ? 'Cảnh báo' :
+                             notice.type === 'error' ? 'Hệ thống bảo trì' :
+                             notice.type === 'success' ? 'Thành công' :
+                             'Tin tức'}
+                          </p>
+                          <p className="text-xs leading-normal">{notice.message}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-6 text-center text-neutral-400 font-mono">
+                        <p className="text-lg mb-1">📭</p>
+                        <p>Không có thông báo mới.</p>
+                        {noticeError && (
+                          <p className="text-[10px] text-red-500 mt-2 bg-red-50 border border-red-200 p-2 rounded-sm select-all">
+                            Lỗi: {(noticeError as any)?.message || noticeError.toString()}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
