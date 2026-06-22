@@ -77,6 +77,45 @@ export const initializeDatabase = async (): Promise<boolean> => {
     console.log('⚙️ Đang thực hiện đồng bộ hóa cấu trúc bảng (Syncing models)...');
     await sequelize.sync();
 
+    // Đồng bộ cấu trúc cột payment_method và các cột PayOS cho bảng orders trong MySQL
+    try {
+      console.log('🔄 Đang đồng bộ cấu trúc cột payment_method và PayOS cho bảng orders...');
+      await sequelize.query(`
+        ALTER TABLE orders 
+        MODIFY COLUMN payment_method ENUM('COD', 'WALLET', 'POINTS', 'VIETQR') NOT NULL DEFAULT 'COD'
+      `);
+      
+      // Thêm cột payos_order_code và payos_checkout_url nếu chưa tồn tại
+      const [columns]: any = await sequelize.query("SHOW COLUMNS FROM orders LIKE 'payos_order_code'");
+      if (columns.length === 0) {
+        await sequelize.query("ALTER TABLE orders ADD COLUMN payos_order_code BIGINT NULL");
+        await sequelize.query("ALTER TABLE orders ADD COLUMN payos_checkout_url TEXT NULL");
+      }
+      console.log('✅ Đã đồng bộ cấu trúc orders thành công.');
+    } catch (e) {
+      console.warn('Lưu ý: Không thể cập nhật cấu trúc orders thủ công, có thể đã được Sequelize đồng bộ:', e);
+    }
+
+    // Đảm bảo cấu hình payment_methods trong MySQL chứa VIETQR: true
+    try {
+      console.log('🔄 Đang kiểm tra cấu hình phương thức thanh toán trong DB...');
+      const [results]: any = await sequelize.query("SELECT * FROM system_configs WHERE `key` = 'payment_methods'");
+      if (results.length > 0) {
+        const configRecord = results[0];
+        let val = JSON.parse(configRecord.value);
+        if (val && typeof val === 'object' && val.VIETQR === undefined) {
+          val.VIETQR = true;
+          await sequelize.query(
+            "UPDATE system_configs SET value = ? WHERE `key` = 'payment_methods'",
+            { replacements: [JSON.stringify(val)] }
+          );
+          console.log('✅ Đã kích hoạt phương thức VIETQR trong cấu hình hệ thống.');
+        }
+      }
+    } catch (e) {
+      console.warn('Lưu ý: Không thể cập nhật cấu hình payment_methods trong database:', e);
+    }
+
 
     // Seed database with mock data if tables are empty
     const { seedDatabase } = await import('./seedData');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   User as UserIcon, 
   Plus, 
@@ -43,6 +43,7 @@ interface Address {
 
 export const Profile: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart, totalItems } = useCart();
   const { user, refetchMe } = useAuth();
 
@@ -114,6 +115,44 @@ export const Profile: React.FC = () => {
   const [favoriteItems, setFavoriteItems] = useState<any[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
 
+  const getActiveStepIndex = (status: string) => {
+    if (status === 'cancelled') return -1;
+    let mappedStatus = status;
+    if (status === 'ready') mappedStatus = 'preparing';
+    
+    const stepsKeys = ['pending', 'confirmed', 'preparing', 'delivering', 'completed'];
+    const idx = stepsKeys.indexOf(mappedStatus);
+    if (idx !== -1) return idx;
+    
+    if (status === 'shipping') return 3; // delivering
+    if (status === 'delivered') return 4; // completed
+    return stepsKeys.indexOf(status);
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    const confirm = window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?');
+    if (!confirm) return;
+
+    try {
+      const res = await orderApi.updateOrderStatus(orderId, 'cancelled');
+      if (res && res.success) {
+        alert('Hủy đơn hàng thành công!');
+        // Update local state
+        setRealOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+        );
+        setSelectedOrderDetail((prev: any) =>
+          prev && prev.id === orderId ? { ...prev, status: 'cancelled' } : prev
+        );
+      } else {
+        alert('Không thể hủy đơn hàng: ' + (res.message || 'Lỗi hệ thống'));
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi hủy đơn hàng:', err);
+      alert('Không thể hủy đơn hàng: ' + (err.message || 'Lỗi hệ thống'));
+    }
+  };
+
   const fetchRealOrders = async () => {
     try {
       setOrdersLoading(true);
@@ -144,6 +183,52 @@ export const Profile: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'favorites') fetchFavoriteItems();
   }, [activeTab]);
+
+  // Listen to tab and orderId query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'orders' || tab === 'favorites' || tab === 'profile') {
+      setActiveTab(tab as any);
+    }
+  }, [location.search]);
+
+  // Sync selected order from query param orderId once realOrders is loaded
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const orderId = params.get('orderId');
+    if (orderId && realOrders.length > 0) {
+      const found = realOrders.find((o) => o.id === orderId);
+      if (found) {
+        setSelectedOrderDetail(found);
+      }
+    }
+  }, [location.search, realOrders]);
+
+  // Polling for selected order status inside Profile.tsx modal
+  useEffect(() => {
+    if (!selectedOrderDetail) return;
+
+    const isActive = selectedOrderDetail.status !== 'completed' && selectedOrderDetail.status !== 'cancelled';
+    if (!isActive) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await orderApi.getMyOrders();
+        if (res && res.success && res.data) {
+          setRealOrders(res.data);
+          const updated = res.data.find((o: any) => o.id === selectedOrderDetail.id);
+          if (updated) {
+            setSelectedOrderDetail(updated);
+          }
+        }
+      } catch (err) {
+        console.error('Error polling order in profile modal:', err);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [selectedOrderDetail?.id, selectedOrderDetail?.status]);
 
   // Sync addresses to localStorage
   useEffect(() => {
@@ -1380,6 +1465,57 @@ export const Profile: React.FC = () => {
                 </div>
               </div>
 
+              {/* Stepper Progress Bar */}
+              {selectedOrderDetail.status !== 'cancelled' && (
+                <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                  <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-3">Tiến trình vận chuyển</span>
+                  <div className="relative flex items-center justify-between gap-1 pt-1 pb-2">
+                    {/* Progress Line */}
+                    <div className="absolute top-[18px] left-0 w-full h-[2px] bg-neutral-200 -translate-y-1/2 z-0"></div>
+                    {/* Active Line */}
+                    {(() => {
+                      const activeIndex = getActiveStepIndex(selectedOrderDetail.status);
+                      const percentage = activeIndex >= 0 ? (activeIndex / 4) * 100 : 0;
+                      return (
+                        <div 
+                          className="absolute top-[18px] left-0 h-[2px] bg-[#BF3A20] -translate-y-1/2 z-0 transition-all duration-300"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      );
+                    })()}
+
+                    {['Mới', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn tất'].map((label, index) => {
+                      const activeIndex = getActiveStepIndex(selectedOrderDetail.status);
+                      const isCompleted = index <= activeIndex;
+                      const isCurrent = index === activeIndex;
+
+                      return (
+                        <div key={label} className="flex flex-col items-center z-10 flex-1 relative">
+                          <div
+                            className={`w-6 h-6 rounded-full border flex items-center justify-center font-mono font-bold text-[10px] transition-all ${
+                              isCurrent
+                                ? 'bg-[#BF3A20] border-neutral-900 text-white scale-110 shadow-retro-sm'
+                                : isCompleted
+                                ? 'bg-[#BF3A20] border-neutral-900 text-white'
+                                : 'bg-white border-[#D0B89A] text-[#D0B89A]'
+                            }`}
+                          >
+                            {index + 1}
+                          </div>
+                          <span
+                            className={`text-[8px] font-bold mt-1.5 uppercase text-center tracking-wider ${
+                              isCompleted ? 'text-neutral-900' : 'text-[#D0B89A]'
+                            }`}
+                          >
+                            {label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* 3. Delivery address */}
               <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
                 <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Địa chỉ ký nhận</span>
@@ -1461,15 +1597,34 @@ export const Profile: React.FC = () => {
               >
                 Đóng chi tiết
               </button>
-              <button
-                onClick={() => {
-                  setSelectedOrderDetail(null);
-                  handleReorder(selectedOrderDetail);
-                }}
-                className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all"
-              >
-                Đặt lại đơn này
-              </button>
+              
+              {/* Conditional Action Button */}
+              {['pending', 'confirmed'].includes(selectedOrderDetail.status) ? (
+                <button
+                  onClick={() => handleCancelOrder(selectedOrderDetail.id)}
+                  className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all"
+                >
+                  Hủy Đơn Hàng
+                </button>
+              ) : selectedOrderDetail.status === 'preparing' ? (
+                <button
+                  onClick={() => alert('Đơn hàng đã được quán tiếp nhận và đang trong quá trình chế biến. Bạn không thể tự hủy trực tiếp lúc này. Vui lòng liên hệ trực tiếp với cửa hàng hoặc tính năng Chat để yêu cầu hỗ trợ.')}
+                  className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-300 bg-neutral-100 text-neutral-400 text-center cursor-not-allowed transition-all"
+                  title="Đơn hàng đang chuẩn bị, không thể hủy trực tiếp"
+                >
+                  Không Thể Hủy Đơn
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSelectedOrderDetail(null);
+                    handleReorder(selectedOrderDetail);
+                  }}
+                  className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all"
+                >
+                  Đặt lại đơn này
+                </button>
+              )}
             </div>
 
           </div>

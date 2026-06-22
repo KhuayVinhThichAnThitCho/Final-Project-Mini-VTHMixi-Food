@@ -21,13 +21,13 @@ const callLLM = async (prompt: string, expectJson: boolean = true) => {
   if (aiProvider === 'groq' && groq) {
     const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      model: process.env.GROQ_MODEL || 'llama3-8b-8192',
+      model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
       response_format: expectJson ? { type: 'json_object' } : undefined,
     });
     return completion.choices[0]?.message?.content || '{}';
   } else if (aiProvider === 'gemini' && ai) {
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
       contents: prompt,
       config: expectJson ? { responseMimeType: "application/json" } : undefined
     });
@@ -35,6 +35,14 @@ const callLLM = async (prompt: string, expectJson: boolean = true) => {
   } else {
     throw new AppError(500, 'INTERNAL_ERROR', 'AI Provider is not configured properly.');
   }
+};
+
+const parseJsonGracefully = (text: string): any => {
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/, '');
+  }
+  return JSON.parse(cleaned.trim());
 };
 
 export const aiService = {
@@ -125,7 +133,7 @@ Nếu không cần gọi công cụ nào, hãy trả về: { "tools": [] }
     let toolDecision;
     try {
       const toolResponseText = await callLLM(toolPrompt, true);
-      toolDecision = JSON.parse(toolResponseText);
+      toolDecision = parseJsonGracefully(toolResponseText);
     } catch (e) {
       toolDecision = { tools: [] };
     }
@@ -194,9 +202,10 @@ Lưu ý: Bạn phải đóng vai trò là một Data Analyst chuyên nghiệp. T
     let finalAnswer;
     try {
       const finalResponseText = await callLLM(finalPrompt, true);
-      finalAnswer = JSON.parse(finalResponseText);
-    } catch (e) {
-      throw new AppError(500, 'INTERNAL_ERROR', 'Lỗi khi AI sinh câu trả lời.');
+      finalAnswer = parseJsonGracefully(finalResponseText);
+    } catch (e: any) {
+      console.error('Error in AI manager final synthesis:', e);
+      throw new AppError(500, 'INTERNAL_ERROR', `Lỗi khi AI sinh câu trả lời: ${e.message || e}`);
     }
 
     // Lưu câu trả lời của AI vào lịch sử

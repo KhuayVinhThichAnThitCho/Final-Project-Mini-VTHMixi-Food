@@ -231,7 +231,7 @@ export const RestaurantDetail: React.FC = () => {
               <Bike size={14} className="text-[#BF3A20] flex-shrink-0" />
               <div>
                 <p className="text-xs font-mono font-bold text-[#BF3A20]">
-                  {restaurant.deliveryFee > 0 ? `${restaurant.deliveryFee.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
+                  {Number(restaurant.deliveryFee) > 0 ? `${Number(restaurant.deliveryFee).toLocaleString('vi-VN')}đ` : 'Miễn phí'}
                 </p>
                 <p className="text-[9px] font-mono text-[#BF3A20]/70 uppercase">Phí ship</p>
               </div>

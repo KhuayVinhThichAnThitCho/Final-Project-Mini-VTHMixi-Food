@@ -8,7 +8,7 @@ export const orderApi = {
     restaurantId: string;
     items: { menuItemId: string; name: string; quantity: number; price: number }[];
     deliveryAddress: string;
-    paymentMethod: 'COD' | 'WALLET' | 'POINTS';
+    paymentMethod: 'COD' | 'WALLET' | 'POINTS' | 'VIETQR';
     voucherCode?: string;
   }) => {
     return api.post('/orders', orderData) as any;

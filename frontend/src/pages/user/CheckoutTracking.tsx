@@ -17,6 +17,7 @@ import orderApi from '../../services/orderApi';
 import voucherApi from '../../services/voucherApi';
 import { VoucherCard } from '../../components/molecules/VoucherCard';
 import api from '../../services/api';
+import restaurantApi from '../../services/restaurantApi';
 
 interface CheckoutItem {
   id: string;
@@ -31,15 +32,26 @@ export const CheckoutTracking: React.FC = () => {
   const { selectedItems, restaurantId, totalItems, totalPrice, clearSelected } = useCart();
   const { user, refetchMe } = useAuth();
 
-  // Screen state: 'checkout' (Thanh Toán) | 'tracking' (Theo Dõi)
-  const [screen, setScreen] = useState<'checkout' | 'tracking'>('checkout');
+  // Screen state: 'checkout' (Thanh Toán) | 'tracking' (Theo Dõi) | 'payment-simulation' (Giả Lập Thanh Toán)
+  const [screen, setScreen] = useState<'checkout' | 'tracking' | 'payment-simulation'>('checkout');
+  const [simulationData, setSimulationData] = useState<{
+    type: 'VIETQR' | 'WALLET';
+    orderId?: string;
+    amount: number;
+    code?: string;
+    orderData?: any;
+  } | null>(null);
+
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [pin, setPin] = useState('');
 
   // Form states
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'WALLET' | 'POINTS'>('COD');
-  const [activePaymentMethods, setActivePaymentMethods] = useState<{ COD: boolean; WALLET: boolean; POINTS: boolean }>({
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'WALLET' | 'POINTS' | 'VIETQR'>('COD');
+  const [activePaymentMethods, setActivePaymentMethods] = useState<{ COD: boolean; WALLET: boolean; POINTS: boolean; VIETQR?: boolean }>({
     COD: true,
     WALLET: true,
-    POINTS: true
+    POINTS: true,
+    VIETQR: true
   });
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -54,6 +66,24 @@ export const CheckoutTracking: React.FC = () => {
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [collectedVouchers, setCollectedVouchers] = useState<any[]>([]);
   const [loadingCollected, setLoadingCollected] = useState(false);
+
+  // Restaurant state and fetching
+  const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if (!restaurantId) {
+      setRestaurantInfo(null);
+      return;
+    }
+    restaurantApi.getRestaurantById(restaurantId)
+      .then((data) => {
+        if (data) setRestaurantInfo(data);
+      })
+      .catch((err) => {
+        console.error('Error fetching restaurant info in checkout:', err);
+        setRestaurantInfo({ id: restaurantId, name: 'Quán ăn', address: '', deliveryFee: 15000 });
+      });
+  }, [restaurantId]);
 
   // Load ví voucher
   useEffect(() => {
@@ -132,6 +162,54 @@ export const CheckoutTracking: React.FC = () => {
     };
     fetchPaymentMethods();
   }, []);
+
+  // Lắng nghe kết quả thanh toán PayOS trả về
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const payment = params.get('payment');
+    const orderId = params.get('orderId');
+    const amount = params.get('amount');
+    const code = params.get('code');
+
+    if (status && orderId) {
+      if (status === 'success') {
+        showCustomAlert('Thanh toán đơn hàng qua VietQR thành công!', 'Thành công', 'info');
+        navigate(`/orders/history?orderId=${orderId}`);
+      } else if (status === 'cancelled') {
+        showCustomAlert('Bạn đã hủy thanh toán VietQR cho đơn hàng này.', 'Hủy thanh toán', 'info');
+      } else if (status === 'pending' && payment === 'vietqr') {
+        setSimulationData({
+          type: 'VIETQR',
+          orderId,
+          amount: amount ? Number(amount) : 0,
+          code: code || '',
+        });
+        setScreen('payment-simulation');
+      }
+      
+      // Xoá các query params trên URL để tránh hiển thị lại alert khi reload trang
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  // Lấy số dư ví của người dùng từ API thực tế của database
+  const fetchWalletBalance = async () => {
+    try {
+      const res = await api.get('/wallet/balance');
+      if (res && (res as any).success && (res as any).data) {
+        setWalletBalance(Number((res as any).data.balance));
+      }
+    } catch (err) {
+      console.error('Lỗi lấy số dư ví:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchWalletBalance();
+    }
+  }, [user]);
 
   // Address state setup
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -228,7 +306,11 @@ export const CheckoutTracking: React.FC = () => {
     return checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [selectedItems, totalPrice, checkoutItems]);
 
-  const deliveryFee = 15000; // Fixed delivery fee
+  const deliveryFee = useMemo(() => {
+    if (!restaurantInfo || checkoutItems.length === 0) return 0;
+    const fee = Number(restaurantInfo.deliveryFee);
+    return isNaN(fee) ? 15000 : fee;
+  }, [restaurantInfo, checkoutItems]);
 
   // Final Total calculation
   const finalTotal = useMemo(() => {
@@ -304,28 +386,47 @@ export const CheckoutTracking: React.FC = () => {
 
   const submitOrder = async () => {
     setShowConfirmModal(false);
+    
+    const orderData = {
+      restaurantId: restaurantId || 'res-1',
+      items: selectedItems.map(item => ({
+        menuItemId: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      deliveryAddress: deliveryAddress.detail,
+      paymentMethod: paymentMethod, // 'COD' | 'WALLET' | 'POINTS'
+      voucherCode: appliedCode || undefined
+    };
+
+    if (paymentMethod === 'WALLET') {
+      // Chuyển sang màn hình giả lập cổng thanh toán Saigon-Pay
+      setSimulationData({
+        type: 'WALLET',
+        amount: finalTotal,
+        orderData
+      });
+      setPin(''); // Reset PIN nhập
+      setScreen('payment-simulation');
+      return;
+    }
+
     setIsOrdering(true);
     try {
-      const orderData = {
-        restaurantId: restaurantId || 'res-1',
-        items: selectedItems.map(item => ({
-          menuItemId: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        deliveryAddress: deliveryAddress.detail,
-        paymentMethod: paymentMethod, // 'COD' | 'WALLET' | 'POINTS'
-        voucherCode: appliedCode || undefined
-      };
-
       const res = await orderApi.createOrder(orderData);
       if (res && res.success) {
         clearSelected(); // Clear active items from cart store
         if (refetchMe) {
           await refetchMe(); // Cập nhật số dư điểm của user
         }
-        setScreen('tracking');
+        
+        if (paymentMethod === 'VIETQR' && res.data?.payosCheckoutUrl) {
+          // Chuyển hướng đến trang thanh toán của PayOS
+          window.location.href = res.data.payosCheckoutUrl;
+        } else {
+          navigate(`/orders/history?orderId=${res.data.id || res.data._id}`);
+        }
       } else {
         showCustomAlert(res?.message || 'Có lỗi xảy ra khi gửi đơn hàng.', 'Đặt hàng thất bại', 'error');
       }
@@ -548,7 +649,7 @@ export const CheckoutTracking: React.FC = () => {
                     </h2>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Method COD */}
                     <label 
                       onClick={() => {
@@ -630,7 +731,7 @@ export const CheckoutTracking: React.FC = () => {
                             )}
                           </div>
                           <p className="text-[10px] font-mono text-neutral-400">
-                            {!activePaymentMethods.WALLET ? "Tạm thời không hỗ trợ..." : "Số dư: 150.000đ"}
+                            {!activePaymentMethods.WALLET ? "Tạm thời không hỗ trợ..." : `Số dư: ${walletBalance !== null ? walletBalance.toLocaleString('vi-VN') + 'đ' : 'Đang tải...'}`}
                           </p>
                         </div>
                       </div>
@@ -688,6 +789,50 @@ export const CheckoutTracking: React.FC = () => {
                         </div>
                       </div>
                       <span className="text-sm font-bold text-amber-600 font-mono">🪙</span>
+                    </label>
+
+                    {/* Method VIETQR */}
+                    <label 
+                      onClick={() => {
+                        if (!activePaymentMethods.VIETQR) return;
+                        setPaymentMethod('VIETQR');
+                      }}
+                      title={!activePaymentMethods.VIETQR ? "Phương thức thanh toán này hiện không hỗ trợ" : undefined}
+                      className={`flex items-center justify-between p-4 border-2 rounded-md select-none transition-all ${
+                        !activePaymentMethods.VIETQR
+                          ? 'border-neutral-200 bg-neutral-100 opacity-40 cursor-not-allowed'
+                          : paymentMethod === 'VIETQR'
+                            ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10 cursor-pointer'
+                            : 'border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'VIETQR'}
+                          disabled={!activePaymentMethods.VIETQR}
+                          onChange={() => {
+                            if (!activePaymentMethods.VIETQR) return;
+                            setPaymentMethod('VIETQR');
+                          }}
+                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold font-body text-neutral-800">VietQR</p>
+                            {!activePaymentMethods.VIETQR && (
+                              <span className="text-[8px] font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                TẠM THỜI KHÔNG HỖ TRỢ
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-mono text-neutral-400">
+                            {!activePaymentMethods.VIETQR ? "Tạm thời không hỗ trợ..." : "Chuyển khoản VietQR"}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-blue-600 font-mono">QR</span>
                     </label>
                   </div>
                 </div>
@@ -1061,6 +1206,199 @@ export const CheckoutTracking: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+        {/* VIEW 3: PAYMENT SIMULATION SCREEN */}
+        {screen === 'payment-simulation' && simulationData && (
+          <div className="max-w-md mx-auto my-8">
+            {simulationData.type === 'VIETQR' ? (
+              <div className="card-retro bg-[#FEFCF9] p-6 shadow-saigon-card border-2 border-neutral-900 flex flex-col items-center gap-6 relative">
+                <div className="w-full border-b-2 border-neutral-900 pb-3 text-center">
+                  <span className="text-[10px] font-mono font-bold uppercase text-red-650 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded animate-pulse">
+                    CHẾ ĐỘ GIẢ LẬP THANH TOÁN
+                  </span>
+                  <h1 className="text-xl font-heading font-black text-neutral-800 uppercase mt-2 select-none">
+                    Cổng Thanh Toán VietQR
+                  </h1>
+                </div>
+
+                {/* VietQR Image */}
+                <div className="p-3 bg-white border-2 border-neutral-900 shadow-retro-sm">
+                  <img 
+                    src={`https://img.vietqr.io/image/mb-999999999999-compact.png?amount=${simulationData.amount}&addInfo=Gfood%20${simulationData.code}&accountName=GRABFOOD%20MINI%20TEST`}
+                    alt="Mã QR Thanh Toán"
+                    className="w-64 h-64 object-contain"
+                  />
+                </div>
+
+                <div className="text-center font-mono text-[10px] text-neutral-450 leading-relaxed">
+                  Quét mã QR bằng ứng dụng ngân hàng để điền thông tin tự động, hoặc chuyển khoản tay theo thông tin dưới đây:
+                </div>
+
+                {/* Bank Details Table */}
+                <div className="w-full bg-[#FAF7F3] border-2 border-neutral-900 p-4 font-body text-xs space-y-2">
+                  <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
+                    <span className="text-neutral-500 font-mono uppercase text-[9px]">Ngân hàng:</span>
+                    <span className="font-bold text-neutral-800">MB Bank (Quân Đội)</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
+                    <span className="text-neutral-500 font-mono uppercase text-[9px]">Số tài khoản:</span>
+                    <span className="font-bold text-neutral-800">999999999999</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
+                    <span className="text-neutral-500 font-mono uppercase text-[9px]">Chủ tài khoản:</span>
+                    <span className="font-bold text-neutral-800">GRABFOOD MINI TEST</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
+                    <span className="text-neutral-500 font-mono uppercase text-[9px]">Số tiền:</span>
+                    <span className="font-bold text-[#BF3A20] text-sm">
+                      {simulationData.amount.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                  <div className="flex justify-between pb-0.5">
+                    <span className="text-neutral-500 font-mono uppercase text-[9px]">Nội dung CK:</span>
+                    <span className="font-bold text-neutral-800 bg-amber-50 px-1 border border-amber-200">
+                      Gfood {simulationData.code}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Confirm / Simulated Webhook Button */}
+                <button
+                  onClick={async () => {
+                    try {
+                      setIsOrdering(true);
+                      const res = await api.post('/payments/mock-success', {
+                        orderId: simulationData.orderId,
+                      });
+                      if (res && (res as any).success) {
+                        showCustomAlert('Thanh toán thành công (Giả lập)!', 'Thành công', 'info');
+                        navigate(`/orders/history?orderId=${simulationData.orderId}`);
+                      } else {
+                        showCustomAlert('Không thể xác nhận thanh toán giả lập.', 'Lỗi', 'error');
+                      }
+                    } catch (err: any) {
+                      console.error('Lỗi xác nhận thanh toán giả lập:', err);
+                      showCustomAlert(err.message || 'Lỗi xác nhận thanh toán.', 'Lỗi', 'error');
+                    } finally {
+                      setIsOrdering(false);
+                    }
+                  }}
+                  disabled={isOrdering}
+                  className="w-full bg-[#10B981] hover:bg-[#059669] text-white font-mono font-bold text-xs py-3.5 px-6 uppercase tracking-wider border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isOrdering ? 'ĐANG XÁC THỰC...' : 'XÁC NHẬN ĐÃ CHUYỂN KHOẢN (GIẢ LẬP)'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    showCustomAlert('Hủy thanh toán đơn hàng.', 'Hủy', 'info');
+                    setScreen('checkout');
+                  }}
+                  disabled={isOrdering}
+                  className="w-full bg-white hover:bg-neutral-50 text-neutral-600 font-mono text-[10px] py-2 px-6 border-2 border-neutral-250 cursor-pointer"
+                >
+                  Quay lại trang đặt hàng
+                </button>
+              </div>
+            ) : (
+              <div className="card-retro bg-[#FEFCF9] p-6 shadow-saigon-card border-2 border-neutral-900 flex flex-col items-center gap-6 relative">
+                {/* SAIGON-PAY SIMULATOR CONTENT */}
+                <div className="w-full border-b-2 border-neutral-900 pb-3 text-center">
+                  <span className="text-[10px] font-mono font-bold uppercase text-primary-650 bg-primary-50 border border-primary-200 px-2.5 py-0.5 rounded">
+                    CỔNG GIAO DỊCH VÍ SAIGON-PAY
+                  </span>
+                  <h1 className="text-xl font-heading font-black text-neutral-800 uppercase mt-2 select-none">
+                    Ví Điện Tử Saigon-Pay
+                  </h1>
+                </div>
+
+                {/* Balance display */}
+                <div className="w-full grid grid-cols-2 gap-4 text-center font-mono text-[10px]">
+                  <div className="p-3 bg-[#FAF7F3] border-2 border-neutral-900 shadow-retro-sm">
+                    <p className="text-neutral-450 uppercase font-bold">Số dư ví khả dụng</p>
+                    <p className="text-xs font-black text-neutral-800 mt-1">
+                      {walletBalance !== null ? `${walletBalance.toLocaleString('vi-VN')} đ` : 'Đang tải...'}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-[#FAF7F3] border-2 border-neutral-900 shadow-retro-sm">
+                    <p className="text-neutral-450 uppercase font-bold">Cước thanh toán</p>
+                    <p className="text-xs font-black text-[#BF3A20] mt-1">
+                      {simulationData.amount.toLocaleString('vi-VN')} đ
+                    </p>
+                  </div>
+                </div>
+
+                {/* PIN Input field */}
+                <div className="w-full space-y-2">
+                  <label className="block text-[10px] font-mono font-bold uppercase text-neutral-500 select-none">
+                    Nhập mã PIN ví (Mặc định: 123456)
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    placeholder="******"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-4 py-3 bg-[#FEFCF9] border-2 border-neutral-900 font-mono text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-[#BF3A20]/20"
+                  />
+                  {walletBalance !== null && walletBalance < simulationData.amount && (
+                    <p className="text-[9px] font-mono font-bold text-[#BF3A20] text-center uppercase tracking-wide">
+                      ⚠️ Số dư ví không đủ để thanh toán đơn hàng này!
+                    </p>
+                  )}
+                </div>
+
+                {/* Pay button */}
+                <button
+                  onClick={async () => {
+                    if (walletBalance !== null && walletBalance < simulationData.amount) {
+                      showCustomAlert('Số dư tài khoản ví không đủ để thực hiện giao dịch này.', 'Không đủ số dư', 'warning');
+                      return;
+                    }
+                    if (pin !== '123456') {
+                      showCustomAlert('Mã PIN ví không đúng! Vui lòng kiểm tra lại. (Mã PIN mặc định là 123456)', 'Sai mã PIN', 'error');
+                      return;
+                    }
+
+                    try {
+                      setIsOrdering(true);
+                      const res = await orderApi.createOrder(simulationData.orderData);
+                      if (res && res.success) {
+                        clearSelected();
+                        if (refetchMe) {
+                          await refetchMe();
+                        }
+                        await fetchWalletBalance(); // Cập nhật lại số dư ví cục bộ
+                        showCustomAlert('Khấu trừ trực tiếp vào ví Saigon-Pay thành công!', 'Thành công', 'info');
+                        navigate(`/orders/history?orderId=${res.data.id || res.data._id}`);
+                      } else {
+                        showCustomAlert(res?.message || 'Không thể hoàn tất thanh toán qua ví.', 'Lỗi', 'error');
+                      }
+                    } catch (err: any) {
+                      console.error('Lỗi thanh toán ví:', err);
+                      showCustomAlert(err.message || 'Lỗi thanh toán qua ví.', 'Lỗi', 'error');
+                    } finally {
+                      setIsOrdering(false);
+                    }
+                  }}
+                  disabled={isOrdering || (walletBalance !== null && walletBalance < simulationData.amount)}
+                  className="w-full bg-[#10B981] hover:bg-[#059669] text-white font-mono font-bold text-xs py-3.5 px-6 uppercase tracking-wider border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isOrdering ? 'ĐANG KHẤU TRỪ VÍ...' : 'THANH TOÁN ĐƠN HÀNG'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setScreen('checkout');
+                  }}
+                  disabled={isOrdering}
+                  className="w-full bg-white hover:bg-neutral-50 text-neutral-600 font-mono text-[10px] py-2 px-6 border-2 border-neutral-250 cursor-pointer"
+                >
+                  Hủy và quay lại
+                </button>
+              </div>
+            )}
           </div>
         )}
 

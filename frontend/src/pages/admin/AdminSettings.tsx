@@ -152,7 +152,7 @@ const PaymentSection: React.FC<{
   onSave: (updates: { key: string; value: any }[]) => void;
   isSaving: boolean;
 }> = ({ configs, onSave, isSaving }) => {
-  const methods = configs.find(c => c.key === 'payment_methods')?.value ?? { COD: true, WALLET: true, POINTS: true };
+  const methods = configs.find(c => c.key === 'payment_methods')?.value ?? { COD: true, WALLET: true, POINTS: true, VIETQR: true };
   const [enabled, setEnabled] = useState(methods);
   const methodsStr = JSON.stringify(methods);
 
@@ -164,11 +164,12 @@ const PaymentSection: React.FC<{
     { key: 'COD', label: 'Tiền mặt (COD)', desc: 'Thanh toán khi nhận hàng', icon: '💵' },
     { key: 'WALLET', label: 'Ví điện tử', desc: 'Thanh toán qua ví tài khoản', icon: '👛' },
     { key: 'POINTS', label: 'Điểm thưởng', desc: 'Dùng điểm tích lũy để thanh toán', icon: '⭐' },
+    { key: 'VIETQR', label: 'VietQR (PayOS)', desc: 'Thanh toán chuyển khoản VietQR', icon: '📱' },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {PAYMENT_INFO.map(p => (
           <label
             key={p.key}

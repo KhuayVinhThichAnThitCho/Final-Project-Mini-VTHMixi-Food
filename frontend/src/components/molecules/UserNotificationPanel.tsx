@@ -41,7 +41,6 @@ const MOCK_NOTIFICATIONS: UserNotification[] = [
     message: 'Tài xế Minh Tùng đang trên đường giao đơn #DH2024 của bạn. Dự kiến 15 phút nữa.',
     time: '3 phút trước',
     isRead: false,
-    actionUrl: '/checkout',
     meta: { orderStatus: 'shipping' },
   },
   {
@@ -61,7 +60,6 @@ const MOCK_NOTIFICATIONS: UserNotification[] = [
     message: 'Đơn #DH2023 – Bún Bò Huế Mệ Loan đã được giao thành công. Cảm ơn bạn đã tin tưởng!',
     time: '2 giờ trước',
     isRead: true,
-    actionUrl: '/checkout',
     meta: { orderStatus: 'delivered' },
   },
   {

@@ -545,7 +545,7 @@ export const seedDatabase = async () => {
         },
         {
           key: 'payment_methods',
-          value: JSON.stringify({ COD: true, WALLET: true, POINTS: true }),
+          value: JSON.stringify({ COD: true, WALLET: true, POINTS: true, VIETQR: true }),
           group: 'payment',
           description: 'Các phương thức thanh toán được kích hoạt',
         },

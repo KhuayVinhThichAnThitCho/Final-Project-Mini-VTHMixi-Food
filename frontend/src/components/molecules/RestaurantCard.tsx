@@ -60,7 +60,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurant, onCl
             {restaurant.deliveryTime}
           </span>
           <span className="font-mono text-neutral-500 font-bold">
-            Ship: {restaurant.deliveryFee.toLocaleString('vi-VN')}đ
+            Ship: {Number(restaurant.deliveryFee).toLocaleString('vi-VN')}đ
           </span>
         </div>
 
