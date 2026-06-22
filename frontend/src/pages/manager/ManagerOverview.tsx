@@ -91,7 +91,7 @@ const ManagerOverview: React.FC = () => {
               <YAxis 
                 stroke="#9E6E4A" 
                 tick={{ fill: '#7A5235', fontSize: 12, fontFamily: 'monospace' }} 
-                tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`}
+                tickFormatter={(value: number) => `${(value / 1000).toLocaleString()}k`}
               />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#1A1008', border: '1px solid #BF3A20', borderRadius: '8px', color: '#E9C46A' }}

@@ -37,6 +37,14 @@ app.use(
   })
 );
 
+// Vô hiệu hóa cache cho tất cả API endpoint để tránh lỗi 304 khi dữ liệu thay đổi trên Client
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // Phân tích cú pháp dữ liệu JSON từ body request (Max size 10mb)
 app.use(express.json({ limit: '10mb' }));
 

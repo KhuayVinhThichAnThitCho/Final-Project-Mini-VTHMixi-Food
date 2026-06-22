@@ -45,6 +45,12 @@ export const CheckoutTracking: React.FC = () => {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [pin, setPin] = useState('');
 
+  // System fees configuration
+  const [feeConfigs, setFeeConfigs] = useState({
+    platformFee: 5,
+    minOrderAmount: 20000
+  });
+
   // Form states
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'WALLET' | 'POINTS' | 'VIETQR'>('COD');
   const [activePaymentMethods, setActivePaymentMethods] = useState<{ COD: boolean; WALLET: boolean; POINTS: boolean; VIETQR?: boolean }>({
@@ -300,7 +306,6 @@ export const CheckoutTracking: React.FC = () => {
     ];
   }, [selectedItems]);
 
-  // Subtotal calculation
   const subtotal = useMemo(() => {
     if (selectedItems.length > 0) return totalPrice;
     return checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -312,7 +317,7 @@ export const CheckoutTracking: React.FC = () => {
     return isNaN(fee) ? 15000 : fee;
   }, [restaurantInfo, checkoutItems]);
 
-  // Final Total calculation
+  // Final Total calculation (Platform fee is paid by the restaurant, not charged to the user)
   const finalTotal = useMemo(() => {
     const total = subtotal + deliveryFee - discountAmount;
     return total > 0 ? total : 0;
@@ -379,6 +384,10 @@ export const CheckoutTracking: React.FC = () => {
   const handleConfirmOrder = () => {
     if (selectedItems.length === 0) {
       showCustomAlert('Giỏ hàng trống! Vui lòng chọn món ăn trước.', 'Giỏ hàng trống', 'warning');
+      return;
+    }
+    if (subtotal < feeConfigs.minOrderAmount) {
+      showCustomAlert(`Đơn hàng chưa đạt giá trị tối thiểu ${feeConfigs.minOrderAmount.toLocaleString('vi-VN')}đ để đặt hàng.`, 'Đơn hàng chưa đạt tối thiểu', 'warning');
       return;
     }
     setShowConfirmModal(true);
@@ -980,6 +989,10 @@ export const CheckoutTracking: React.FC = () => {
                       <span>Tạm tính món ăn:</span>
                       <span>{subtotal.toLocaleString('vi-VN')}đ</span>
                     </div>
+                    <div className="flex justify-between text-neutral-500 italic">
+                      <span>Phí nền tảng (Cửa hàng chịu):</span>
+                      <span>-{platformFee.toLocaleString('vi-VN')}đ</span>
+                    </div>
                     <div className="flex justify-between">
                       <span>Phí giao hàng:</span>
                       <span>+{deliveryFee.toLocaleString('vi-VN')}đ</span>
@@ -1003,8 +1016,8 @@ export const CheckoutTracking: React.FC = () => {
                   {/* Checkout CTA Button with loading simulation */}
                   <button
                     onClick={handleConfirmOrder}
-                    disabled={isOrdering}
-                    className="w-full bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-semibold text-xs py-3.5 px-6 uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 cursor-pointer text-center mt-6 flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+                    disabled={isOrdering || subtotal < feeConfigs.minOrderAmount}
+                    className="w-full bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-semibold text-xs py-3.5 px-6 uppercase tracking-widest border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 cursor-pointer text-center mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isOrdering ? (
                       <>
@@ -1015,6 +1028,16 @@ export const CheckoutTracking: React.FC = () => {
                       'XÁC NHẬN ĐẶT HÀNG'
                     )}
                   </button>
+
+                  {/* Warning if below minimum order amount */}
+                  {subtotal < feeConfigs.minOrderAmount && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 text-[#BF3A20] font-mono text-[10px] space-y-1">
+                      <p className="font-bold uppercase flex items-center gap-1">
+                        <AlertTriangle size={12} /> ĐƠN HÀNG CHƯA ĐẠT TỐI THIỂU
+                      </p>
+                      <p>Giá trị tối thiểu: {feeConfigs.minOrderAmount.toLocaleString('vi-VN')}đ. Vui lòng chọn thêm món ăn.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

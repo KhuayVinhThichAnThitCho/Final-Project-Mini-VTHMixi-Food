@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Store, Package, ShoppingBag,
   BarChart3, LogOut, ChevronRight, Shield, Settings, ClipboardList, Tag
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import ConfirmModal from '../../components/molecules/ConfirmModal';
 
 interface AdminSidebarProps {
   activeMenu: string;
@@ -26,10 +27,10 @@ const menuItems = [
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeMenu, onMenuClick }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    setShowLogoutModal(true);
   };
 
   return (
@@ -101,6 +102,21 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeMenu, onMenuClick }) 
           Đăng Xuất
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        title="Đăng Xuất"
+        message="Bạn có chắc chắn muốn đăng xuất khỏi trang quản trị không?"
+        confirmText="Đăng Xuất"
+        cancelText="Hủy"
+        icon="logout"
+        onConfirm={() => {
+          logout();
+          setShowLogoutModal(false);
+          navigate('/login');
+        }}
+        onCancel={() => setShowLogoutModal(false)}
+      />
     </aside>
   );
 };

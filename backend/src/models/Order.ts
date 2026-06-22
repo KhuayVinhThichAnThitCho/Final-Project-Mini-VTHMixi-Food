@@ -73,6 +73,12 @@ export class Order extends Model {
   @Column(DataType.DECIMAL(12, 2))
   shippingFee!: number;
 
+  // Phí nền tảng (do nhà hàng chịu, trích xuất từ tổng tiền món ăn)
+  @AllowNull(false)
+  @Default(0)
+  @Column(DataType.DECIMAL(12, 2))
+  platformFee!: number;
+
   // Ảnh xác nhận lấy hàng tại quán
   @AllowNull(true)
   @Column(DataType.STRING(500))

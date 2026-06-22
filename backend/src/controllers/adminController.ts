@@ -198,7 +198,7 @@ export const adminController = {
 
   /**
    * DELETE /admin/products/:id
-   * Xóa vĩnh viễn sản phẩm vi phạm
+   * Xóa mềm sản phẩm vi phạm (ẩn khỏi khách hàng)
    */
   permanentDeleteProduct: async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -207,7 +207,7 @@ export const adminController = {
       const data = await adminService.permanentDeleteProduct(id, req.user.id);
       res.status(200).json({
         success: true,
-        message: 'Đã xóa vĩnh viễn sản phẩm.',
+        message: 'Đã xóa (ẩn) sản phẩm thành công.',
         data,
       });
     } catch (error) {

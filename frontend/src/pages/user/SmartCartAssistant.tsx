@@ -7,6 +7,8 @@ import searchApi from '../../services/searchApi';
 import useCart from '../../hooks/useCart';
 
 interface RecommendedItem {
+  id?: string;
+  restaurantId?: string;
   name: string;
   price: number;
   reason: string;
@@ -29,6 +31,13 @@ const SmartCartAssistant: React.FC = () => {
   const [addingItem, setAddingItem] = useState<string | null>(null);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { addToCart, allCartItemsCount } = useCart();
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'warning' } | null>(null);
+
+  const showToast = (msg: string, type: 'success' | 'warning' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const suggestedQuestions = [
     { title: '🍱 Bữa trưa 300k', query: 'Lên thực đơn bữa trưa cho 4 người dưới 300k' },
@@ -51,14 +60,14 @@ const SmartCartAssistant: React.FC = () => {
             content: msg.role === 'user' ? msg.content : (msg.content?.message || ''),
             recommendedItems: msg.role === 'assistant' ? msg.content?.recommended_items : undefined
           }));
-          
+
           setMessages(historyMessages);
         }
       } catch (error) {
         console.error('Failed to fetch chat history:', error);
       }
     };
-    
+
     fetchHistory();
   }, []);
 
@@ -204,10 +213,18 @@ const SmartCartAssistant: React.FC = () => {
         </div>
       </div>
 
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[999] flex items-center gap-2 px-4 py-3 border-2 border-neutral-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] font-mono text-xs font-bold transition-all duration-300 ${toast.type === 'success' ? 'bg-[#E9C46A] text-[#2C1A0E]' : 'bg-[#BF3A20] text-white'}`}>
+          <CheckCircle2 size={16} />
+          {toast.msg}
+        </div>
+      )}
+
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto w-full texture-paper custom-scrollbar relative z-0 pb-32">
         <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-8">
-          
+
           {/* Hero Section (Hiển thị khi chưa có chat) */}
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center pt-10 sm:pt-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -218,10 +235,10 @@ const SmartCartAssistant: React.FC = () => {
               <p className="font-body text-[#7A5235] text-center max-w-md mb-8">
                 Trợ lý mua sắm cá nhân của bạn. Lập thực đơn theo ngân sách, tính toán khẩu phần và gợi ý món ăn dinh dưỡng.
               </p>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl">
                 {suggestedQuestions.map((q, idx) => (
-                  <button 
+                  <button
                     key={idx}
                     onClick={() => handleSend(q.query)}
                     className="p-4 bg-[#FEFCF9] border border-[#E8D8C6] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all text-left flex flex-col items-start gap-2 group"
@@ -242,20 +259,19 @@ const SmartCartAssistant: React.FC = () => {
                   <Sparkles size={20} className="text-[#5C1A0A]" />
                 </div>
               )}
-              
+
               <div className={`max-w-[70%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
-                <div className={`p-4 rounded-2xl shadow-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-gradient-to-r from-[#BF3A20] to-[#E9C46A] text-[#FEFCF9] rounded-tr-sm' 
+                <div className={`p-4 rounded-2xl shadow-sm ${msg.role === 'user'
+                    ? 'bg-gradient-to-r from-[#BF3A20] to-[#E9C46A] text-[#FEFCF9] rounded-tr-sm'
                     : 'bg-[#FEFCF9] text-[#2C1A0E] border border-[#E8D8C6] rounded-tl-sm'
-                }`}>
+                  }`}>
                   <p className="font-body whitespace-pre-wrap leading-relaxed text-[15px]">{msg.content}</p>
-                  
+
                   {/* Render Recommended Items if available */}
                   {msg.recommendedItems && msg.recommendedItems.length > 0 && (
                     <div className="mt-5 space-y-3">
                       <p className="font-bold text-sm text-[#7A5235] uppercase tracking-widest flex items-center gap-2 font-mono">
-                        <CheckCircle2 size={16} className="text-[#BF3A20]" /> 
+                        <CheckCircle2 size={16} className="text-[#BF3A20]" />
                         Đề xuất cho bạn
                       </p>
                       {/* Grid 3 cột theo đề xuất */}
@@ -271,7 +287,7 @@ const SmartCartAssistant: React.FC = () => {
                             <div className="absolute -top-1 -right-4 bg-[#BF3A20] text-white font-display italic text-[10px] px-5 py-0.5 rotate-[45deg] shadow-sm z-10">
                               Ngon!
                             </div>
-                            
+
                             <div className="flex flex-col h-full">
                               <div>
                                 <h4 className="font-bold font-body text-[#2C1A0E] text-[15px] pr-4 group-hover:text-[#BF3A20] transition-colors flex items-center gap-1">
@@ -285,7 +301,7 @@ const SmartCartAssistant: React.FC = () => {
                                 </div>
                                 <p className="text-xs font-body text-[#7A5235] line-clamp-3 mb-3">{item.reason}</p>
                               </div>
-                              
+
                               <div className="mt-auto flex items-center justify-between">
                                 <span className="font-mono font-bold text-[#BF3A20]">{formatPrice(item.price)}</span>
                                 <button 
