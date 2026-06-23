@@ -28,7 +28,7 @@ export const shipperController = {
         where: { status: 'ready', shipperId: null },
         include: [
           { model: User, as: 'user', attributes: ['id', 'name', 'phone', 'avatar'] },
-          { model: Restaurant, attributes: ['id', 'name', 'address', 'phone', 'logo'] },
+          { model: Restaurant, attributes: ['id', 'name', 'address', 'logo'] },
         ],
         order: [['createdAt', 'ASC']],
       });
@@ -68,7 +68,7 @@ export const shipperController = {
       const updatedOrder = await Order.findByPk(order.id, {
         include: [
           { model: User, as: 'user', attributes: ['id', 'name', 'phone', 'avatar'] },
-          { model: Restaurant, attributes: ['id', 'name', 'address', 'phone', 'logo'] },
+          { model: Restaurant, attributes: ['id', 'name', 'address', 'logo'] },
         ],
       });
 

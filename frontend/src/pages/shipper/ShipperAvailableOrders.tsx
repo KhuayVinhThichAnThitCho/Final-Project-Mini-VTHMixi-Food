@@ -56,35 +56,39 @@ const ShipperAvailableOrders: React.FC<AvailableOrdersProps> = ({ onNavigate }) 
   };
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4 text-neutral-500">
-      <Loader2 size={40} className="animate-spin text-primary-600" />
-      <p className="font-mono font-bold uppercase text-xs tracking-wider">Đang tìm đơn hàng mới...</p>
+    <div className="space-y-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-gray-200 rounded-2xl h-48 animate-pulse" />
+      ))}
     </div>
   );
 
   if (error) return (
-    <div className="border-2 border-neutral-900 p-8 bg-[#FEFCF9] shadow-retro flex flex-col items-center gap-4 text-center max-w-md mx-auto">
-      <AlertCircle size={40} className="text-red-600" />
-      <p className="text-neutral-700 font-medium">{error}</p>
-      <button onClick={fetchOrders} className="flex items-center gap-2 px-6 py-2.5 bg-[#BF3A20] text-white border-2 border-neutral-900 font-mono font-bold uppercase text-xs shadow-retro-sm hover:bg-[#D44B2F] active:translate-y-[2px] transition cursor-pointer">
+    <div className="bg-gray-50 border border-gray-100 rounded-2xl p-12 flex flex-col items-center gap-4 text-center max-w-md mx-auto">
+      <AlertCircle size={40} className="text-primary-600" />
+      <p className="text-gray-700 font-medium">{error}</p>
+      <button
+        onClick={fetchOrders}
+        className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-xl font-semibold text-sm hover:bg-primary-700 transition-all duration-200 cursor-pointer"
+      >
         <RefreshCcw size={16} /> Thử Lại
       </button>
     </div>
   );
 
   return (
-    <div className="space-y-6 animate-fade-in text-neutral-800">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading italic font-bold text-2xl lg:text-3xl text-neutral-900">Đơn Hàng Sẵn Có</h1>
-          <p className="text-xs lg:text-sm text-neutral-500 mt-1">
+          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Đơn Hàng Sẵn Có</h1>
+          <p className="text-sm font-medium text-gray-500 mt-2">
             {orders.length > 0 ? `${orders.length} đơn hàng đang chờ bạn tiếp nhận` : 'Chưa có đơn hàng mới nào được phát hành'}
           </p>
         </div>
         <button
           onClick={fetchOrders}
-          className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-neutral-900 bg-[#FEFCF9] text-neutral-700 font-mono font-bold uppercase text-xs shadow-retro-sm hover:bg-[#FAF7F3] active:translate-y-[2px] transition cursor-pointer"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-100 text-gray-600 rounded-xl font-semibold text-sm shadow-modern-sm hover:shadow-modern hover:bg-gray-50 transition-all duration-200 cursor-pointer"
         >
           <RefreshCcw size={14} /> Làm Mới
         </button>
@@ -92,66 +96,75 @@ const ShipperAvailableOrders: React.FC<AvailableOrdersProps> = ({ onNavigate }) 
 
       {/* Success toast */}
       {successId && (
-        <div className="border-2 border-neutral-900 p-4 bg-[#E8F5E9] flex items-center gap-3 text-[#2D7A4F] font-mono font-bold text-xs uppercase tracking-wider shadow-retro">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-emerald-700 font-semibold text-sm">
           <CheckCircle2 size={18} />
           Nhận đơn thành công! Đang chuyển sang màn hình đi giao...
         </div>
       )}
 
       {orders.length === 0 ? (
-        <div className="border-2 border-neutral-900 p-16 bg-[#FEFCF9] shadow-retro text-center max-w-2xl mx-auto">
-          <div className="w-16 h-16 border-2 border-neutral-900 bg-[#FAF7F3] flex items-center justify-center mx-auto mb-4 shadow-retro-sm">
-            <Package size={28} className="text-neutral-500" strokeWidth={1.5} />
+        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
+            <Package size={28} className="text-gray-400" strokeWidth={1.5} />
           </div>
-          <p className="text-neutral-850 font-heading font-bold text-base">Hiện không có đơn hàng nào sẵn sàng</p>
-          <p className="text-neutral-500 text-xs mt-2">Hệ thống tự động tìm kiếm và đồng bộ sau mỗi 30 giây</p>
+          <div>
+            <p className="font-semibold text-gray-700 text-base">Hiện không có đơn hàng nào sẵn sàng</p>
+            <p className="text-gray-400 text-sm mt-1.5">Hệ thống tự động tìm kiếm và đồng bộ sau mỗi 30 giây</p>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {orders.map(order => (
-            <div key={order.id} className="border-2 border-neutral-900 bg-[#FEFCF9] shadow-retro hover:shadow-retro-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col justify-between">
+            <div
+              key={order.id}
+              className="bg-white border border-gray-100 rounded-2xl shadow-modern-sm hover:shadow-modern transition-all duration-300 overflow-hidden flex flex-col justify-between group"
+            >
               {/* Header */}
-              <div className="p-4 border-b-2 border-neutral-900 bg-[#FAF7F3] flex items-center justify-between">
+              <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 border border-neutral-900 bg-[#C98F0A]/20 flex items-center justify-center shadow-retro-sm">
-                    <Zap size={14} className="text-neutral-950" />
+                  <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
+                    <Zap size={14} className="text-amber-600" />
                   </div>
                   <div>
-                    <p className="font-mono font-bold text-neutral-900 text-xs">
+                    <p className="font-semibold text-gray-800 text-sm">
                       #{order.id?.slice(-8).toUpperCase()}
                     </p>
-                    <p className="text-[10px] font-mono text-neutral-400 flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                       <Clock size={10} />
                       {new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 border border-neutral-900 bg-secondary-300 text-neutral-950 font-mono text-[9px] font-bold uppercase tracking-wider shadow-retro-sm">
-                  SẴN SÀNG
+                <span className="px-3 py-1 text-xs font-semibold rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+                  Sẵn Sàng
                 </span>
               </div>
 
               {/* Body */}
-              <div className="p-4 space-y-3 font-body text-xs text-neutral-700">
+              <div className="p-4 space-y-3 text-sm text-gray-600">
                 {/* Restaurant */}
-                <div className="flex items-start gap-2.5">
-                  <ChefHat size={15} className="text-[#BF3A20] mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <ChefHat size={14} className="text-primary-600" strokeWidth={2} />
+                  </div>
                   <div>
-                    <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-wide">Lấy hàng tại cửa hàng</p>
-                    <p className="text-xs font-bold text-neutral-900 mt-0.5">{order.restaurant?.name}</p>
-                    <p className="text-[11px] text-neutral-500 mt-0.5 leading-tight">{order.restaurant?.address}</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Lấy hàng tại</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{order.restaurant?.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-snug">{order.restaurant?.address}</p>
                   </div>
                 </div>
 
-                <div className="border-t border-dashed border-neutral-205" />
+                <div className="border-t border-dashed border-gray-100" />
 
                 {/* Delivery */}
-                <div className="flex items-start gap-2.5">
-                  <MapPin size={15} className="text-[#C98F0A] mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MapPin size={14} className="text-blue-600" strokeWidth={2} />
+                  </div>
                   <div>
-                    <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-wide">Giao đến địa chỉ khách</p>
-                    <p className="text-xs font-bold text-neutral-900 mt-0.5">{order.user?.name}</p>
-                    <p className="text-[11px] text-neutral-500 mt-0.5 leading-tight">{order.deliveryAddress}</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Giao đến khách</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{order.user?.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-snug">{order.deliveryAddress}</p>
                   </div>
                 </div>
 
@@ -159,33 +172,33 @@ const ShipperAvailableOrders: React.FC<AvailableOrdersProps> = ({ onNavigate }) 
                   <div className="pt-1">
                     <a
                       href={`tel:${order.user.phone}`}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#F5EFE6] border border-neutral-300 text-[10px] text-neutral-650 font-mono hover:border-neutral-900 hover:text-neutral-900 transition"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-600 font-medium hover:bg-gray-100 hover:text-gray-800 transition-all duration-200"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Phone size={10} />
-                      Liên hệ khách: {order.user.phone.replace(/(\d{3})(\d{4})(\d{3})/, '$1xxxx$3')}
+                      <Phone size={11} />
+                      Liên hệ: {order.user.phone.replace(/(\d{3})(\d{4})(\d{3})/, '$1xxxx$3')}
                     </a>
                   </div>
                 )}
               </div>
 
               {/* Footer */}
-              <div className="px-4 py-3.5 border-t-2 border-neutral-900 bg-[#FAF7F3] flex items-center justify-between gap-3">
+              <div className="px-4 py-3.5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-wide">Phí Vận Chuyển</p>
-                  <p className="text-base font-bold text-[#BF3A20] font-mono">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Phí Vận Chuyển</p>
+                  <p className="text-lg font-bold text-primary-600 mt-0.5">
                     {Number(order.shippingFee || 15000).toLocaleString('vi-VN')}đ
                   </p>
                 </div>
                 <button
                   onClick={() => handleAccept(order.id)}
                   disabled={!!acceptingId}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2 border-2 border-neutral-900 bg-[#BF3A20] text-white font-mono font-bold uppercase text-xs shadow-retro-sm hover:bg-[#D44B2F] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-60 transition-all cursor-pointer"
+                  className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-primary-600 text-white rounded-xl font-semibold text-sm hover:bg-primary-700 disabled:opacity-60 transition-all duration-200 cursor-pointer shadow-modern-sm"
                 >
                   {acceptingId === order.id
-                    ? <Loader2 size={13} className="animate-spin" />
-                    : <Zap size={13} />}
-                  {acceptingId === order.id ? 'ĐANG NHẬN...' : 'NHẬN ĐƠN'}
+                    ? <Loader2 size={14} className="animate-spin" />
+                    : <Zap size={14} />}
+                  {acceptingId === order.id ? 'Đang nhận...' : 'Nhận Đơn'}
                 </button>
               </div>
             </div>

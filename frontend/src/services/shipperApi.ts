@@ -45,8 +45,8 @@ export const shipperApi = {
   /**
    * Bật/Tắt trạng thái nhận đơn
    */
-  toggleOnline: async () => {
-    return api.patch('/shipper/me/online') as any;
+  toggleOnline: async (isOnline: boolean) => {
+    return api.patch('/shipper/me/online', { isOnline }) as any;
   },
 
   /**

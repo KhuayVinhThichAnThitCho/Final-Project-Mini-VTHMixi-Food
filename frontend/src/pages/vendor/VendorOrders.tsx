@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Clock, Printer, RefreshCcw, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Search, Filter, Clock, Printer, RefreshCcw, AlertCircle, CheckCircle2, XCircle, Loader2, Truck } from 'lucide-react';
 import { vendorApi } from '../../services/vendorApi';
 
 interface OrderItem {
@@ -253,13 +253,23 @@ export const VendorOrders: React.FC = () => {
                   )}
                   {order.status === 'preparing' && (
                     <button
-                      onClick={() => handleUpdateStatus(order.id, 'completed')}
+                      onClick={() => handleUpdateStatus(order.id, 'ready')}
                       disabled={isUpdating}
-                      className="w-full py-3 bg-emerald-500 text-white rounded-xl font-semibold shadow-modern-sm hover:bg-emerald-600 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-purple-600 text-white rounded-xl font-semibold shadow-modern-sm hover:bg-purple-700 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                     >
                       {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                      {isUpdating ? 'Đang xử lý...' : 'Đánh Dấu Hoàn Thành'}
+                      {isUpdating ? 'Đang xử lý...' : 'Đã Chuẩn Bị Xong'}
                     </button>
+                  )}
+                  {order.status === 'ready' && (
+                    <div className="text-center text-purple-650 bg-purple-50/50 py-3 rounded-xl border border-purple-100 font-semibold text-sm flex items-center justify-center gap-2">
+                      <Clock size={16} className="animate-pulse" /> Đang chờ shipper nhận đơn...
+                    </div>
+                  )}
+                  {order.status === 'delivering' && (
+                    <div className="text-center text-indigo-650 bg-indigo-50/50 py-3 rounded-xl border border-indigo-100 font-semibold text-sm flex items-center justify-center gap-2">
+                      <Truck size={16} className="animate-bounce" /> Shipper đang đi giao...
+                    </div>
                   )}
                   {order.status === 'completed' && (
                     <div className="text-center text-emerald-600 font-semibold text-sm flex items-center justify-center gap-2">

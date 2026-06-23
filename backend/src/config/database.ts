@@ -91,6 +91,12 @@ export const initializeDatabase = async (): Promise<boolean> => {
         await sequelize.query("ALTER TABLE orders ADD COLUMN payos_order_code BIGINT NULL");
         await sequelize.query("ALTER TABLE orders ADD COLUMN payos_checkout_url TEXT NULL");
       }
+
+      // Thêm cột platform_fee nếu chưa tồn tại
+      const [pfColumns]: any = await sequelize.query("SHOW COLUMNS FROM orders LIKE 'platform_fee'");
+      if (pfColumns.length === 0) {
+        await sequelize.query("ALTER TABLE orders ADD COLUMN platform_fee DECIMAL(12, 2) NOT NULL DEFAULT 0.00");
+      }
       console.log('✅ Đã đồng bộ cấu trúc orders thành công.');
     } catch (e) {
       console.warn('Lưu ý: Không thể cập nhật cấu trúc orders thủ công, có thể đã được Sequelize đồng bộ:', e);

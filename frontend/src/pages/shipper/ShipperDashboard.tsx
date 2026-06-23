@@ -43,12 +43,12 @@ const ShipperDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-neutral-50 text-neutral-800 overflow-hidden font-body relative texture-paper">
+    <div className="flex bg-slate-50 h-screen overflow-hidden font-sans">
 
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-[#2C1A0E]/55 z-20 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-gray-900/40 z-20 lg:hidden backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -57,41 +57,38 @@ const ShipperDashboard: React.FC = () => {
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-30
         w-64 flex-shrink-0 flex flex-col h-screen
-        bg-neutral-900 border-r-4 border-neutral-950
-        shadow-[4px_0_0_0_rgba(26,16,8,1)]
+        bg-white border-r border-gray-200 shadow-sm
         transition-transform duration-300
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
-        <div className="p-5 border-b-2 border-neutral-800">
+        <div className="p-5 border-b border-gray-100">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-10 h-10 bg-primary-600 flex items-center justify-center border-2 border-secondary-300 shadow-retro-sm flex-shrink-0">
-              <Truck size={20} className="text-white" strokeWidth={1.5} />
+            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-modern-sm">
+              <Truck size={20} className="text-white" strokeWidth={2} />
             </div>
             <div>
-              <h2 className="font-display italic text-lg leading-none text-secondary-300">GrabFood</h2>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="text-[9px] font-mono font-bold text-neutral-400 tracking-widest uppercase">Shipper Portal</span>
-              </div>
+              <h2 className="font-bold text-lg leading-none text-gray-800 tracking-tight">GrabFood</h2>
+              <span className="text-[10px] font-semibold text-gray-400 tracking-widest uppercase">Shipper Portal</span>
             </div>
           </div>
         </div>
 
         {/* Shipper info */}
-        <div className="px-4 py-3 mx-3 mt-3 border-2 border-neutral-950 bg-[#3D2314] shadow-retro-sm rounded-sm text-[#F5EFE6]">
+        <div className="px-4 py-3 mx-3 mt-4 bg-gray-50 border border-gray-100 rounded-2xl">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-primary-600 border border-secondary-300 flex items-center justify-center text-sm font-bold text-white shadow-retro-sm">
+            <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-modern-sm flex-shrink-0">
               {user?.name?.charAt(0).toUpperCase() || 'S'}
             </div>
-            <div className="min-w-0 font-mono">
-              <p className="font-bold text-xs text-secondary-300 truncate uppercase tracking-wide">{user?.name || 'Shipper'}</p>
-              <p className="text-[9px] text-neutral-400 truncate">{user?.email}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm text-gray-800 truncate">{user?.name || 'Shipper'}</p>
+              <p className="text-xs text-gray-400 truncate">{user?.email}</p>
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1 mt-2">
+        <nav className="flex-1 p-3 space-y-1 mt-2 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeMenu === item.id;
@@ -99,27 +96,27 @@ const ShipperDashboard: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-mono font-bold uppercase tracking-wider transition-all duration-200 border-l-4 ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ${
                   isActive
-                    ? 'bg-primary-600 text-white border-secondary-300 shadow-[inset_0_1px_0_rgba(233,196,106,0.2)]'
-                    : 'bg-transparent text-neutral-400 border-transparent hover:bg-neutral-800 hover:text-neutral-200 hover:border-neutral-600'
+                    ? 'bg-primary-600 text-white shadow-modern-sm'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
                 }`}
               >
-                <Icon size={18} strokeWidth={1.5} className={isActive ? 'text-secondary-300' : 'text-neutral-500'} />
+                <Icon size={18} strokeWidth={2} className={isActive ? 'text-white' : 'text-gray-400'} />
                 <span className="flex-1 text-left">{item.label}</span>
-                {isActive && <ChevronRight size={14} className="text-secondary-400" />}
+                {isActive && <ChevronRight size={14} className="text-white/70" />}
               </button>
             );
           })}
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t-2 border-neutral-800">
+        <div className="p-3 border-t border-gray-100">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-transparent text-primary-400 font-mono font-bold uppercase text-xs border border-primary-800 hover:bg-primary-600 hover:text-white hover:border-primary-600 transition-all duration-200"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-500 rounded-xl hover:bg-red-50 hover:text-primary-600 transition-all duration-200"
           >
-            <LogOut size={16} strokeWidth={1.5} />
+            <LogOut size={16} strokeWidth={2} />
             Đăng Xuất
           </button>
         </div>
@@ -128,28 +125,28 @@ const ShipperDashboard: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="h-14 flex-shrink-0 flex items-center justify-between px-6 bg-[#FEFCF9] border-b-2 border-neutral-900">
+        <header className="h-14 flex-shrink-0 flex items-center justify-between px-6 bg-white border-b border-gray-200 shadow-sm">
           <button
-            className="lg:hidden text-neutral-700 hover:text-neutral-900 border-2 border-neutral-900 p-1 bg-[#F5EFE6] shadow-retro-sm"
+            className="lg:hidden text-gray-600 hover:text-gray-900 p-1.5 rounded-lg hover:bg-gray-100 transition"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu size={18} />
+            <Menu size={20} />
           </button>
-          <h1 className="font-heading font-bold text-neutral-900 text-base lg:text-lg">
+          <h1 className="font-bold text-gray-800 text-base lg:text-lg">
             {menuItems.find(m => m.id === activeMenu)?.label || 'Dashboard'}
           </h1>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#F5EFE6] border-2 border-neutral-900 flex items-center justify-center cursor-pointer hover:bg-neutral-200 shadow-retro-sm transition">
-              <Bell size={16} className="text-neutral-700" strokeWidth={1.5} />
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-200 transition">
+              <Bell size={16} className="text-gray-600" strokeWidth={2} />
             </div>
-            <div className="w-8 h-8 bg-primary-600 border-2 border-neutral-900 flex items-center justify-center text-xs font-bold text-white shadow-retro-sm">
+            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-modern-sm">
               {user?.name?.charAt(0).toUpperCase() || 'S'}
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-neutral-50 p-6">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8">
           {renderContent()}
         </main>
       </div>

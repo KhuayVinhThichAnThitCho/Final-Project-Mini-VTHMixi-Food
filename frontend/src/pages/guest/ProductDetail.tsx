@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Star, MessageSquare, Users, CheckCircle, Heart, XCircle } from 'lucide-react';
+import { ChevronLeft, Star, MessageSquare, Users, CheckCircle, Heart, XCircle, ThumbsUp } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import ImageSwiper from '../../components/molecules/ImageSwiper';
 import { MOCK_MENU_ITEMS, MOCK_RESTAURANTS } from '../../utils/mockData';
@@ -36,6 +36,110 @@ export const ProductDetail: React.FC = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Shopee-style Reviews State & Helpers
+  const [activeFilter, setActiveFilter] = useState<'all' | '5' | '4' | '3' | '2' | '1' | 'comment'>('all');
+  const [likedReviews, setLikedReviews] = useState<Record<string, { liked: boolean; count: number }>>({});
+
+  const getAvatarUrl = (avatarPath?: string) => {
+    if (!avatarPath) return '';
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const baseUrl = import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL.replace('/api/v1', '')
+      : 'http://localhost:5000';
+    return `${baseUrl}${avatarPath}`;
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    const lastWord = parts[parts.length - 1];
+    return lastWord ? lastWord.charAt(0).toUpperCase() : 'U';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+  };
+
+  const getInitialLikes = (id: string) => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash += id.charCodeAt(i);
+    }
+    return hash % 12; // stable count between 0 and 11
+  };
+
+  const handleLikeReview = (revId: string) => {
+    setLikedReviews(prev => {
+      const current = prev[revId] || { liked: false, count: getInitialLikes(revId) };
+      const nextLiked = !current.liked;
+      return {
+        ...prev,
+        [revId]: {
+          liked: nextLiked,
+          count: nextLiked ? current.count + 1 : current.count - 1
+        }
+      };
+    });
+  };
+
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return '5.0';
+    const total = reviews.reduce((sum, r) => sum + r.rating, 0);
+    return (total / reviews.length).toFixed(1);
+  }, [reviews]);
+
+  const counts = useMemo(() => {
+    const all = reviews.length;
+    const star5 = reviews.filter(r => r.rating === 5).length;
+    const star4 = reviews.filter(r => r.rating === 4).length;
+    const star3 = reviews.filter(r => r.rating === 3).length;
+    const star2 = reviews.filter(r => r.rating === 2).length;
+    const star1 = reviews.filter(r => r.rating === 1).length;
+    const comment = reviews.filter(r => r.comment && r.comment.trim() !== '' && r.comment !== 'Không có nhận xét bằng lời.').length;
+    return { all, star5, star4, star3, star2, star1, comment };
+  }, [reviews]);
+
+  const filteredReviews = useMemo(() => {
+    return reviews.filter(r => {
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'comment') return r.comment && r.comment.trim() !== '' && r.comment !== 'Không có nhận xét bằng lời.';
+      return r.rating === parseInt(activeFilter);
+    });
+  }, [reviews, activeFilter]);
+
+  const renderAverageStars = (avg: number) => {
+    const stars = [];
+    const floor = Math.floor(avg);
+    const hasHalf = avg - floor >= 0.3 && avg - floor <= 0.7;
+    const ceil = Math.ceil(avg);
+    
+    for (let i = 1; i <= 5; i++) {
+      if (i <= floor) {
+        stars.push(<Star key={i} size={14} fill="#FFC107" stroke="#FFC107" className="inline" />);
+      } else if (i === ceil && hasHalf) {
+        stars.push(
+          <span key={i} className="relative inline-block overflow-hidden" style={{ width: '14px', height: '14px', verticalAlign: 'middle' }}>
+            <Star size={14} stroke="#FFC107" className="absolute top-0 left-0" />
+            <span className="absolute top-0 left-0 overflow-hidden" style={{ width: '50%' }}>
+              <Star size={14} fill="#FFC107" stroke="#FFC107" />
+            </span>
+          </span>
+        );
+      } else if (i <= avg) {
+        stars.push(<Star key={i} size={14} fill="#FFC107" stroke="#FFC107" className="inline" />);
+      } else {
+        stars.push(<Star key={i} size={14} fill="none" stroke="#D1D5DB" className="inline" />);
+      }
+    }
+    return stars;
+  };
 
   // Tải chi tiết món ăn từ backend hoặc dùng mock dự phòng
   useEffect(() => {
@@ -416,47 +520,210 @@ export const ProductDetail: React.FC = () => {
 
         {/* 2.5. Reviews Section */}
         <div className="mt-12 border-t-2 border-neutral-900 pt-8">
-          <h2 className="text-xl font-display font-bold italic text-neutral-900 mb-6 select-none">
-            ❀ Ý Kiến Khách Hàng ❀
+          <h2 className="text-xl font-display font-bold italic text-neutral-900 mb-6 select-none flex items-center gap-2">
+            <span>❀ Đánh Giá Sản Phẩm ❀</span>
           </h2>
 
           {reviewsLoading ? (
-            <div className="text-center py-6 text-xs font-mono text-neutral-400 italic">
+            <div className="text-center py-10 text-xs font-mono text-neutral-400 italic">
+              <div className="w-6 h-6 border-2 border-[#BF3A20] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               Đang tải đánh giá món ăn...
             </div>
           ) : reviews.length > 0 ? (
-            <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2">
-              {reviews.map((rev: any) => (
-                <div key={rev.id} className="card-retro bg-[#FEFCF9] p-4 border border-neutral-900 shadow-sm">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-bold text-xs text-neutral-800 font-mono">
-                        {rev.user?.name || 'Thực khách ẩn danh'}
-                      </p>
-                      <div className="flex text-amber-500 mt-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
-                            size={11} 
-                            fill={i < rev.rating ? '#D49E00' : 'none'} 
-                            stroke={i < rev.rating ? '#D49E00' : '#888888'}
-                            className="inline" 
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono text-neutral-400">
-                      {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
-                    </span>
+            <div className="space-y-6">
+              {/* Review Stats & Filter Panel (Shopee Style) */}
+              <div className="bg-[#FFFBF8] border border-[#F8E0D0] rounded-sm p-6 flex flex-col md:flex-row items-center gap-6 select-none">
+                {/* Left Column: Overall score */}
+                <div className="text-center md:text-left md:pr-10 md:border-r border-dashed border-[#F8E0D0] flex-shrink-0">
+                  <div className="text-3xl font-bold text-[#BF3A20] font-mono">
+                    {averageRating} <span className="text-sm text-neutral-500 font-normal">trên 5</span>
                   </div>
-                  <p className="text-xs text-neutral-700 italic font-body leading-relaxed pl-1 border-l-2 border-dashed border-[#BF3A20]/30">
-                    "{rev.comment || 'Không có nhận xét bằng lời.'}"
-                  </p>
+                  <div className="flex justify-center md:justify-start gap-1 my-2">
+                    {renderAverageStars(Number(averageRating))}
+                  </div>
                 </div>
-              ))}
+
+                {/* Right Column: Filter buttons */}
+                <div className="flex-grow flex flex-wrap gap-2 justify-center md:justify-start">
+                  <button
+                    onClick={() => setActiveFilter('all')}
+                    className={`px-4 py-1.5 text-xs rounded-sm border transition-all cursor-pointer ${
+                      activeFilter === 'all'
+                        ? 'border-[#BF3A20] text-[#BF3A20] bg-white font-semibold'
+                        : 'border-neutral-200 text-neutral-600 bg-white hover:bg-neutral-50'
+                    }`}
+                  >
+                    Tất cả ({counts.all})
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('5')}
+                    className={`px-4 py-1.5 text-xs rounded-sm border transition-all cursor-pointer ${
+                      activeFilter === '5'
+                        ? 'border-[#BF3A20] text-[#BF3A20] bg-white font-semibold'
+                        : 'border-neutral-200 text-neutral-600 bg-white hover:bg-neutral-50'
+                    }`}
+                  >
+                    5 Sao ({counts.star5})
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('4')}
+                    className={`px-4 py-1.5 text-xs rounded-sm border transition-all cursor-pointer ${
+                      activeFilter === '4'
+                        ? 'border-[#BF3A20] text-[#BF3A20] bg-white font-semibold'
+                        : 'border-neutral-200 text-neutral-600 bg-white hover:bg-neutral-50'
+                    }`}
+                  >
+                    4 Sao ({counts.star4})
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('3')}
+                    className={`px-4 py-1.5 text-xs rounded-sm border transition-all cursor-pointer ${
+                      activeFilter === '3'
+                        ? 'border-[#BF3A20] text-[#BF3A20] bg-white font-semibold'
+                        : 'border-neutral-200 text-neutral-600 bg-white hover:bg-neutral-50'
+                    }`}
+                  >
+                    3 Sao ({counts.star3})
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('2')}
+                    className={`px-4 py-1.5 text-xs rounded-sm border transition-all cursor-pointer ${
+                      activeFilter === '2'
+                        ? 'border-[#BF3A20] text-[#BF3A20] bg-white font-semibold'
+                        : 'border-neutral-200 text-neutral-600 bg-white hover:bg-neutral-50'
+                    }`}
+                  >
+                    2 Sao ({counts.star2})
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('1')}
+                    className={`px-4 py-1.5 text-xs rounded-sm border transition-all cursor-pointer ${
+                      activeFilter === '1'
+                        ? 'border-[#BF3A20] text-[#BF3A20] bg-white font-semibold'
+                        : 'border-neutral-200 text-neutral-600 bg-white hover:bg-neutral-50'
+                    }`}
+                  >
+                    1 Sao ({counts.star1})
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('comment')}
+                    className={`px-4 py-1.5 text-xs rounded-sm border transition-all cursor-pointer ${
+                      activeFilter === 'comment'
+                        ? 'border-[#BF3A20] text-[#BF3A20] bg-white font-semibold'
+                        : 'border-neutral-200 text-neutral-600 bg-white hover:bg-neutral-50'
+                    }`}
+                  >
+                    Có bình luận ({counts.comment})
+                  </button>
+                </div>
+              </div>
+
+              {/* Review list */}
+              {filteredReviews.length > 0 ? (
+                <div className="space-y-4 max-h-[550px] overflow-y-auto pr-2 divide-y divide-neutral-100 bg-[#FEFCF9] border border-neutral-900/60 p-4 shadow-sm">
+                  {filteredReviews.map((rev: any) => {
+                    const initLikes = getInitialLikes(rev.id);
+                    const likeState = likedReviews[rev.id] || { liked: false, count: initLikes };
+                    
+                    return (
+                      <div key={rev.id} className="pt-4 first:pt-0 flex gap-4">
+                        {/* Avatar */}
+                        <div className="flex-shrink-0 select-none">
+                          {rev.user?.avatar ? (
+                            <img
+                              src={getAvatarUrl(rev.user.avatar)}
+                              alt={rev.user?.name || 'User'}
+                              className="w-9 h-9 rounded-full object-cover border border-neutral-200"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.nextSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-[#BF3A20] to-[#E26046]"
+                            style={{ display: rev.user?.avatar ? 'none' : 'flex' }}
+                          >
+                            {getInitials(rev.user?.name)}
+                          </div>
+                        </div>
+
+                        {/* Review Content */}
+                        <div className="flex-grow space-y-1.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-neutral-800 font-mono">
+                                {rev.user?.name || 'Thực khách ẩn danh'}
+                              </span>
+                              <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-semibold px-1 rounded-sm select-none">
+                                <CheckCircle size={8} className="fill-emerald-700 text-white" /> Đã mua hàng
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-neutral-400 select-none">
+                              {formatDate(rev.createdAt)}
+                            </span>
+                          </div>
+
+                          {/* Rating Stars */}
+                          <div className="flex text-amber-500 gap-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                size={11}
+                                fill={i < rev.rating ? '#FFC107' : 'none'}
+                                stroke={i < rev.rating ? '#FFC107' : '#D1D5DB'}
+                                className="inline"
+                              />
+                            ))}
+                          </div>
+
+                          {/* Product Category info */}
+                          <div className="text-[10px] font-mono text-neutral-400 select-none">
+                            Phân loại hàng: {item.name}
+                          </div>
+
+                          {/* Comment body */}
+                          <p className="text-xs text-neutral-700 leading-relaxed font-body whitespace-pre-line">
+                            {rev.comment && rev.comment.trim() !== '' && rev.comment !== 'Không có nhận xét bằng lời.'
+                              ? rev.comment
+                              : 'Người mua không để lại bình luận.'}
+                          </p>
+
+                          {/* Vendor Reply */}
+                          {rev.vendorReply && (
+                            <div className="bg-[#FAF7F3] border-l-2 border-[#BF3A20] p-3 rounded-r-md mt-2 space-y-1">
+                              <p className="text-[10px] font-mono font-bold text-neutral-800 select-none">Phản hồi của Người bán:</p>
+                              <p className="text-xs text-neutral-600 leading-relaxed font-body whitespace-pre-line">{rev.vendorReply}</p>
+                            </div>
+                          )}
+
+                          {/* Interaction */}
+                          <div className="flex items-center gap-4 pt-1 select-none">
+                            <button
+                              onClick={() => handleLikeReview(rev.id)}
+                              className={`flex items-center gap-1 text-[10px] font-mono transition-colors border-0 bg-transparent p-0 cursor-pointer ${
+                                likeState.liked ? 'text-[#BF3A20] font-bold' : 'text-neutral-400 hover:text-neutral-600'
+                              }`}
+                            >
+                              <ThumbsUp size={11} className={likeState.liked ? 'fill-[#BF3A20]' : ''} />
+                              <span>Hữu ích ({likeState.count})</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-neutral-400 font-mono italic border border-dashed border-neutral-300 bg-white rounded-sm select-none">
+                  [ Không tìm thấy đánh giá nào cho bộ lọc này ]
+                </div>
+              )}
             </div>
           ) : (
-            <div className="text-center py-8 text-neutral-400 font-mono italic border border-dashed border-neutral-300 bg-white rounded-md select-none">
+            <div className="text-center py-12 text-neutral-400 font-mono italic border border-dashed border-neutral-300 bg-white rounded-md select-none">
               [ Chưa có đánh giá nào cho món ăn này. Hãy mua và trở thành người đầu tiên đánh giá để nhận quà tích điểm! ]
             </div>
           )}

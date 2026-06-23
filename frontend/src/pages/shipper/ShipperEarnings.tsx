@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, TrendingUp, Star, Package, DollarSign } from 'lucide-react';
+import { TrendingUp, Star, Package, DollarSign } from 'lucide-react';
 import shipperApi from '../../services/shipperApi';
 
 const ShipperEarnings: React.FC = () => {
@@ -22,9 +22,14 @@ const ShipperEarnings: React.FC = () => {
   useEffect(() => { fetchEarnings(); }, [fetchEarnings]);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4 text-neutral-500">
-      <Loader2 size={36} className="animate-spin text-primary-600" />
-      <p className="font-mono font-bold uppercase text-xs tracking-wider">Đang tải báo cáo thu nhập...</p>
+    <div className="space-y-4">
+      <div className="bg-gray-200 rounded-2xl h-10 w-64 animate-pulse" />
+      <div className="bg-gray-200 rounded-2xl h-36 animate-pulse" />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gray-200 rounded-2xl h-28 animate-pulse" />
+        <div className="bg-gray-200 rounded-2xl h-28 animate-pulse" />
+      </div>
+      <div className="bg-gray-200 rounded-2xl h-60 animate-pulse" />
     </div>
   );
 
@@ -34,102 +39,114 @@ const ShipperEarnings: React.FC = () => {
 
   const periodData = data?.[period] || { earnings: 0, orders: 0 };
 
+  const periodLabels: Record<string, string> = {
+    today: 'Hôm Nay',
+    week: 'Tuần Này',
+    month: 'Tháng Này',
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in text-neutral-800">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="font-heading italic font-bold text-2xl lg:text-3xl text-neutral-900">Thu Nhập Của Tôi</h1>
-        <p className="text-xs lg:text-sm text-neutral-500 mt-1">Báo cáo thống kê chi tiết phí vận chuyển tích lũy</p>
+        <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Thu Nhập Của Tôi</h1>
+        <p className="text-sm font-medium text-gray-500 mt-2">Báo cáo thống kê chi tiết phí vận chuyển tích lũy</p>
       </div>
 
       {/* Period selector */}
-      <div className="flex gap-2 p-1 border-2 border-neutral-900 bg-[#FEFCF9] shadow-retro-sm w-fit rounded-sm">
+      <div className="flex gap-1 p-1 bg-white border border-gray-100 rounded-full shadow-modern-sm w-fit">
         {(['today', 'week', 'month'] as const).map(p => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-5 py-2 font-mono font-bold uppercase text-xs transition-all duration-150 cursor-pointer ${
+            className={`px-5 py-2 font-semibold text-sm rounded-full transition-all duration-200 cursor-pointer ${
               period === p
-                ? 'bg-[#BF3A20] text-white border border-neutral-900 shadow-retro-sm'
-                : 'text-neutral-500 hover:text-neutral-950 bg-transparent border border-transparent'
+                ? 'bg-primary-600 text-white shadow-modern-sm'
+                : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
             }`}
           >
-            {p === 'today' ? 'Hôm Nay' : p === 'week' ? 'Tuần Này' : 'Tháng Này'}
+            {periodLabels[p]}
           </button>
         ))}
       </div>
 
       {/* Main stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="col-span-1 sm:col-span-2 border-2 border-neutral-900 bg-[#BF3A20] text-white p-6 shadow-retro flex flex-col justify-between gap-4">
-          <div className="flex items-center gap-2 text-red-100 text-xs font-mono font-bold uppercase tracking-wider">
-            <DollarSign size={16} strokeWidth={1.5} /> Báo cáo thu nhập
+        <div className="col-span-1 sm:col-span-2 relative bg-gradient-to-br from-primary-600 to-primary-700 text-white rounded-2xl p-6 shadow-modern overflow-hidden flex flex-col justify-between gap-4">
+          <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full" />
+          <div className="absolute -left-4 -bottom-4 w-24 h-24 bg-white/5 rounded-full" />
+          <div className="relative flex items-center gap-2 text-primary-100 text-xs font-semibold uppercase tracking-wider">
+            <DollarSign size={16} strokeWidth={2} /> Báo cáo thu nhập — {periodLabels[period]}
           </div>
-          <div>
-            <p className="text-3xl lg:text-4xl font-bold font-mono text-white">
+          <div className="relative">
+            <p className="text-4xl lg:text-5xl font-bold text-white">
               {periodData.earnings.toLocaleString('vi-VN')}đ
             </p>
-            <p className="text-red-200 text-xs mt-1.5">{periodData.orders} chuyến giao hoàn thành</p>
+            <p className="text-primary-200 text-sm mt-2">{periodData.orders} chuyến giao hoàn thành</p>
           </div>
         </div>
 
-        <div className="border-2 border-neutral-900 bg-[#FEFCF9] p-6 shadow-retro flex flex-col justify-between gap-4">
-          <div className="flex items-center gap-2 text-neutral-400 text-xs font-mono font-bold uppercase tracking-wider">
-            <Star size={16} className="text-[#C98F0A]" strokeWidth={1.5} /> Điểm trung bình
+        <div className="relative bg-white border border-gray-100 rounded-2xl p-6 shadow-modern-sm flex flex-col justify-between gap-4 overflow-hidden group">
+          <div className="absolute -right-6 -top-6 w-28 h-28 bg-amber-50 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out opacity-50" />
+          <div className="relative flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase tracking-wider">
+            <Star size={16} className="text-amber-400" strokeWidth={2} /> Điểm trung bình
           </div>
-          <div>
-            <p className="text-2xl lg:text-3xl font-bold text-neutral-900 font-mono">
+          <div className="relative">
+            <p className="text-3xl font-bold text-gray-800">
               {data?.avgRating ? `${data.avgRating} ⭐` : '—'}
             </p>
-            <p className="text-neutral-400 text-[10px] uppercase font-mono mt-1.5">Khách đánh giá</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wider mt-2">Khách đánh giá</p>
           </div>
         </div>
       </div>
 
       {/* Total stats */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="border-2 border-neutral-900 bg-[#FEFCF9] p-5 shadow-retro-sm">
-          <div className="flex items-center gap-2 text-neutral-500 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
-            <Package size={14} strokeWidth={1.5} /> Tổng đơn hoàn tất
+        <div className="relative bg-white border border-gray-100 rounded-2xl p-5 shadow-modern-sm overflow-hidden group">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out opacity-40" />
+          <div className="relative flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase tracking-wider mb-3">
+            <Package size={14} strokeWidth={2} className="text-blue-500" /> Tổng đơn hoàn tất
           </div>
-          <p className="text-xl font-bold text-neutral-900 font-mono">{data?.total?.orders ?? 0}</p>
-          <p className="text-[10px] text-neutral-400 font-mono mt-1 uppercase">Đã vận chuyển</p>
+          <p className="relative text-2xl font-bold text-gray-800">{data?.total?.orders ?? 0}</p>
+          <p className="relative text-xs text-gray-400 mt-1">Đã vận chuyển</p>
         </div>
-        <div className="border-2 border-neutral-900 bg-[#FEFCF9] p-5 shadow-retro-sm">
-          <div className="flex items-center gap-2 text-neutral-500 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
-            <TrendingUp size={14} strokeWidth={1.5} /> Tổng doanh thu ví
+        <div className="relative bg-white border border-gray-100 rounded-2xl p-5 shadow-modern-sm overflow-hidden group">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary-50 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out opacity-40" />
+          <div className="relative flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase tracking-wider mb-3">
+            <TrendingUp size={14} strokeWidth={2} className="text-primary-500" /> Tổng doanh thu
           </div>
-          <p className="text-xl font-bold text-[#BF3A20] font-mono">
+          <p className="relative text-2xl font-bold text-primary-600">
             {(data?.total?.earnings ?? 0).toLocaleString('vi-VN')}đ
           </p>
-          <p className="text-[10px] text-neutral-400 font-mono mt-1 uppercase">Tích lũy trọn đời</p>
+          <p className="relative text-xs text-gray-400 mt-1">Tích lũy trọn đời</p>
         </div>
       </div>
 
       {/* Chart 7 ngày */}
       {data?.chartData && (
-        <div className="border-2 border-neutral-900 bg-[#FEFCF9] p-6 shadow-retro">
-          <h3 className="font-heading font-bold text-neutral-900 text-sm lg:text-base mb-5 flex items-center gap-2">
-            <TrendingUp size={16} className="text-[#BF3A20]" strokeWidth={1.5} /> Phân tích doanh thu 7 ngày qua
+        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-modern-sm">
+          <h3 className="font-bold text-gray-800 text-base mb-5 flex items-center gap-2">
+            <TrendingUp size={18} className="text-primary-600" strokeWidth={2} />
+            Phân tích doanh thu 7 ngày qua
           </h3>
-          <div className="flex items-end gap-2 h-44 border-b border-neutral-300 pb-2">
+          <div className="flex items-end gap-2 h-44 border-b border-gray-100 pb-2">
             {data.chartData.map((d: any, i: number) => {
               const height = maxEarning > 0 ? (d.earnings / maxEarning) * 100 : 0;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
                   {/* Tooltip */}
                   {d.earnings > 0 && (
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-neutral-900 border border-neutral-700 text-white text-[9px] font-mono px-2 py-1 shadow-retro rounded-sm opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-10 pointer-events-none">
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap z-10 pointer-events-none shadow-modern">
                       {d.earnings.toLocaleString('vi-VN')}đ
                     </div>
                   )}
                   <div className="w-full flex items-end h-32">
                     <div
-                      className="w-full border-2 border-neutral-900 bg-[#E9C46A] shadow-retro-sm transition-all duration-500 min-h-[4px] hover:bg-[#C98F0A]"
+                      className="w-full bg-primary-100 rounded-t-xl hover:bg-primary-500 transition-all duration-300 min-h-[4px] cursor-pointer"
                       style={{ height: `${Math.max(height, 4)}%` }}
                     />
                   </div>
-                  <p className="text-[9px] font-mono font-bold text-neutral-500 uppercase tracking-tight text-center leading-none mt-1">{d.date.split(',')[0]}</p>
-                  <p className="text-[9px] font-mono text-neutral-400 font-bold leading-none">{d.orders} đơn</p>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-tight text-center leading-none">{d.date.split(',')[0]}</p>
+                  <p className="text-[10px] text-gray-400 font-medium leading-none">{d.orders} đơn</p>
                 </div>
               );
             })}

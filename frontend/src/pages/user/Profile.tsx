@@ -32,6 +32,7 @@ import orderApi from '../../services/orderApi';
 import favoriteApi from '../../services/favoriteApi';
 import reviewApi from '../../services/reviewApi';
 import { authApi } from '../../services/authApi';
+import shipperApi from '../../services/shipperApi';
 
 interface Address {
   id: string;
@@ -78,6 +79,41 @@ export const Profile: React.FC = () => {
     setMessage(msg);
     setMessageType(type);
     setTimeout(() => setMessage(''), 5000);
+  };
+
+  // ─── Custom Alert/Confirm Modal State ──────────────────────
+  const [customDialog, setCustomDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showCustomAlert = (msg: string, title: string = 'Thông Báo', type: 'info' | 'warning' | 'error' = 'info') => {
+    setCustomDialog({
+      isOpen: true,
+      title,
+      message: msg,
+      type,
+    });
+  };
+
+  const showCustomConfirm = (msg: string, onConfirm: () => void, title: string = 'Xác nhận', onCancel?: () => void) => {
+    setCustomDialog({
+      isOpen: true,
+      title,
+      message: msg,
+      type: 'confirm',
+      onConfirm,
+      onCancel,
+    });
   };
 
   // ─── Address book (local state) ────────────────────────────
@@ -129,28 +165,31 @@ export const Profile: React.FC = () => {
     return stepsKeys.indexOf(status);
   };
 
-  const handleCancelOrder = async (orderId: string) => {
-    const confirm = window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?');
-    if (!confirm) return;
-
-    try {
-      const res = await orderApi.updateOrderStatus(orderId, 'cancelled');
-      if (res && res.success) {
-        alert('Hủy đơn hàng thành công!');
-        // Update local state
-        setRealOrders((prev) =>
-          prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
-        );
-        setSelectedOrderDetail((prev: any) =>
-          prev && prev.id === orderId ? { ...prev, status: 'cancelled' } : prev
-        );
-      } else {
-        alert('Không thể hủy đơn hàng: ' + (res.message || 'Lỗi hệ thống'));
-      }
-    } catch (err: any) {
-      console.error('Lỗi khi hủy đơn hàng:', err);
-      alert('Không thể hủy đơn hàng: ' + (err.message || 'Lỗi hệ thống'));
-    }
+  const handleCancelOrder = (orderId: string) => {
+    showCustomConfirm(
+      'Bạn có chắc chắn muốn hủy đơn hàng này không?',
+      async () => {
+        try {
+          const res = await orderApi.updateOrderStatus(orderId, 'cancelled');
+          if (res && res.success) {
+            showCustomAlert('Hủy đơn hàng thành công!', 'Thành công', 'info');
+            // Update local state
+            setRealOrders((prev) =>
+              prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+            );
+            setSelectedOrderDetail((prev: any) =>
+              prev && prev.id === orderId ? { ...prev, status: 'cancelled' } : prev
+            );
+          } else {
+            showCustomAlert('Không thể hủy đơn hàng: ' + (res.message || 'Lỗi hệ thống'), 'Lỗi', 'error');
+          }
+        } catch (err: any) {
+          console.error('Lỗi khi hủy đơn hàng:', err);
+          showCustomAlert('Không thể hủy đơn hàng: ' + (err.message || 'Lỗi hệ thống'), 'Lỗi', 'error');
+        }
+      },
+      'Hủy đơn hàng'
+    );
   };
 
   const fetchRealOrders = async () => {
@@ -219,6 +258,42 @@ export const Profile: React.FC = () => {
           setRealOrders(res.data);
           const updated = res.data.find((o: any) => o.id === selectedOrderDetail.id);
           if (updated) {
+            // If the status has changed, push a new local notification
+            if (updated.status !== selectedOrderDetail.status) {
+              const getStatusText = (status: string) => {
+                switch(status) {
+                  case 'confirmed': return { title: 'Đơn hàng đã được xác nhận', msg: 'Nhà hàng đã nhận đơn và bắt đầu chế biến.' };
+                  case 'preparing': return { title: 'Đơn hàng đang chuẩn bị', msg: 'Đầu bếp đang chuẩn bị món ăn của bạn.' };
+                  case 'ready': return { title: 'Đơn hàng đã sẵn sàng', msg: 'Món ăn đã chuẩn bị xong, đang chờ bưu tá nhận.' };
+                  case 'shipping': return { title: 'Đơn hàng đang giao 🏍️', msg: 'Bưu tá đang giao đơn hàng tới bạn.' };
+                  case 'completed': return { title: 'Đơn hàng đã hoàn thành ✓', msg: 'Cảm ơn bạn đã đặt món tại GrabFood Mini!' };
+                  case 'cancelled': return { title: 'Đơn hàng đã bị hủy ❌', msg: 'Đơn hàng của bạn đã bị hủy.' };
+                  default: return null;
+                }
+              };
+              const noti = getStatusText(updated.status);
+              if (noti) {
+                try {
+                  const stored = localStorage.getItem('user_notifications');
+                  const customNotis = stored ? JSON.parse(stored) : [];
+                  const newNoti = {
+                    id: 'status_update_' + Date.now(),
+                    type: 'order' as const,
+                    title: noti.title,
+                    message: `${noti.msg} (Mã đơn: #${updated.code || updated.id.slice(0, 8)})`,
+                    time: 'Vừa xong',
+                    isRead: false,
+                    createdAt: new Date().toISOString(),
+                    meta: { orderId: updated.id, orderStatus: updated.status }
+                  };
+                  customNotis.unshift(newNoti);
+                  localStorage.setItem('user_notifications', JSON.stringify(customNotis));
+                  window.dispatchEvent(new Event('new_notification'));
+                } catch (e) {
+                  console.error('Error saving status update notification:', e);
+                }
+              }
+            }
             setSelectedOrderDetail(updated);
           }
         }
@@ -415,7 +490,7 @@ export const Profile: React.FC = () => {
   const handleSaveAddress = (e: React.FormEvent) => {
     e.preventDefault();
     if (!addrTitle.trim() || !addrDetail.trim() || !addrRecipient.trim() || !addrPhone.trim()) {
-      alert('Vui lòng điền đầy đủ các thông tin địa chỉ.');
+      showCustomAlert('Vui lòng điền đầy đủ các thông tin địa chỉ.', 'Thiếu thông tin', 'warning');
       return;
     }
     if (editingAddress) {
@@ -436,10 +511,14 @@ export const Profile: React.FC = () => {
   };
 
   const handleDeleteAddress = (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) {
-      setAddresses(prev => prev.filter(a => a.id !== id));
-      showMessage('Đã xóa địa chỉ thành công!');
-    }
+    showCustomConfirm(
+      'Bạn có chắc chắn muốn xóa địa chỉ này?',
+      () => {
+        setAddresses(prev => prev.filter(a => a.id !== id));
+        showMessage('Đã xóa địa chỉ thành công!');
+      },
+      'Xóa địa chỉ'
+    );
   };
 
   // ─── Order helpers ─────────────────────────────────────────
@@ -451,10 +530,10 @@ export const Profile: React.FC = () => {
           imageUrl: item.image || item.imageUrl || `https://placehold.co/150x150/FEFCF9/BF3A20?text=${encodeURIComponent(item.name)}`
         }, order.restaurantId);
       });
-      alert('Đã đặt lại các món từ đơn hàng cũ vào giỏ hàng của bạn!');
+      showCustomAlert('Đã đặt lại các món từ đơn hàng cũ vào giỏ hàng của bạn!', 'Đặt lại thành công', 'info');
       navigate('/cart');
     } else {
-      alert('Không tìm thấy thông tin món ăn để đặt lại đơn này.');
+      showCustomAlert('Không tìm thấy thông tin món ăn để đặt lại đơn này.', 'Lỗi', 'error');
     }
   };
 
@@ -503,10 +582,10 @@ export const Profile: React.FC = () => {
         setIsRatingModalOpen(false);
         if (refetchMe) await refetchMe();
       } else {
-        alert(res?.message || 'Có lỗi xảy ra khi gửi đánh giá.');
+        showCustomAlert(res?.message || 'Có lỗi xảy ra khi gửi đánh giá.', 'Lỗi', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Gửi đánh giá thất bại. Bạn chỉ có thể đánh giá món ăn đã mua thành công.');
+      showCustomAlert(err.message || 'Gửi đánh giá thất bại. Bạn chỉ có thể đánh giá món ăn đã mua thành công.', 'Lỗi', 'error');
     }
   };
 
@@ -991,11 +1070,25 @@ export const Profile: React.FC = () => {
                             </p>
                           </div>
                           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 border rounded-sm select-none ${
-                            isCompleted ? 'bg-emerald-50 border-emerald-600 text-emerald-800'
-                            : isCancelled ? 'bg-[#BF3A20]/5 border-[#BF3A20] text-[#BF3A20]'
-                            : 'bg-amber-50 border-amber-600 text-amber-800'
+                            isCompleted
+                              ? 'bg-emerald-50 border-emerald-600 text-emerald-800'
+                              : isCancelled
+                              ? 'bg-[#BF3A20]/5 border-[#BF3A20] text-[#BF3A20]'
+                              : order.status === 'ready'
+                              ? 'bg-purple-50 border-purple-600 text-purple-800'
+                              : order.status === 'delivering'
+                              ? 'bg-indigo-50 border-indigo-600 text-indigo-800'
+                              : order.status === 'preparing'
+                              ? 'bg-blue-50 border-blue-600 text-blue-800'
+                              : 'bg-amber-50 border-amber-600 text-amber-800'
                           }`}>
-                            {isCompleted ? '[ HOÀN THÀNH ]' : (isCancelled ? '[ ĐÃ HỦY ]' : `[ ${order.status.toUpperCase()} ]`)}
+                            {isCompleted && '[ HOÀN THÀNH ]'}
+                            {isCancelled && '[ ĐÃ HỦY ]'}
+                            {order.status === 'pending' && '[ CHỜ TIẾP NHẬN ]'}
+                            {order.status === 'confirmed' && '[ ĐÃ XÁC NHẬN ]'}
+                            {order.status === 'preparing' && '[ ĐANG CHUẨN BỊ ]'}
+                            {order.status === 'ready' && '[ ĐÃ CHUẨN BỊ XONG ]'}
+                            {order.status === 'delivering' && '[ ĐANG GIAO HÀNG ]'}
                           </span>
                         </div>
 
@@ -1037,12 +1130,37 @@ export const Profile: React.FC = () => {
                             >
                               📁 Chi tiết đơn
                             </button>
-                            <button
-                              onClick={() => handleReorder(order)}
-                              className="bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-bold text-[10px] uppercase py-2.5 px-3 border-2 border-neutral-900 shadow-retro-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer select-none"
-                            >
-                              Đặt lại đơn này
-                            </button>
+                            {['pending', 'confirmed'].includes(order.status) ? (
+                              <button
+                                onClick={() => handleCancelOrder(order.id)}
+                                className="bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-bold text-[10px] uppercase py-2.5 px-3 border-2 border-neutral-900 shadow-retro-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer select-none"
+                              >
+                                Hủy Đơn Hàng
+                              </button>
+                            ) : ['preparing', 'ready'].includes(order.status) ? (
+                              <button
+                                disabled
+                                className="bg-neutral-100 border-2 border-neutral-300 text-neutral-400 font-body font-bold text-[10px] uppercase py-2.5 px-3 cursor-not-allowed select-none"
+                                title="Đơn hàng đang xử lý, không thể tự hủy lúc này"
+                              >
+                                Đang Chuẩn Bị
+                              </button>
+                            ) : order.status === 'delivering' ? (
+                              <button
+                                disabled
+                                className="bg-neutral-100 border-2 border-neutral-300 text-neutral-400 font-body font-bold text-[10px] uppercase py-2.5 px-3 cursor-not-allowed select-none"
+                                title="Đơn hàng đang được shipper đi giao"
+                              >
+                                Đang Giao...
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleReorder(order)}
+                                className="bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-bold text-[10px] uppercase py-2.5 px-3 border-2 border-neutral-900 shadow-retro-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer select-none"
+                              >
+                                Đặt lại đơn này
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1527,27 +1645,120 @@ export const Profile: React.FC = () => {
                 </div>
               </div>
 
+              {/* Shipper Details & Rating */}
+              {selectedOrderDetail.shipper && (
+                <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">
+                  <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-1">Bưu tá vận chuyển</span>
+                  <div className="flex items-center justify-between gap-3 mt-1 flex-wrap sm:flex-nowrap">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full border border-neutral-900 bg-primary-50 flex items-center justify-center font-mono font-bold text-xs uppercase overflow-hidden shadow-retro-sm">
+                        {selectedOrderDetail.shipper.avatar ? (
+                          <img 
+                            src={selectedOrderDetail.shipper.avatar.startsWith('http') ? selectedOrderDetail.shipper.avatar : `http://localhost:5000${selectedOrderDetail.shipper.avatar}`} 
+                            alt="Avatar" 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          selectedOrderDetail.shipper.name.charAt(0)
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-neutral-800">{selectedOrderDetail.shipper.name}</p>
+                        <p className="text-[9px] font-mono text-neutral-400">{selectedOrderDetail.shipper.phone || 'Chưa cập nhật SĐT'}</p>
+                      </div>
+                    </div>
+                    {/* Rate Shipper Section */}
+                    {selectedOrderDetail.status === 'completed' && (
+                      <div className="flex items-center gap-1.5">
+                        {selectedOrderDetail.shipperRating ? (
+                          <div className="flex items-center gap-1 text-[#C98F0A] font-bold text-xs bg-amber-50 px-2.5 py-1 border border-amber-250 font-mono shadow-retro-sm">
+                            <span>Đã đánh giá:</span>
+                            <span className="flex items-center gap-0.5">{selectedOrderDetail.shipperRating} <Star size={12} fill="#C98F0A" stroke="#C98F0A" /></span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-neutral-500 font-mono uppercase">Đánh giá bưu tá:</span>
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => {
+                                    showCustomConfirm(
+                                      `Bạn muốn đánh giá bưu tá ${star} sao?`,
+                                      async () => {
+                                        try {
+                                          const res = await shipperApi.rateShipper(selectedOrderDetail.id, star);
+                                          if (res && res.success) {
+                                            showCustomAlert('Cảm ơn bạn đã đánh giá bưu tá!', 'Đánh giá bưu tá', 'info');
+                                            setSelectedOrderDetail((prev: any) => prev ? { ...prev, shipperRating: star } : null);
+                                            setRealOrders((prev) => prev.map(o => o.id === selectedOrderDetail.id ? { ...o, shipperRating: star } : o));
+                                          } else {
+                                            showCustomAlert(res?.message || 'Có lỗi xảy ra.', 'Lỗi', 'error');
+                                          }
+                                        } catch (err: any) {
+                                          showCustomAlert(err.message || 'Lỗi khi đánh giá bưu tá.', 'Lỗi', 'error');
+                                        }
+                                      },
+                                      'Đánh giá bưu tá'
+                                    );
+                                  }}
+                                  className="text-neutral-300 hover:text-amber-500 transition-colors text-base cursor-pointer hover:scale-110"
+                                >
+                                  ★
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* 4. Order items details */}
               <div className="p-3 bg-[#FAF7F3] border border-[#E8D8C6] rounded-md">
                 <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase mb-2">Thực đơn ký gửi ({selectedOrderDetail.items?.length || 0} món)</span>
                 <div className="space-y-2 border-b border-dashed border-neutral-200 pb-2.5 mb-2.5">
-                  {selectedOrderDetail.items?.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between items-start text-xs">
-                      <div>
-                        <p className="font-semibold text-neutral-800 font-body">
-                          {item.quantity}x {item.name || 'Món ăn ngon'}
-                        </p>
-                        {item.toppings && item.toppings.length > 0 && (
-                          <p className="text-[9px] text-[#9E6E4A] font-semibold mt-0.5">
-                            + Topping: {item.toppings.join(', ')}
+                  {selectedOrderDetail.items?.map((item: any, idx: number) => {
+                    const isReviewed = reviewedKeys.includes(`${selectedOrderDetail.id}-${item.menuItemId}`);
+                    const isCompleted = selectedOrderDetail.status === 'completed';
+                    return (
+                      <div key={idx} className="flex justify-between items-center text-xs">
+                        <div>
+                          <p className="font-semibold text-neutral-800 font-body">
+                            {item.quantity}x {item.name || 'Món ăn ngon'}
                           </p>
-                        )}
+                          {item.toppings && item.toppings.length > 0 && (
+                            <p className="text-[9px] text-[#9E6E4A] font-semibold mt-0.5">
+                              + Topping: {item.toppings.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-neutral-700">
+                            {((item.price || 0) * item.quantity).toLocaleString('vi-VN')}đ
+                          </span>
+                          {isCompleted && (
+                            isReviewed ? (
+                              <span className="text-[9px] font-mono text-emerald-600 font-bold bg-emerald-50 border border-emerald-250 px-2 py-0.5 select-none">
+                                ✓ Đã đánh giá
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenRatingModal(selectedOrderDetail.id, item.menuItemId, item.name)}
+                                className="bg-[#BF3A20] hover:bg-[#D44B2F] text-white font-body font-bold text-[9px] uppercase py-1 px-2 border border-neutral-900 shadow-retro-sm transition-colors cursor-pointer select-none"
+                              >
+                                Đánh giá
+                              </button>
+                            )
+                          )}
+                        </div>
                       </div>
-                      <span className="font-mono font-bold text-neutral-700">
-                        {((item.price || 0) * item.quantity).toLocaleString('vi-VN')}đ
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Subtotal calculations */}
@@ -1606,13 +1817,21 @@ export const Profile: React.FC = () => {
                 >
                   Hủy Đơn Hàng
                 </button>
-              ) : selectedOrderDetail.status === 'preparing' ? (
+              ) : ['preparing', 'ready'].includes(selectedOrderDetail.status) ? (
                 <button
-                  onClick={() => alert('Đơn hàng đã được quán tiếp nhận và đang trong quá trình chế biến. Bạn không thể tự hủy trực tiếp lúc này. Vui lòng liên hệ trực tiếp với cửa hàng hoặc tính năng Chat để yêu cầu hỗ trợ.')}
+                  onClick={() => showCustomAlert('Đơn hàng đã được quán tiếp nhận và chuẩn bị. Bạn không thể tự hủy trực tiếp lúc này. Vui lòng liên hệ trực tiếp với cửa hàng hoặc tính năng Chat để yêu cầu hỗ trợ.', 'Thông tin hủy đơn', 'warning')}
                   className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-300 bg-neutral-100 text-neutral-400 text-center cursor-not-allowed transition-all"
-                  title="Đơn hàng đang chuẩn bị, không thể hủy trực tiếp"
+                  title="Đơn hàng đang xử lý, không thể hủy trực tiếp"
                 >
                   Không Thể Hủy Đơn
+                </button>
+              ) : selectedOrderDetail.status === 'delivering' ? (
+                <button
+                  onClick={() => showCustomAlert('Đơn hàng đang trên đường giao tới bạn. Vui lòng liên hệ với shipper hoặc cửa hàng để được hỗ trợ.', 'Thông tin đơn hàng', 'warning')}
+                  className="py-2.5 px-4 font-body font-bold text-xs uppercase border-2 border-neutral-300 bg-neutral-100 text-neutral-400 text-center cursor-not-allowed transition-all"
+                  title="Đơn hàng đang giao, không thể hủy"
+                >
+                  Đang Giao Hàng...
                 </button>
               ) : (
                 <button
@@ -1627,6 +1846,62 @@ export const Profile: React.FC = () => {
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Custom Alert/Confirm Modal */}
+      {customDialog.isOpen && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-neutral-900/60 backdrop-blur-xs p-4 select-none animate-fade-in">
+          <div className="bg-[#FEFCF9] border-4 border-neutral-900 shadow-retro max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-150">
+            {/* Retro header strip */}
+            <div className="absolute top-0 left-0 right-0 h-2 bg-[#BF3A20]"></div>
+            
+            <h2 className={`text-sm font-heading font-black text-center mt-2 mb-3 uppercase tracking-wide border-b-2 border-neutral-900 pb-2 ${
+              customDialog.type === 'error' ? 'text-[#BF3A20]' : customDialog.type === 'warning' ? 'text-[#C98F0A]' : 'text-neutral-800'
+            }`}>
+              {customDialog.type === 'error' && '❌ '}
+              {customDialog.type === 'warning' && '⚠️ '}
+              {customDialog.type === 'info' && '🔔 '}
+              {customDialog.type === 'confirm' && '❓ '}
+              {customDialog.title}
+            </h2>
+            
+            <p className="text-xs text-neutral-700 font-body text-center leading-relaxed mb-5 font-bold">
+              {customDialog.message}
+            </p>
+            
+            <div className="flex justify-center gap-3">
+              {customDialog.type === 'confirm' ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setCustomDialog(prev => ({ ...prev, isOpen: false }));
+                      if (customDialog.onConfirm) customDialog.onConfirm();
+                    }}
+                    className="py-2 px-5 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[1px] active:translate-y-[1px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all min-w-[90px]"
+                  >
+                    Đồng ý
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomDialog(prev => ({ ...prev, isOpen: false }));
+                      if (customDialog.onCancel) customDialog.onCancel();
+                    }}
+                    className="py-2 px-5 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#FEFCF9] hover:bg-neutral-100 active:translate-x-[1px] active:translate-y-[1px] active:shadow-retro-sm text-neutral-800 text-center cursor-pointer transition-all min-w-[90px]"
+                  >
+                    Hủy bỏ
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setCustomDialog(prev => ({ ...prev, isOpen: false }))}
+                  className="py-2 px-6 font-body font-bold text-xs uppercase border-2 border-neutral-900 shadow-retro bg-[#BF3A20] hover:bg-[#D44B2F] active:translate-x-[1px] active:translate-y-[1px] active:shadow-retro-sm text-white text-center cursor-pointer transition-all min-w-[100px]"
+                >
+                  Đồng ý (OK)
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

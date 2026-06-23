@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, Package, CheckCircle2, XCircle, Clock, Star, Image as ImageIcon } from 'lucide-react';
+import { Package, CheckCircle2, XCircle, Clock, Star, Image as ImageIcon, ChevronDown, ChevronUp, X, ZoomIn } from 'lucide-react';
 import shipperApi from '../../services/shipperApi';
 
 const statusMap: Record<string, { label: string; cls: string }> = {
-  completed: { label: 'Hoàn Thành', cls: 'bg-[#2D7A4F]/10 text-[#2D7A4F] border-[#2D7A4F]/30' },
-  delivering: { label: 'Đang Giao', cls: 'bg-[#2563A8]/10 text-[#2563A8] border-[#2563A8]/30' },
-  cancelled: { label: 'Đã Hủy', cls: 'bg-[#C0392B]/10 text-[#C0392B] border-[#C0392B]/30' },
+  completed: { label: 'Hoàn Thành', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  delivering: { label: 'Đang Giao', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  cancelled: { label: 'Đã Hủy', cls: 'bg-red-50 text-red-600 border-red-200' },
 };
 
 const ShipperHistory: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -28,142 +29,205 @@ const ShipperHistory: React.FC = () => {
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4 text-neutral-500">
-      <Loader2 size={36} className="animate-spin text-primary-600" />
-      <p className="font-mono font-bold uppercase text-xs tracking-wider">Đang tải lịch sử giao hàng...</p>
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="bg-gray-200 rounded-2xl h-20 animate-pulse" />
+      ))}
     </div>
   );
 
   return (
-    <div className="space-y-6 animate-fade-in text-neutral-800">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="font-heading italic font-bold text-2xl lg:text-3xl text-neutral-900">Lịch Sử Giao Hàng</h1>
-        <p className="text-xs lg:text-sm text-neutral-500 mt-1">{orders.length} đơn hàng đã vận chuyển</p>
+        <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Lịch Sử Giao Hàng</h1>
+        <p className="text-sm font-medium text-gray-500 mt-2">{orders.length} đơn hàng đã vận chuyển</p>
       </div>
 
       {orders.length === 0 ? (
-        <div className="border-2 border-neutral-900 p-16 bg-[#FEFCF9] shadow-retro text-center max-w-2xl mx-auto">
-          <Package size={40} className="mx-auto text-neutral-400 mb-4" strokeWidth={1.5} />
-          <p className="text-neutral-850 font-heading font-bold text-base">Bạn chưa thực hiện đơn hàng nào</p>
+        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
+            <Package size={28} className="text-gray-400" strokeWidth={1.5} />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-700 text-base">Bạn chưa thực hiện đơn hàng nào</p>
+            <p className="text-gray-400 text-sm mt-1.5">Lịch sử giao hàng sẽ hiển thị tại đây</p>
+          </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {orders.map(order => {
-            const status = statusMap[order.status] || { label: order.status, cls: 'bg-neutral-100 text-neutral-600 border-neutral-300' };
+            const status = statusMap[order.status] || { label: order.status, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
             const isExpanded = expandedId === order.id;
+            const hasPhotos = order.pickupPhotoUrl || order.deliveryPhotoUrl;
             return (
               <div
                 key={order.id}
-                className="border-2 border-neutral-900 bg-[#FEFCF9] shadow-retro-sm overflow-hidden hover:shadow-retro transition-all"
+                className="bg-white border border-gray-100 rounded-2xl shadow-modern-sm hover:shadow-modern transition-all duration-300 overflow-hidden"
               >
                 {/* Row */}
                 <button
                   className="w-full p-4 flex items-center gap-4 text-left focus:outline-none"
                   onClick={() => setExpandedId(isExpanded ? null : order.id)}
                 >
-                  <div className="w-10 h-10 border border-neutral-900 bg-[#FAF7F3] flex items-center justify-center flex-shrink-0 shadow-retro-sm">
+                  <div className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     {order.status === 'completed'
-                      ? <CheckCircle2 size={18} className="text-[#2D7A4F]" />
-                      : <XCircle size={18} className="text-[#C0392B]" />}
+                      ? <CheckCircle2 size={18} className="text-emerald-500" />
+                      : <XCircle size={18} className="text-red-500" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-mono font-bold text-neutral-900 text-sm">
+                      <p className="font-semibold text-gray-800 text-sm">
                         #{order.id?.slice(-8).toUpperCase()}
                       </p>
-                      <span className={`px-2 py-0.5 border text-[9px] font-mono font-bold uppercase tracking-wider shadow-retro-sm ${status.cls}`}>
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${status.cls}`}>
                         {status.label}
                       </span>
                     </div>
-                    <p className="text-xs text-neutral-600 font-body mt-1 truncate">
+                    <p className="text-xs text-gray-500 mt-1 truncate">
                       {order.restaurant?.name} → {order.user?.name}
                     </p>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-mono font-bold text-[#BF3A20] text-sm lg:text-base">
-                      +{Number(order.shippingFee || 15000).toLocaleString('vi-VN')}đ
-                    </p>
-                    <p className="text-[10px] text-neutral-400 font-mono flex items-center gap-1 justify-end mt-1">
-                      <Clock size={10} />
-                      {new Date(order.createdAt).toLocaleDateString('vi-VN')}
-                    </p>
+                  <div className="text-right flex-shrink-0 flex items-center gap-3">
+                    <div>
+                      <p className="font-bold text-primary-600 text-sm lg:text-base">
+                        +{Number(order.shippingFee || 15000).toLocaleString('vi-VN')}đ
+                      </p>
+                      <p className="text-xs text-gray-400 flex items-center gap-1 justify-end mt-1">
+                        <Clock size={10} />
+                        {new Date(order.createdAt).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                    {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                   </div>
                 </button>
 
                 {/* Expanded */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 pt-3 border-t-2 border-dashed border-neutral-200 bg-[#FAF7F3] space-y-4">
+                  <div className="border-t border-gray-100 bg-gray-50/50 space-y-4 p-4">
                     {/* Items */}
                     <div>
-                      <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wide mb-2">Chi tiết món ăn</p>
-                      <ul className="space-y-1 bg-white border border-neutral-200 p-3 shadow-retro-sm rounded-sm">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Chi tiết món ăn</p>
+                      <div className="bg-white border border-gray-100 rounded-xl p-3 space-y-1.5">
                         {Array.isArray(order.items) && order.items.map((item: any, idx: number) => (
-                          <li key={idx} className="flex justify-between text-xs text-neutral-700 font-mono">
-                            <span>{item.quantity}x {item.name}</span>
-                            <span className="text-neutral-500">{(item.price * item.quantity).toLocaleString('vi-VN')}đ</span>
-                          </li>
+                          <div key={idx} className="flex justify-between text-sm text-gray-700">
+                            <span className="font-medium">{item.quantity}x {item.name}</span>
+                            <span className="text-gray-500">{(item.price * item.quantity).toLocaleString('vi-VN')}đ</span>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
 
                     {/* Rating */}
                     {order.shipperRating && (
-                      <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wide">Khách hàng đánh giá:</p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Khách hàng đánh giá:</p>
                         <div className="flex items-center gap-0.5">
                           {Array.from({ length: 5 }, (_, i) => (
                             <Star
                               key={i}
-                              size={12}
-                              className={i < order.shipperRating ? 'text-[#C98F0A] fill-[#C98F0A]' : 'text-neutral-200'}
+                              size={14}
+                              className={i < order.shipperRating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}
                             />
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Photos */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {order.pickupPhotoUrl ? (
-                        <div>
-                          <p className="text-[10px] font-mono font-bold text-neutral-450 uppercase tracking-wide mb-1">📸 Ảnh lấy hàng</p>
-                          <img
-                            src={order.pickupPhotoUrl}
-                            alt="Pickup"
-                            className="w-full h-32 object-cover border-2 border-neutral-900 shadow-retro-sm rounded-sm"
-                          />
-                        </div>
-                      ) : (
-                        <div className="border-2 border-dashed border-neutral-300 bg-white h-32 flex items-center justify-center rounded-sm">
-                          <div className="text-center">
-                            <ImageIcon size={20} className="text-neutral-300 mx-auto mb-1" />
-                            <p className="text-[10px] font-mono text-neutral-400 uppercase">Không có ảnh lấy hàng</p>
+                    {/* Photos — full image, object-contain, with lightbox */}
+                    {hasPhotos && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">📸 Ảnh xác nhận</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Pickup photo */}
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+                              Lấy hàng tại quán
+                            </p>
+                            {order.pickupPhotoUrl ? (
+                              <div
+                                className="relative bg-gray-900 rounded-xl overflow-hidden cursor-zoom-in group border border-gray-200"
+                                onClick={() => setLightboxSrc(order.pickupPhotoUrl)}
+                              >
+                                <img
+                                  src={order.pickupPhotoUrl}
+                                  alt="Ảnh lấy hàng"
+                                  className="w-full object-contain max-h-56 block"
+                                  style={{ background: '#111827' }}
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center">
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2 shadow-lg">
+                                    <ZoomIn size={16} className="text-gray-700" />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="border-2 border-dashed border-gray-200 bg-white rounded-xl py-8 flex flex-col items-center justify-center gap-2">
+                                <ImageIcon size={24} className="text-gray-300" />
+                                <p className="text-xs text-gray-400">Không có ảnh lấy hàng</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Delivery photo */}
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                              Giao đến khách hàng
+                            </p>
+                            {order.deliveryPhotoUrl ? (
+                              <div
+                                className="relative bg-gray-900 rounded-xl overflow-hidden cursor-zoom-in group border border-gray-200"
+                                onClick={() => setLightboxSrc(order.deliveryPhotoUrl)}
+                              >
+                                <img
+                                  src={order.deliveryPhotoUrl}
+                                  alt="Ảnh giao hàng"
+                                  className="w-full object-contain max-h-56 block"
+                                  style={{ background: '#111827' }}
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center">
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2 shadow-lg">
+                                    <ZoomIn size={16} className="text-gray-700" />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="border-2 border-dashed border-gray-200 bg-white rounded-xl py-8 flex flex-col items-center justify-center gap-2">
+                                <ImageIcon size={24} className="text-gray-300" />
+                                <p className="text-xs text-gray-400">Không có ảnh giao hàng</p>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )}
-                      {order.deliveryPhotoUrl ? (
-                        <div>
-                          <p className="text-[10px] font-mono font-bold text-neutral-450 uppercase tracking-wide mb-1">📸 Ảnh giao hàng</p>
-                          <img
-                            src={order.deliveryPhotoUrl}
-                            alt="Delivery"
-                            className="w-full h-32 object-cover border-2 border-neutral-900 shadow-retro-sm rounded-sm"
-                          />
-                        </div>
-                      ) : (
-                        <div className="border-2 border-dashed border-neutral-300 bg-white h-32 flex items-center justify-center rounded-sm">
-                          <div className="text-center">
-                            <ImageIcon size={20} className="text-neutral-300 mx-auto mb-1" />
-                            <p className="text-[10px] font-mono text-neutral-400 uppercase">Không có ảnh giao hàng</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+            onClick={() => setLightboxSrc(null)}
+          >
+            <X size={20} className="text-white" />
+          </button>
+          <img
+            src={lightboxSrc}
+            alt="Ảnh phóng to"
+            className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

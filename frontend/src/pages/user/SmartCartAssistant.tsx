@@ -31,7 +31,6 @@ const SmartCartAssistant: React.FC = () => {
   const [addingItem, setAddingItem] = useState<string | null>(null);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { addToCart, allCartItemsCount } = useCart();
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'warning' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'warning' = 'success') => {
@@ -176,6 +175,7 @@ const SmartCartAssistant: React.FC = () => {
           );
           if (success) {
             setAddedItems(prev => new Set(prev).add(item.name));
+            showToast(`Đã thêm ${found.name || item.name} vào giỏ hàng!`, 'success');
             return;
           }
           // Nếu addToCart trả về false → người dùng chưa đăng nhập (modal đã hiện)
