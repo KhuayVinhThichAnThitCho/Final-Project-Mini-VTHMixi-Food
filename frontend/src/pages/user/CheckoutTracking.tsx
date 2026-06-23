@@ -169,6 +169,25 @@ export const CheckoutTracking: React.FC = () => {
     fetchPaymentMethods();
   }, []);
 
+  // Fetch platform fees configuration
+  useEffect(() => {
+    const fetchFees = async () => {
+      try {
+        const res = await api.get('/system/fees');
+        if (res && (res as any).success && (res as any).data) {
+          const data = (res as any).data;
+          setFeeConfigs({
+            platformFee: Number(data.platformFee) || 5,
+            minOrderAmount: Number(data.minOrderAmount) || 20000
+          });
+        }
+      } catch (err) {
+        console.error('Lỗi lấy cấu hình phí hệ thống:', err);
+      }
+    };
+    fetchFees();
+  }, []);
+
   // Lắng nghe kết quả thanh toán PayOS trả về
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -317,6 +336,10 @@ export const CheckoutTracking: React.FC = () => {
     return isNaN(fee) ? 15000 : fee;
   }, [restaurantInfo, checkoutItems]);
 
+  const platformFee = useMemo(() => {
+    return Math.round(subtotal * (feeConfigs.platformFee / 100));
+  }, [subtotal, feeConfigs.platformFee]);
+
   // Final Total calculation (Platform fee is paid by the restaurant, not charged to the user)
   const finalTotal = useMemo(() => {
     const total = subtotal + deliveryFee - discountAmount;
@@ -430,6 +453,29 @@ export const CheckoutTracking: React.FC = () => {
           await refetchMe(); // Cập nhật số dư điểm của user
         }
         
+        // Add to local notifications list
+        const orderId = res.data?.id || res.data?._id || '';
+        const orderCode = res.data?.code || '';
+        try {
+          const stored = localStorage.getItem('user_notifications');
+          const customNotis = stored ? JSON.parse(stored) : [];
+          const newNoti = {
+            id: 'order_' + Date.now(),
+            type: 'order' as const,
+            title: 'Đặt đơn hàng mới thành công ✓',
+            message: `Đơn hàng #${orderCode || orderId.slice(0, 8)} tại quán ${restaurantInfo?.name || 'cửa hàng'} đã được gửi đi. Đang chờ xác nhận!`,
+            time: 'Vừa xong',
+            isRead: false,
+            createdAt: new Date().toISOString(),
+            meta: { orderId, orderStatus: 'pending' }
+          };
+          customNotis.unshift(newNoti);
+          localStorage.setItem('user_notifications', JSON.stringify(customNotis));
+          window.dispatchEvent(new Event('new_notification'));
+        } catch (err) {
+          console.error('Lỗi lưu thông báo đặt đơn hàng:', err);
+        }
+
         if (paymentMethod === 'VIETQR' && res.data?.payosCheckoutUrl) {
           // Chuyển hướng đến trang thanh toán của PayOS
           window.location.href = res.data.payosCheckoutUrl;
@@ -475,6 +521,61 @@ export const CheckoutTracking: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [screen]);
+
+  // Trigger notifications when stage changes
+  useEffect(() => {
+    if (screen !== 'tracking' || currentStage === 0) return;
+    
+    const getStageNotification = (stage: number) => {
+      const restaurantName = restaurantInfo?.name || 'Cửa hàng';
+      switch(stage) {
+        case 1:
+          return {
+            title: 'Nhà hàng đã nhận đơn ✓',
+            message: `Nhà hàng ${restaurantName} đã xác nhận đơn hàng của bạn.`
+          };
+        case 2:
+          return {
+            title: 'Đang chuẩn bị món 🍳',
+            message: `Nhà hàng ${restaurantName} đang chuẩn bị các món ăn cho đơn hàng của bạn.`
+          };
+        case 3:
+          return {
+            title: 'Đơn hàng đang được giao 🏍️',
+            message: `Bưu tá đang trên đường giao đơn hàng từ quán ${restaurantName} tới bạn. Dự kiến 15 phút nữa.`
+          };
+        case 4:
+          return {
+            title: 'Đơn hàng đã hoàn thành ✓',
+            message: `Đơn hàng tại ${restaurantName} đã được giao thành công. Chúc bạn ngon miệng!`
+          };
+        default:
+          return null;
+      }
+    };
+
+    const notiData = getStageNotification(currentStage);
+    if (notiData) {
+      try {
+        const stored = localStorage.getItem('user_notifications');
+        const customNotis = stored ? JSON.parse(stored) : [];
+        const newNoti = {
+          id: `stage_${currentStage}_` + Date.now(),
+          type: 'order' as const,
+          title: notiData.title,
+          message: notiData.message,
+          time: 'Vừa xong',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        };
+        customNotis.unshift(newNoti);
+        localStorage.setItem('user_notifications', JSON.stringify(customNotis));
+        window.dispatchEvent(new Event('new_notification'));
+      } catch (err) {
+        console.error('Lỗi khi cập nhật thông báo tiến trình đơn hàng:', err);
+      }
+    }
+  }, [currentStage, screen, restaurantInfo]);
 
   return (
     <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
@@ -1393,6 +1494,30 @@ export const CheckoutTracking: React.FC = () => {
                           await refetchMe();
                         }
                         await fetchWalletBalance(); // Cập nhật lại số dư ví cục bộ
+                        
+                        // Add to local notifications list
+                        const orderId = res.data?.id || res.data?._id || '';
+                        const orderCode = res.data?.code || '';
+                        try {
+                          const stored = localStorage.getItem('user_notifications');
+                          const customNotis = stored ? JSON.parse(stored) : [];
+                          const newNoti = {
+                            id: 'order_' + Date.now(),
+                            type: 'order' as const,
+                            title: 'Đặt đơn hàng mới thành công ✓',
+                            message: `Đơn hàng #${orderCode || orderId.slice(0, 8)} tại quán ${restaurantInfo?.name || 'cửa hàng'} đã được gửi đi. Đang chờ xác nhận!`,
+                            time: 'Vừa xong',
+                            isRead: false,
+                            createdAt: new Date().toISOString(),
+                            meta: { orderId, orderStatus: 'pending' }
+                          };
+                          customNotis.unshift(newNoti);
+                          localStorage.setItem('user_notifications', JSON.stringify(customNotis));
+                          window.dispatchEvent(new Event('new_notification'));
+                        } catch (err) {
+                          console.error('Lỗi lưu thông báo đặt đơn hàng:', err);
+                        }
+
                         showCustomAlert('Khấu trừ trực tiếp vào ví Saigon-Pay thành công!', 'Thành công', 'info');
                         navigate(`/orders/history?orderId=${res.data.id || res.data._id}`);
                       } else {

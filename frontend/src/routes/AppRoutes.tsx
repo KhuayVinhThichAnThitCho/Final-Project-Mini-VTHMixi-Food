@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import PrivateRoute from './PrivateRoute';
 
 // Pages - Guest
@@ -34,6 +34,13 @@ import ManagerDashboard from '../pages/manager/ManagerDashboard';
 // Pages - Shipper
 import ShipperDashboard from '../pages/shipper/ShipperDashboard';
 
+// Helper component to redirect to /profile?tab=orders while keeping query parameters (like orderId)
+const OrdersHistoryRedirect: React.FC = () => {
+  const location = useLocation();
+  const searchParams = location.search ? `&${location.search.slice(1)}` : '';
+  return <Navigate to={`/profile?tab=orders${searchParams}`} replace />;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -54,7 +61,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/checkout" element={<CheckoutTracking />} />
         <Route path="/favorites" element={<Favorites />} />
-        <Route path="/orders/history" element={<Navigate to="/profile?tab=orders" replace />} />
+        <Route path="/orders/history" element={<OrdersHistoryRedirect />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/smart-cart" element={<SmartCartAssistant />} />
         <Route path="/my-vouchers" element={<MyVouchers />} />

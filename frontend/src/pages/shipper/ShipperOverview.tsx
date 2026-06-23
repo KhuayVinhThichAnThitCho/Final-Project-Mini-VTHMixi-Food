@@ -42,7 +42,7 @@ const ShipperOverview: React.FC<OverviewProps> = ({ onNavigate }) => {
   const handleToggleOnline = async () => {
     setTogglingOnline(true);
     try {
-      const res = await shipperApi.toggleOnline();
+      const res = await shipperApi.toggleOnline(!isOnline);
       if (res?.success) {
         setIsOnline(res.data.isOnline);
         if (refetchMe) await refetchMe();
@@ -54,59 +54,74 @@ const ShipperOverview: React.FC<OverviewProps> = ({ onNavigate }) => {
     }
   };
 
-  const StatCard = ({ icon: Icon, label, value, sub }: any) => (
-    <div className="border-2 border-neutral-900 p-5 bg-[#FEFCF9] shadow-retro-sm flex flex-col justify-between h-32">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-mono font-bold text-neutral-500 uppercase tracking-wider">{label}</span>
-        <div className="w-8 h-8 bg-[#FAF7F3] border border-neutral-900 flex items-center justify-center shadow-retro-sm">
-          <Icon size={16} className="text-neutral-700" strokeWidth={1.5} />
+  const iconColors = [
+    { bg: 'bg-primary-50', text: 'text-primary-600' },
+    { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+    { bg: 'bg-blue-50', text: 'text-blue-600' },
+    { bg: 'bg-amber-50', text: 'text-amber-600' },
+  ];
+
+  const StatCard = ({ icon: Icon, label, value, sub, colorIdx = 0 }: any) => {
+    const c = iconColors[colorIdx % iconColors.length];
+    return (
+      <div className="relative bg-white border border-gray-100 rounded-2xl p-6 shadow-modern-sm hover:shadow-modern transition-all duration-300 group overflow-hidden">
+        <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary-50 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out opacity-50" />
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
+            <div className={`w-9 h-9 ${c.bg} rounded-xl flex items-center justify-center`}>
+              <Icon size={17} className={c.text} strokeWidth={2} />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-800 leading-none">{value}</p>
+          {sub && <p className="text-sm text-gray-400 mt-1.5">{sub}</p>}
         </div>
       </div>
-      <div>
-        <p className="text-xl font-mono font-bold text-neutral-900 leading-none">{value}</p>
-        {sub && <p className="text-[10px] font-mono text-neutral-400 mt-1">{sub}</p>}
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in text-neutral-800">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading italic font-bold text-2xl lg:text-3xl text-neutral-900">
+          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
             Xin chào, {user?.name?.split(' ').slice(-1)[0]} 👋
           </h1>
-          <p className="text-xs lg:text-sm text-neutral-500 mt-1">
+          <p className="text-sm font-medium text-gray-500 mt-2">
             Hãy bật hoạt động để bắt đầu nhận đơn vận chuyển hôm nay!
           </p>
         </div>
         <button
           onClick={fetchData}
-          className="w-9 h-9 border-2 border-neutral-900 bg-[#FEFCF9] hover:bg-neutral-100 shadow-retro-sm flex items-center justify-center transition text-neutral-700"
+          className="w-9 h-9 bg-white border border-gray-100 rounded-xl flex items-center justify-center shadow-modern-sm hover:shadow-modern hover:bg-gray-50 transition-all duration-200 text-gray-600"
         >
           <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
       {/* Online Toggle Banner */}
-      <div className={`border-2 border-neutral-900 transition-all duration-300 p-5 shadow-retro ${
-        isOnline
-          ? 'bg-[#E8F5E9] selection:bg-[#2D7A4F] selection:text-white'
-          : 'bg-[#FEFCF9]'
+      <div className={`bg-white border rounded-2xl p-5 shadow-modern-sm transition-all duration-300 ${
+        isOnline ? 'border-emerald-200' : 'border-gray-100'
       }`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 border-2 border-neutral-900 flex items-center justify-center shadow-retro-sm transition-all ${
-              isOnline ? 'bg-[#2D7A4F]/20' : 'bg-[#FAF7F3]'
-            }`}>
-              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-[#2D7A4F] animate-pulse' : 'bg-neutral-400'}`} />
-            </div>
+            {isOnline ? (
+              <span className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full font-semibold text-sm shadow-sm flex items-center gap-2">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                Đang Online
+              </span>
+            ) : (
+              <span className="px-4 py-2 bg-gray-50 text-gray-500 border border-gray-200 rounded-full font-semibold text-sm flex items-center gap-2">
+                <span className="w-2 h-2 bg-gray-400 rounded-full" />
+                Ngoại Tuyến
+              </span>
+            )}
             <div>
-              <p className="font-mono font-bold text-neutral-900 text-sm lg:text-base">
-                {isOnline ? '🟢 ĐANG ONLINE — SẴN SÀNG NHẬN ĐƠN' : '⚫ ĐANG NGOẠI TUYẾN (OFFLINE)'}
+              <p className="font-semibold text-gray-800 text-sm lg:text-base">
+                {isOnline ? 'Sẵn sàng nhận đơn' : 'Bật online để giao hàng'}
               </p>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <p className="text-xs text-gray-500 mt-0.5">
                 {isOnline ? 'Hệ thống đang tìm đơn hàng khả dụng gần bạn' : 'Bật online để bắt đầu đi giao hàng'}
               </p>
             </div>
@@ -114,47 +129,49 @@ const ShipperOverview: React.FC<OverviewProps> = ({ onNavigate }) => {
           <button
             onClick={handleToggleOnline}
             disabled={togglingOnline}
-            className={`flex items-center justify-center gap-2 px-5 py-2.5 border-2 border-neutral-900 font-mono font-bold uppercase text-xs shadow-retro-sm transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-60 cursor-pointer ${
+            className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm shadow-modern-sm transition-all duration-200 disabled:opacity-60 cursor-pointer ${
               isOnline
-                ? 'bg-[#2D7A4F] text-white hover:bg-[#25633F]'
-                : 'bg-[#FAF0D2] text-neutral-800 hover:bg-[#F3DC9E]'
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                : 'bg-primary-600 text-white hover:bg-primary-700'
             }`}
           >
             {togglingOnline
               ? <Loader2 size={14} className="animate-spin" />
               : isOnline ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-            {isOnline ? 'TẮT ONLINE' : 'BẬT ONLINE'}
+            {isOnline ? 'Tắt Online' : 'Bật Online'}
           </button>
         </div>
       </div>
 
       {/* Active order alert */}
       {activeOrder && (
-        <div className="bg-[#FAF0D2] border-2 border-neutral-900 shadow-retro p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 border-2 border-neutral-900 bg-[#C98F0A]/20 flex items-center justify-center shadow-retro-sm">
-              <Zap size={18} className="text-neutral-900" />
+            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Zap size={18} className="text-amber-600" />
             </div>
             <div>
-              <p className="font-heading font-bold text-neutral-900 text-sm">Bạn đang có đơn đang giao!</p>
-              <p className="text-xs text-neutral-600 font-mono mt-0.5">
+              <p className="font-semibold text-amber-900 text-sm">Bạn đang có đơn đang giao!</p>
+              <p className="text-xs text-amber-700 mt-0.5">
                 Mã đơn: #{activeOrder.id?.slice(-8).toUpperCase()} — Khách: {activeOrder.user?.name}
               </p>
             </div>
           </div>
           <button
             onClick={() => onNavigate('active')}
-            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 border-2 border-neutral-900 bg-[#BF3A20] text-white font-mono font-bold uppercase text-xs shadow-retro-sm hover:bg-[#D44B2F] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 text-white rounded-xl font-semibold text-sm hover:bg-primary-700 transition-all duration-200 cursor-pointer"
           >
-            ĐẾN ĐƠN ĐANG GIAO <ArrowRight size={14} />
+            Đến Đơn Đang Giao <ArrowRight size={14} />
           </button>
         </div>
       )}
 
       {/* Stats */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 size={36} className="animate-spin text-primary-600" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-gray-200 rounded-2xl h-32 animate-pulse" />
+          ))}
         </div>
       ) : (
         <>
@@ -164,24 +181,28 @@ const ShipperOverview: React.FC<OverviewProps> = ({ onNavigate }) => {
               label="Đơn Hôm Nay"
               value={earnings?.today?.orders ?? 0}
               sub={`${(earnings?.today?.earnings ?? 0).toLocaleString('vi-VN')}đ`}
+              colorIdx={0}
             />
             <StatCard
               icon={TrendingUp}
               label="Thu Nhập Hôm Nay"
               value={`${(earnings?.today?.earnings ?? 0).toLocaleString('vi-VN')}đ`}
               sub="Phí giao hàng"
+              colorIdx={1}
             />
             <StatCard
               icon={Truck}
               label="Tổng Đơn Giao"
               value={earnings?.total?.orders ?? 0}
               sub={`${(earnings?.total?.earnings ?? 0).toLocaleString('vi-VN')}đ tổng`}
+              colorIdx={2}
             />
             <StatCard
               icon={Star}
               label="Đánh Giá Shipper"
               value={earnings?.avgRating ? `${earnings.avgRating} ⭐` : '—'}
               sub="Điểm từ khách hàng"
+              colorIdx={3}
             />
           </div>
 
@@ -189,26 +210,28 @@ const ShipperOverview: React.FC<OverviewProps> = ({ onNavigate }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <button
               onClick={() => onNavigate('available')}
-              className="border-2 border-neutral-900 bg-[#BF3A20] text-white p-5 shadow-retro hover:shadow-retro-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all text-left flex items-center justify-between cursor-pointer group"
+              className="relative bg-gradient-to-br from-primary-600 to-primary-700 text-white rounded-2xl p-6 shadow-modern hover:shadow-modern-md transition-all duration-300 text-left flex items-center justify-between cursor-pointer group overflow-hidden"
             >
-              <div>
-                <p className="font-heading font-bold text-base lg:text-lg">Xem Đơn Hàng Sẵn Có</p>
-                <p className="text-red-100 text-xs mt-1">Đơn hàng chờ tài xế đến nhận và giao</p>
+              <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out" />
+              <div className="relative z-10">
+                <p className="font-bold text-base lg:text-lg">Xem Đơn Hàng Sẵn Có</p>
+                <p className="text-primary-100 text-sm mt-1">Đơn hàng chờ tài xế đến nhận và giao</p>
               </div>
-              <div className="w-10 h-10 bg-white/20 border border-white/40 flex items-center justify-center shadow-retro-sm group-hover:scale-105 transition-transform">
+              <div className="relative z-10 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
                 <ArrowRight size={20} />
               </div>
             </button>
             <button
               onClick={() => onNavigate('earnings')}
-              className="border-2 border-neutral-900 bg-[#E9C46A] text-neutral-900 p-5 shadow-retro hover:shadow-retro-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all text-left flex items-center justify-between cursor-pointer group"
+              className="relative bg-gradient-to-br from-amber-400 to-amber-500 text-gray-900 rounded-2xl p-6 shadow-modern hover:shadow-modern-md transition-all duration-300 text-left flex items-center justify-between cursor-pointer group overflow-hidden"
             >
-              <div>
-                <p className="font-heading font-bold text-base lg:text-lg">Thống Kê Thu Nhập</p>
-                <p className="text-neutral-700 text-xs mt-1">Báo cáo lịch sử & biểu đồ doanh thu</p>
+              <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/20 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out" />
+              <div className="relative z-10">
+                <p className="font-bold text-base lg:text-lg">Thống Kê Thu Nhập</p>
+                <p className="text-amber-900/70 text-sm mt-1">Báo cáo lịch sử & biểu đồ doanh thu</p>
               </div>
-              <div className="w-10 h-10 bg-neutral-950/10 border border-neutral-950/20 flex items-center justify-center shadow-retro-sm group-hover:scale-105 transition-transform">
-                <TrendingUp size={20} className="text-neutral-800" />
+              <div className="relative z-10 w-10 h-10 bg-white/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <TrendingUp size={20} className="text-amber-900" />
               </div>
             </button>
           </div>

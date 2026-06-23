@@ -254,6 +254,7 @@ const SmartCartAssistant: React.FC = () => {
           );
           if (success) {
             setAddedItems(prev => new Set(prev).add(item.name));
+            showToast(`Đã thêm ${found.name || item.name} vào giỏ hàng!`, 'success');
             return;
           }
           return;
