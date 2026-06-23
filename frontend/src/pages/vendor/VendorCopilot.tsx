@@ -40,20 +40,31 @@ const VendorCopilot: React.FC = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await api.get('/ai/copilot/history');
-        if (res.data && res.data.data && res.data.data.length > 0) {
-          const historyMessages = res.data.data.map((msg: any) => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.role === 'user' ? msg.content : (msg.content?.insight || ''),
-            actionableAdvice: msg.role === 'assistant' ? msg.content?.actionable_advice : undefined,
-            chartData: msg.role === 'assistant' ? msg.content?.chart_data : undefined,
-            chartType: msg.role === 'assistant' ? msg.content?.chart_type : undefined,
-            chartTitle: msg.role === 'assistant' ? msg.content?.chart_title : undefined
-          }));
+        const res = await api.get('/ai/copilot/history') as any;
+        const historyArray = res.data || [];
+        if (historyArray && historyArray.length > 0) {
+          const historyMessages = historyArray.map((msg: any) => {
+            let parsedContent = msg.content;
+            if (typeof parsedContent === 'string') {
+              try {
+                parsedContent = JSON.parse(parsedContent);
+              } catch (e) {
+                // Không phải JSON, giữ nguyên string
+              }
+            }
+            return {
+              id: msg.id,
+              role: msg.role,
+              content: msg.role === 'user' ? parsedContent : (parsedContent?.insight || parsedContent || ''),
+              actionableAdvice: msg.role === 'assistant' ? parsedContent?.actionable_advice : undefined,
+              chartData: msg.role === 'assistant' ? parsedContent?.chart_data : undefined,
+              chartType: msg.role === 'assistant' ? parsedContent?.chart_type : undefined,
+              chartTitle: msg.role === 'assistant' ? parsedContent?.chart_title : undefined
+            };
+          });
           
           setMessages(prev => {
-            // Keep the welcome message as the first item, append history
+            // Giữ lại tin nhắn chào mừng đầu tiên, chèn lịch sử vào sau
             return [prev[0], ...historyMessages];
           });
         }

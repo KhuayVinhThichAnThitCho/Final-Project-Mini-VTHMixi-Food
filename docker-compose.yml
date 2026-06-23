@@ -26,14 +26,21 @@ services:
     ports:
       - "3308:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: grabfood_mini
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=grabfood_mini
     volumes:
       - db_replica_data:/var/lib/mysql
       - ./backend/db_setup/slave/my.cnf:/etc/mysql/my.cnf
     depends_on:
       db:
         condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: grabfood_mini_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
 
   backend:
     build:
@@ -58,6 +65,8 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL}
       - GROQ_MODEL=${GROQ_MODEL}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -67,6 +76,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build:
