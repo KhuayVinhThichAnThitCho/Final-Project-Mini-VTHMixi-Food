@@ -9,6 +9,7 @@ import morgan from 'morgan';
 import { errorHandler, AppError } from './middlewares/errorHandler';
 import apiRouter from './routes';
 import { initializeDatabase } from './config/database';
+import { connectRedis } from './config/redis';
 import { createServer } from 'http';
 import { initializeSocket } from './socket';
 
@@ -86,8 +87,9 @@ app.use(errorHandler);
 
 // Lắng nghe cổng kết nối nếu ứng dụng được chạy trực tiếp
 if (process.env.NODE_ENV !== 'test') {
-  initializeDatabase().then((success) => {
+  initializeDatabase().then(async (success) => {
     if (success) {
+      await connectRedis();
       httpServer.listen(PORT, () => {
         console.log(`===================================================`);
         console.log(`🚀 GrabFood Mini Backend chạy trên: http://localhost:${PORT}`);

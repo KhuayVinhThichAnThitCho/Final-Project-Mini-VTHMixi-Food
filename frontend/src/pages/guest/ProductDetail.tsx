@@ -39,7 +39,7 @@ export const ProductDetail: React.FC = () => {
 
   // Tải chi tiết món ăn từ backend hoặc dùng mock dự phòng
   useEffect(() => {
-    if (!id || id.startsWith('menu-')) {
+    if (!id) {
       setDbItem(null);
       setLoading(false);
       return;

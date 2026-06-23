@@ -5,6 +5,7 @@ import { AppError } from '../middlewares/errorHandler';
 import { aiTools } from './aiTools';
 import { AiConversation } from '../models/AiConversation';
 import { AiMessage } from '../models/AiMessage';
+import { redisClient } from '../config/redis';
 
 const aiProvider = process.env.AI_PROVIDER || 'gemini';
 
@@ -47,6 +48,20 @@ const parseJsonGracefully = (text: string): any => {
 
 export const aiService = {
   getChatHistory: async (vendorId: string) => {
+    const redisKey = `chat:vendor:${vendorId}`;
+
+    // Kiểm tra cache Redis
+    try {
+      if (redisClient.isOpen) {
+        const cached = await redisClient.get(redisKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch (err) {
+      console.error('Redis getChatHistory error:', err);
+    }
+
     const restaurant = await Restaurant.findOne({ where: { ownerId: vendorId } });
     if (!restaurant) {
       throw new AppError(404, 'NOT_FOUND', 'Cửa hàng không tồn tại.');
@@ -65,7 +80,7 @@ export const aiService = {
     if (!conversation) return [];
 
     // Parse the JSON content for assistant messages so the frontend doesn't have to
-    return conversation.messages.map(msg => {
+    const history = conversation.messages.map(msg => {
       let parsedContent = msg.content;
       if (msg.role === 'assistant' && msg.content) {
         try {
@@ -81,9 +96,29 @@ export const aiService = {
         createdAt: msg.createdAt
       };
     });
+
+    // Lưu vào cache Redis (TTL 24 giờ = 86400 giây)
+    try {
+      if (redisClient.isOpen) {
+        await redisClient.setEx(redisKey, 86400, JSON.stringify(history));
+      }
+    } catch (err) {
+      console.error('Redis setChatHistory error:', err);
+    }
+
+    return history;
   },
 
   analyzeVendorData: async (vendorId: string, question: string) => {
+    // Xóa cache cũ để tránh bất đồng bộ
+    try {
+      if (redisClient.isOpen) {
+        await redisClient.del(`chat:vendor:${vendorId}`);
+      }
+    } catch (err) {
+      console.error('Redis clear cache error:', err);
+    }
+
     const restaurant = await Restaurant.findOne({ where: { ownerId: vendorId } });
     if (!restaurant) {
       throw new AppError(404, 'NOT_FOUND', 'Cửa hàng không tồn tại.');
@@ -214,6 +249,15 @@ Lưu ý: Bạn phải đóng vai trò là một Data Analyst chuyên nghiệp. T
       role: 'assistant',
       content: JSON.stringify(finalAnswer)
     });
+
+    // Xóa cache cũ để cập nhật lịch sử chat mới
+    try {
+      if (redisClient.isOpen) {
+        await redisClient.del(`chat:vendor:${vendorId}`);
+      }
+    } catch (err) {
+      console.error('Redis clear cache error:', err);
+    }
 
     return finalAnswer;
   }

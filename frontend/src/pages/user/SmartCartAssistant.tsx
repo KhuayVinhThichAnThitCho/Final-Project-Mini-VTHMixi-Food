@@ -5,6 +5,7 @@ import Header from '../../components/organisms/Header';
 import { useNavigate } from 'react-router-dom';
 import searchApi from '../../services/searchApi';
 import useCart from '../../hooks/useCart';
+import menuItemApi from '../../services/menuItemApi';
 
 interface RecommendedItem {
   id?: string;
@@ -31,7 +32,6 @@ const SmartCartAssistant: React.FC = () => {
   const [addingItem, setAddingItem] = useState<string | null>(null);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { addToCart, allCartItemsCount } = useCart();
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'warning' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'warning' = 'success') => {
@@ -52,14 +52,25 @@ const SmartCartAssistant: React.FC = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await api.get('/ai/customer/history');
-        if (res.data && res.data.data && res.data.data.length > 0) {
-          const historyMessages = res.data.data.map((msg: any) => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.role === 'user' ? msg.content : (msg.content?.message || ''),
-            recommendedItems: msg.role === 'assistant' ? msg.content?.recommended_items : undefined
-          }));
+        const res = await api.get('/ai/customer/history') as any;
+        const historyArray = res.data || [];
+        if (historyArray && historyArray.length > 0) {
+          const historyMessages = historyArray.map((msg: any) => {
+            let parsedContent = msg.content;
+            if (typeof parsedContent === 'string') {
+              try {
+                parsedContent = JSON.parse(parsedContent);
+              } catch (e) {
+                // Không phải JSON, giữ nguyên string
+              }
+            }
+            return {
+              id: msg.id,
+              role: msg.role,
+              content: msg.role === 'user' ? parsedContent : (parsedContent?.message || parsedContent || ''),
+              recommendedItems: msg.role === 'assistant' ? parsedContent?.recommended_items : undefined
+            };
+          });
 
           setMessages(historyMessages);
         }
@@ -141,6 +152,33 @@ const SmartCartAssistant: React.FC = () => {
   const handleItemClick = async (item: RecommendedItem) => {
     setNavigatingItem(item.name);
     try {
+      // 1. Kiểm chứng ID nếu AI cung cấp ID
+      if (item.id) {
+        try {
+          const detailRes = await menuItemApi.getMenuItemDetail(item.id);
+          if (detailRes && detailRes.data) {
+            const dbItemName = (detailRes.data.name || '').toLowerCase();
+            const recommendedName = item.name.toLowerCase();
+            
+            // So khớp từ khóa giữa tên trong DB và tên đề xuất
+            const queryKeywords = recommendedName.split(/\s+/).filter(kw => kw.length > 0);
+            let matchedCount = 0;
+            queryKeywords.forEach(kw => {
+              if (dbItemName.includes(kw)) matchedCount++;
+            });
+            const matchRatio = queryKeywords.length > 0 ? matchedCount / queryKeywords.length : 0;
+            
+            if (dbItemName.includes(recommendedName) || matchRatio >= 0.6) {
+              navigate(`/menu-items/${item.id}`);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Lỗi kiểm chứng ID món ăn:', e);
+        }
+      }
+
+      // 2. Nếu không có ID hoặc ID kiểm chứng không khớp tên, dùng Fuzzy Search theo tên
       const found = await findBestMatchItem(item.name);
       if (found) {
         const itemId = found.id || found._id;
@@ -152,13 +190,53 @@ const SmartCartAssistant: React.FC = () => {
     } finally {
       setNavigatingItem(null);
     }
-    // Fallback: sang trang kết quả tìm kiếm nếu không có món trùng khớp đáng tin cậy
+    // Fallback: sang trang kết quả tìm kiếm nếu không có món trùng khớp
     navigate(`/search?q=${encodeURIComponent(item.name)}`);
   };
 
   const handleAddToCart = async (item: RecommendedItem) => {
     setAddingItem(item.name);
     try {
+      // 1. Kiểm chứng ID và restaurantId nếu AI cung cấp đầy đủ
+      if (item.id && item.restaurantId) {
+        try {
+          const detailRes = await menuItemApi.getMenuItemDetail(item.id);
+          if (detailRes && detailRes.data) {
+            const dbItemName = (detailRes.data.name || '').toLowerCase();
+            const recommendedName = item.name.toLowerCase();
+            
+            // So khớp tên
+            const queryKeywords = recommendedName.split(/\s+/).filter(kw => kw.length > 0);
+            let matchedCount = 0;
+            queryKeywords.forEach(kw => {
+              if (dbItemName.includes(kw)) matchedCount++;
+            });
+            const matchRatio = queryKeywords.length > 0 ? matchedCount / queryKeywords.length : 0;
+            
+            if (dbItemName.includes(recommendedName) || matchRatio >= 0.6) {
+              const success = addToCart(
+                {
+                  id: item.id,
+                  name: detailRes.data.name || item.name,
+                  price: detailRes.data.price || item.price,
+                  imageUrl: detailRes.data.imageUrl || detailRes.data.image || '',
+                },
+                item.restaurantId,
+                1
+              );
+              if (success) {
+                setAddedItems(prev => new Set(prev).add(item.name));
+                return;
+              }
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Lỗi kiểm chứng ID khi thêm vào giỏ:', e);
+        }
+      }
+
+      // 2. Fallback: Fuzzy search bằng tên nếu không có ID hoặc ID không hợp lệ
       const found = await findBestMatchItem(item.name);
       if (found) {
         const itemId = found.id || found._id;
@@ -178,11 +256,10 @@ const SmartCartAssistant: React.FC = () => {
             setAddedItems(prev => new Set(prev).add(item.name));
             return;
           }
-          // Nếu addToCart trả về false → người dùng chưa đăng nhập (modal đã hiện)
           return;
         }
       }
-      // Không tìm thấy món phù hợp → điều hướng sang trang tìm kiếm
+      // Không tìm thấy món phù hợp
       navigate(`/search?q=${encodeURIComponent(item.name)}`);
     } finally {
       setAddingItem(null);
