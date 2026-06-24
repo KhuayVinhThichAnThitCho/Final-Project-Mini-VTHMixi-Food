@@ -75,6 +75,20 @@ export const authApi = {
   changePassword: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
     return api.put('/auth/change-password', data) as any;
   },
+
+  /**
+   * Đăng nhập bằng Google
+   */
+  loginWithGoogle: async (code: string, redirectUri: string) => {
+    return api.post('/auth/google', { code, redirectUri }) as any;
+  },
+
+  /**
+   * Đăng nhập bằng Facebook
+   */
+  loginWithFacebook: async (code: string, redirectUri: string) => {
+    return api.post('/auth/facebook', { code, redirectUri }) as any;
+  },
 };
 
 export default authApi;

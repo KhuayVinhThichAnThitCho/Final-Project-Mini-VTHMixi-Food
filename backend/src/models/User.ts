@@ -40,9 +40,9 @@ export class User extends Model {
   @Column(DataType.STRING(150))
   email!: string;
 
-  @AllowNull(false)
+  @AllowNull(true)
   @Column(DataType.STRING(255))
-  password!: string;
+  password?: string;
 
   @AllowNull(true)
   @Column(DataType.STRING(20))
@@ -55,6 +55,16 @@ export class User extends Model {
   @AllowNull(true)
   @Column(DataType.STRING(255))
   avatar?: string;
+
+  @AllowNull(true)
+  @Unique
+  @Column(DataType.STRING(100))
+  googleId?: string;
+
+  @AllowNull(true)
+  @Unique
+  @Column(DataType.STRING(100))
+  facebookId?: string;
 
   @AllowNull(false)
   @Default('user')

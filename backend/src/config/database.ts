@@ -102,6 +102,34 @@ export const initializeDatabase = async (): Promise<boolean> => {
       console.warn('Lưu ý: Không thể cập nhật cấu trúc orders thủ công, có thể đã được Sequelize đồng bộ:', e);
     }
 
+    // Đồng bộ cấu trúc bảng users cho đăng nhập Google/Facebook
+    try {
+      console.log('🔄 Đang kiểm tra và đồng bộ cấu trúc bảng users cho Google/Facebook...');
+      
+      // 1. Thêm cột google_id nếu chưa có
+      const [googleCols]: any = await sequelize.query("SHOW COLUMNS FROM users LIKE 'google_id'");
+      if (googleCols.length === 0) {
+        await sequelize.query("ALTER TABLE users ADD COLUMN google_id VARCHAR(100) NULL UNIQUE");
+        console.log('  + Đã thêm cột google_id.');
+      }
+
+      // 2. Thêm cột facebook_id nếu chưa có
+      const [fbCols]: any = await sequelize.query("SHOW COLUMNS FROM users LIKE 'facebook_id'");
+      if (fbCols.length === 0) {
+        await sequelize.query("ALTER TABLE users ADD COLUMN facebook_id VARCHAR(100) NULL UNIQUE");
+        console.log('  + Đã thêm cột facebook_id.');
+      }
+
+      // 3. Sửa password thành NULL (cho phép rỗng khi dùng social login)
+      await sequelize.query("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL");
+      console.log('  + Đã cập nhật password cho phép NULL.');
+      
+      console.log('✅ Đã đồng bộ cấu trúc bảng users thành công.');
+    } catch (e) {
+      console.warn('Lưu ý: Không thể cập nhật cấu trúc bảng users thủ công:', e);
+    }
+
+
     // Đảm bảo cấu hình payment_methods trong MySQL chứa VIETQR: true
     try {
       console.log('🔄 Đang kiểm tra cấu hình phương thức thanh toán trong DB...');

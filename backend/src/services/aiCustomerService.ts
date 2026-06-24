@@ -63,19 +63,32 @@ export const aiCustomerService = {
       console.error('Redis getChatHistory error:', err);
     }
 
-    const conversation = await CustomerAiConversation.findOne({
-      where: { userId },
-      include: [{
-        model: CustomerAiMessage,
-        as: 'messages',
-        attributes: ['id', 'role', 'content', 'createdAt']
-      }],
-      order: [[{ model: CustomerAiMessage, as: 'messages' }, 'createdAt', 'ASC']]
+    let conversation = await CustomerAiConversation.findOne({ where: { userId } });
+    if (!conversation) {
+      conversation = await CustomerAiConversation.create({ userId });
+    }
+
+    // Xóa các tin nhắn cũ hơn 24 giờ
+    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    try {
+      await CustomerAiMessage.destroy({
+        where: {
+          customerAiConversationId: conversation.id,
+          createdAt: {
+            [Op.lt]: timeLimit
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Error clearing old customer AI messages:', err);
+    }
+
+    const messages = await CustomerAiMessage.findAll({
+      where: { customerAiConversationId: conversation.id },
+      order: [['createdAt', 'ASC']]
     });
 
-    if (!conversation) return [];
-
-    const history = conversation.messages.map(msg => {
+    const history = messages.map(msg => {
       let parsedContent = msg.content;
       if (msg.role === 'assistant' && msg.content) {
         try {
@@ -115,6 +128,21 @@ export const aiCustomerService = {
     let conversation = await CustomerAiConversation.findOne({ where: { userId } });
     if (!conversation) {
       conversation = await CustomerAiConversation.create({ userId });
+    }
+
+    // Xóa các tin nhắn cũ hơn 24 giờ trước khi thêm tin nhắn mới
+    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    try {
+      await CustomerAiMessage.destroy({
+        where: {
+          customerAiConversationId: conversation.id,
+          createdAt: {
+            [Op.lt]: timeLimit
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Error clearing old customer AI messages:', err);
     }
 
     await CustomerAiMessage.create({
