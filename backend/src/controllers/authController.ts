@@ -295,5 +295,49 @@ export const authController = {
       next(error);
     }
   },
+
+  /**
+   * Đăng nhập bằng Google
+   */
+  googleLogin: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { code, redirectUri } = req.body;
+      if (!code) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Vui lòng cung cấp mã code xác thực từ Google.');
+      }
+      
+      const result = await authService.googleLogin(code, redirectUri);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Đăng nhập bằng Google thành công.',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Đăng nhập bằng Facebook
+   */
+  facebookLogin: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { code, redirectUri } = req.body;
+      if (!code) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Vui lòng cung cấp mã code xác thực từ Facebook.');
+      }
+      
+      const result = await authService.facebookLogin(code, redirectUri);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Đăng nhập bằng Facebook thành công.',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 export default authController;

@@ -31,4 +31,11 @@ router.post('/verify-otp', authController.verifyOtp);
 // Route Gửi lại mã OTP đăng nhập: POST /api/v1/auth/resend-otp
 router.post('/resend-otp', authController.resendOtp);
 
+// Route Đăng nhập bằng Google: POST /api/v1/auth/google
+router.post('/google', authController.googleLogin);
+
+// Route Đăng nhập bằng Facebook: POST /api/v1/auth/facebook
+router.post('/facebook', authController.facebookLogin);
+
 export default router;
+

@@ -8,7 +8,11 @@ import {
   AlertTriangle,
   Loader2,
   Ticket,
-  X
+  X,
+  CheckCircle2,
+  ChefHat,
+  Home,
+  ClipboardList
 } from 'lucide-react';
 import Header from '../../components/organisms/Header';
 import useCart from '../../hooks/useCart';
@@ -32,8 +36,16 @@ export const CheckoutTracking: React.FC = () => {
   const { selectedItems, restaurantId, totalItems, totalPrice, clearSelected } = useCart();
   const { user, refetchMe } = useAuth();
 
-  // Screen state: 'checkout' (Thanh Toán) | 'tracking' (Theo Dõi) | 'payment-simulation' (Giả Lập Thanh Toán)
-  const [screen, setScreen] = useState<'checkout' | 'tracking' | 'payment-simulation'>('checkout');
+  // Screen state: 'checkout' | 'tracking' | 'payment-simulation' | 'success'
+  const [screen, setScreen] = useState<'checkout' | 'tracking' | 'payment-simulation' | 'success'>('checkout');
+  const [successOrderData, setSuccessOrderData] = useState<{
+    orderId: string;
+    orderCode: string;
+    totalAmount: number;
+    restaurantName: string;
+    paymentMethod: string;
+    itemCount: number;
+  } | null>(null);
   const [simulationData, setSimulationData] = useState<{
     type: 'VIETQR' | 'WALLET';
     orderId?: string;
@@ -480,7 +492,16 @@ export const CheckoutTracking: React.FC = () => {
           // Chuyển hướng đến trang thanh toán của PayOS
           window.location.href = res.data.payosCheckoutUrl;
         } else {
-          navigate(`/orders/history?orderId=${res.data.id || res.data._id}`);
+          // Hiển thị màn hình đặt hàng thành công
+          setSuccessOrderData({
+            orderId: res.data.id || res.data._id || '',
+            orderCode: res.data?.code || (res.data.id || res.data._id || '').slice(0, 8).toUpperCase(),
+            totalAmount: finalTotal,
+            restaurantName: restaurantInfo?.name || 'Cửa hàng',
+            paymentMethod,
+            itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
+          });
+          setScreen('success');
         }
       } else {
         showCustomAlert(res?.message || 'Có lỗi xảy ra khi gửi đơn hàng.', 'Đặt hàng thất bại', 'error');
@@ -603,7 +624,268 @@ export const CheckoutTracking: React.FC = () => {
       <Header cartCount={totalItems} />
 
       <main className="flex-grow max-w-5xl w-full mx-auto px-4 py-8">
-        
+
+        {/* VIEW 0: SUCCESS SCREEN */}
+        {screen === 'success' && successOrderData && (
+          <div className="animate-fade-in">
+            {/* CSS for animations */}
+            <style>{`
+              @keyframes bounce-in {
+                0% { transform: scale(0.3); opacity: 0; }
+                50% { transform: scale(1.1); }
+                70% { transform: scale(0.95); }
+                100% { transform: scale(1); opacity: 1; }
+              }
+              @keyframes confetti-fall {
+                0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(60px) rotate(360deg); opacity: 0; }
+              }
+              @keyframes ring-pulse {
+                0% { box-shadow: 0 0 0 0 rgba(45,122,79,0.4); }
+                70% { box-shadow: 0 0 0 20px rgba(45,122,79,0); }
+                100% { box-shadow: 0 0 0 0 rgba(45,122,79,0); }
+              }
+              @keyframes slide-up {
+                from { transform: translateY(20px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+              }
+              .animate-bounce-in { animation: bounce-in 0.6s cubic-bezier(0.68,-0.55,0.265,1.55) forwards; }
+              .animate-ring-pulse { animation: ring-pulse 1.5s ease-out infinite; }
+              .animate-slide-up { animation: slide-up 0.5s ease-out forwards; }
+              .animate-slide-up-1 { animation: slide-up 0.5s 0.1s ease-out both; }
+              .animate-slide-up-2 { animation: slide-up 0.5s 0.2s ease-out both; }
+              .animate-slide-up-3 { animation: slide-up 0.5s 0.3s ease-out both; }
+              .animate-slide-up-4 { animation: slide-up 0.5s 0.4s ease-out both; }
+              .confetti-dot {
+                position: absolute;
+                width: 8px; height: 8px;
+                border-radius: 50%;
+                animation: confetti-fall 2s ease-in infinite;
+              }
+            `}</style>
+
+            <div className="max-w-2xl mx-auto py-6 px-4 space-y-5">
+
+              {/* ── HERO CARD ─────────────────────────────── */}
+              <div className="relative bg-white border-2 border-neutral-900 shadow-retro overflow-hidden animate-slide-up">
+                {/* Confetti dots */}
+                {[
+                  { left:'8%',  top:'12%', color:'#E9C46A', delay:'0s'   },
+                  { left:'20%', top:'5%',  color:'#BF3A20', delay:'0.3s' },
+                  { left:'50%', top:'8%',  color:'#2D7A4F', delay:'0.6s' },
+                  { left:'75%', top:'4%',  color:'#E9C46A', delay:'0.9s' },
+                  { left:'90%', top:'15%', color:'#BF3A20', delay:'0.2s' },
+                  { left:'35%', top:'3%',  color:'#2563A8', delay:'0.5s' },
+                ].map((d, i) => (
+                  <div key={i} className="confetti-dot" style={{
+                    left: d.left, top: d.top,
+                    background: d.color,
+                    animationDelay: d.delay,
+                    animationDuration: `${1.8 + i * 0.3}s`
+                  }} />
+                ))}
+
+                {/* Green hero area */}
+                <div className="bg-gradient-to-br from-[#1a5c38] via-[#2D7A4F] to-[#3a9a63] px-8 pt-12 pb-16 text-center relative overflow-hidden">
+                  {/* Background pattern */}
+                  <div className="absolute inset-0" style={{
+                    backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 50%)',
+                    backgroundSize: '20px 20px'
+                  }} />
+                  {/* Decorative circles */}
+                  <div className="absolute -right-16 -bottom-16 w-64 h-64 rounded-full border border-white/10" />
+                  <div className="absolute -left-10 -top-10 w-40 h-40 rounded-full border border-white/10" />
+
+                  {/* Animated checkmark */}
+                  <div className="relative z-10">
+                    <div className="animate-bounce-in inline-flex">
+                      <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-5 animate-ring-pulse" style={{ boxShadow: '0 0 0 6px rgba(255,255,255,0.2)' }}>
+                        <CheckCircle2 size={52} className="text-[#2D7A4F]" strokeWidth={2} />
+                      </div>
+                    </div>
+                    <h1 className="text-3xl font-heading font-bold text-white mb-2 tracking-tight">
+                      Đặt Hàng Thành Công!
+                    </h1>
+                    <p className="text-green-100/90 text-sm font-medium">
+                      Cảm ơn bạn đã tin tưởng GrabFood Mini 🙏
+                    </p>
+
+                    {/* Order code badge */}
+                    <div className="inline-flex items-center gap-2 mt-4 bg-white/15 border border-white/30 px-4 py-2 text-white font-mono text-sm font-bold tracking-widest">
+                      <span className="text-white/60 text-xs font-normal">MÃ ĐƠN</span>
+                      #{successOrderData.orderCode}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── RECEIPT / TICKET BODY ──────────────── */}
+                {/* Tear-line decoration */}
+                <div className="relative h-0">
+                  <div className="absolute left-0 right-0 flex items-center" style={{ top: '-14px' }}>
+                    {Array.from({ length: 32 }).map((_, i) => (
+                      <div key={i} className={`flex-1 h-6 ${i % 2 === 0 ? 'bg-[#2D7A4F]' : 'bg-white'} rounded-full`} style={{ margin: '0 1px' }} />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="px-6 pt-8 pb-2 space-y-5 animate-slide-up-1">
+
+                  {/* Restaurant row */}
+                  <div className="flex items-center gap-4 p-4 bg-[#FAFAF8] border border-neutral-200 rounded-sm">
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#BF3A20] to-[#D44B2F] flex items-center justify-center flex-shrink-0 shadow-retro-sm">
+                      <ChefHat size={22} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mb-0.5">Quán ăn</p>
+                      <p className="font-bold text-neutral-900 text-base truncate">{successOrderData.restaurantName}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-wide">Số món</p>
+                      <p className="font-mono font-bold text-neutral-900 text-lg">{successOrderData.itemCount}</p>
+                    </div>
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Payment method */}
+                    <div className="border-2 border-neutral-900 p-3.5 bg-[#FEFCF9] shadow-retro-sm text-center">
+                      <p className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest mb-2">Thanh toán</p>
+                      <div className="flex items-center justify-center gap-1.5">
+                        {successOrderData.paymentMethod === 'COD' && <DollarSign size={14} className="text-emerald-600" />}
+                        {successOrderData.paymentMethod === 'WALLET' && <CreditCard size={14} className="text-blue-600" />}
+                        {successOrderData.paymentMethod === 'POINTS' && <span className="text-amber-500 text-sm">★</span>}
+                        {successOrderData.paymentMethod === 'VIETQR' && <span className="text-violet-600 text-xs font-bold">QR</span>}
+                        <p className="font-bold text-neutral-900 text-xs">
+                          {successOrderData.paymentMethod === 'COD' ? 'Tiền mặt' :
+                           successOrderData.paymentMethod === 'WALLET' ? 'Ví SaiGon' :
+                           successOrderData.paymentMethod === 'POINTS' ? 'Điểm' : 'VietQR'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Estimated time */}
+                    <div className="border-2 border-neutral-900 p-3.5 bg-[#FEFCF9] shadow-retro-sm text-center">
+                      <p className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest mb-2">Dự kiến</p>
+                      <p className="font-bold text-neutral-900 text-xs">25 – 35 phút</p>
+                    </div>
+
+                    {/* Status */}
+                    <div className="border-2 border-[#2D7A4F] p-3.5 bg-[#E8F5E9] shadow-retro-sm text-center">
+                      <p className="text-[9px] font-mono text-[#2D7A4F] uppercase tracking-widest mb-2">Trạng thái</p>
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#2D7A4F] animate-pulse" />
+                        <p className="font-bold text-[#2D7A4F] text-xs">Đã gửi</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dashed divider */}
+                  <div className="border-t-2 border-dashed border-neutral-200" />
+
+                  {/* Total amount */}
+                  <div className="flex items-center justify-between px-1">
+                    <div>
+                      <p className="text-xs text-neutral-500 font-mono uppercase tracking-wide">Tổng thanh toán</p>
+                      <p className="text-xs text-neutral-400 mt-0.5">Đã bao gồm phí giao hàng & thuế</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-mono font-bold text-[#BF3A20] leading-none">
+                        {successOrderData.totalAmount.toLocaleString('vi-VN')}
+                      </p>
+                      <p className="text-sm font-mono text-neutral-600 mt-0.5">đồng</p>
+                    </div>
+                  </div>
+
+                  {/* Dashed divider */}
+                  <div className="border-t-2 border-dashed border-neutral-200" />
+                </div>
+
+                {/* ── DELIVERY TIMELINE ────────────────── */}
+                <div className="px-6 pb-2 animate-slide-up-2">
+                  <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-widest mb-4">Hành trình đơn hàng</p>
+                  <div className="relative">
+                    {/* Connecting line */}
+                    <div className="absolute left-[18px] top-5 bottom-5 w-0.5 bg-neutral-200" />
+                    {/* Active line (first step done) */}
+                    <div className="absolute left-[18px] top-5 w-0.5 bg-[#2D7A4F]" style={{ height: '4px' }} />
+
+                    <div className="space-y-4">
+                      {[
+                        { icon: '📝', label: 'Đã đặt hàng',     sub: 'Đơn hàng đang chờ quán xác nhận', done: true  },
+                        { icon: '✅', label: 'Quán xác nhận',   sub: 'Bếp sẽ bắt đầu chuẩn bị ngay',   done: false },
+                        { icon: '👨‍🍳', label: 'Đang nấu',       sub: 'Đầu bếp đang chế biến món',       done: false },
+                        { icon: '🛵', label: 'Shipper lấy hàng', sub: 'Tài xế đang trên đường đến',     done: false },
+                        { icon: '🎉', label: 'Giao thành công', sub: 'Hàng đã được giao đến tay bạn',   done: false },
+                      ].map((step, i) => (
+                        <div key={i} className="flex items-start gap-4">
+                          <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 text-base transition-all ${
+                            step.done
+                              ? 'bg-[#2D7A4F] border-[#2D7A4F] shadow-retro-sm'
+                              : 'bg-white border-neutral-300'
+                          }`}>
+                            {step.done
+                              ? <CheckCircle2 size={16} className="text-white" strokeWidth={2.5} />
+                              : <span className="text-[13px]">{step.icon}</span>}
+                          </div>
+                          <div className="flex-1 pt-1.5">
+                            <p className={`text-sm font-bold ${step.done ? 'text-[#2D7A4F]' : 'text-neutral-500'}`}>
+                              {step.label}
+                              {step.done && <span className="ml-2 text-[10px] font-mono bg-[#2D7A4F]/10 text-[#2D7A4F] px-1.5 py-0.5 rounded">XONG</span>}
+                            </p>
+                            <p className="text-xs text-neutral-400 mt-0.5">{step.sub}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── INFO BANNER ─────────────────────── */}
+                <div className="mx-6 mb-4 mt-5 animate-slide-up-3">
+                  <div className="bg-blue-50 border border-blue-200 p-4 flex items-start gap-3">
+                    <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <AlertTriangle size={13} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-blue-800 mb-0.5">Thông báo quan trọng</p>
+                      <p className="text-xs text-blue-700 leading-relaxed">
+                        Đơn hàng đang được xử lý. Chúng tôi sẽ thông báo ngay khi quán xác nhận.
+                        {successOrderData.paymentMethod === 'COD' && ' Hãy chuẩn bị tiền mặt khi nhận hàng.'}
+                        {successOrderData.paymentMethod === 'WALLET' && ' Số dư ví đã được khấu trừ thành công.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── ACTION BUTTONS ────────────────── */}
+                <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-slide-up-4">
+                  <button
+                    onClick={() => navigate(`/profile?tab=orders&orderId=${successOrderData.orderId}`)}
+                    className="flex items-center justify-center gap-2 px-5 py-3.5 bg-[#BF3A20] text-white border-2 border-neutral-900 font-mono font-bold uppercase text-xs shadow-retro hover:bg-[#D44B2F] hover:shadow-retro-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                  >
+                    <ClipboardList size={15} /> Xem Chi Tiết Đơn Hàng
+                  </button>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="flex items-center justify-center gap-2 px-5 py-3.5 bg-[#FEFCF9] text-neutral-700 border-2 border-neutral-900 font-mono font-bold uppercase text-xs shadow-retro-sm hover:bg-[#FAF7F3] hover:shadow-retro active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                  >
+                    <Home size={15} /> Về Trang Chủ
+                  </button>
+                </div>
+
+                {/* Footer note */}
+                <div className="border-t-2 border-dashed border-neutral-200 mx-6 mb-5 pt-4">
+                  <p className="text-center text-[10px] font-mono text-neutral-400 uppercase tracking-widest">
+                    GrabFood Mini • {new Date().toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+
         {/* VIEW 1: CHECKOUT SCREEN */}
         {screen === 'checkout' && (
           <div>
@@ -1397,7 +1679,15 @@ export const CheckoutTracking: React.FC = () => {
                       });
                       if (res && (res as any).success) {
                         showCustomAlert('Thanh toán thành công (Giả lập)!', 'Thành công', 'info');
-                        navigate(`/orders/history?orderId=${simulationData.orderId}`);
+                        setSuccessOrderData({
+                          orderId: simulationData.orderId || '',
+                          orderCode: (simulationData.orderId || '').slice(0, 8).toUpperCase(),
+                          totalAmount: simulationData.amount,
+                          restaurantName: restaurantInfo?.name || 'Cửa hàng',
+                          paymentMethod: 'VIETQR',
+                          itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
+                        });
+                        setScreen('success');
                       } else {
                         showCustomAlert('Không thể xác nhận thanh toán giả lập.', 'Lỗi', 'error');
                       }
@@ -1519,8 +1809,15 @@ export const CheckoutTracking: React.FC = () => {
                         }
 
                         showCustomAlert('Khấu trừ trực tiếp vào ví Saigon-Pay thành công!', 'Thành công', 'info');
-                        navigate(`/orders/history?orderId=${res.data.id || res.data._id}`);
-                      } else {
+                        setSuccessOrderData({
+                          orderId: res.data.id || res.data._id || '',
+                          orderCode: res.data?.code || (res.data.id || res.data._id || '').slice(0, 8).toUpperCase(),
+                          totalAmount: simulationData.amount,
+                          restaurantName: restaurantInfo?.name || 'Cửa hàng',
+                          paymentMethod: 'WALLET',
+                          itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
+                        });
+                        setScreen('success');                      } else {
                         showCustomAlert(res?.message || 'Không thể hoàn tất thanh toán qua ví.', 'Lỗi', 'error');
                       }
                     } catch (err: any) {

@@ -6,6 +6,7 @@ import { aiTools } from './aiTools';
 import { AiConversation } from '../models/AiConversation';
 import { AiMessage } from '../models/AiMessage';
 import { redisClient } from '../config/redis';
+import { Op } from 'sequelize';
 
 const aiProvider = process.env.AI_PROVIDER || 'gemini';
 
@@ -67,20 +68,33 @@ export const aiService = {
       throw new AppError(404, 'NOT_FOUND', 'Cửa hàng không tồn tại.');
     }
 
-    const conversation = await AiConversation.findOne({ 
-      where: { restaurantId: restaurant.id },
-      include: [{
-        model: AiMessage,
-        as: 'messages',
-        attributes: ['id', 'role', 'content', 'createdAt']
-      }],
-      order: [[{ model: AiMessage, as: 'messages' }, 'createdAt', 'ASC']]
+    let conversation = await AiConversation.findOne({ where: { restaurantId: restaurant.id } });
+    if (!conversation) {
+      conversation = await AiConversation.create({ restaurantId: restaurant.id });
+    }
+
+    // Xóa các tin nhắn cũ hơn 24 giờ
+    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    try {
+      await AiMessage.destroy({
+        where: {
+          aiConversationId: conversation.id,
+          createdAt: {
+            [Op.lt]: timeLimit
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Error clearing old vendor AI messages:', err);
+    }
+
+    const messages = await AiMessage.findAll({
+      where: { aiConversationId: conversation.id },
+      order: [['createdAt', 'ASC']]
     });
 
-    if (!conversation) return [];
-
     // Parse the JSON content for assistant messages so the frontend doesn't have to
-    const history = conversation.messages.map(msg => {
+    const history = messages.map(msg => {
       let parsedContent = msg.content;
       if (msg.role === 'assistant' && msg.content) {
         try {
@@ -128,6 +142,21 @@ export const aiService = {
     let conversation = await AiConversation.findOne({ where: { restaurantId: restaurant.id } });
     if (!conversation) {
       conversation = await AiConversation.create({ restaurantId: restaurant.id });
+    }
+
+    // Xóa các tin nhắn cũ hơn 24 giờ trước khi thêm mới
+    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    try {
+      await AiMessage.destroy({
+        where: {
+          aiConversationId: conversation.id,
+          createdAt: {
+            [Op.lt]: timeLimit
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Error clearing old vendor AI messages:', err);
     }
 
     // Lưu tin nhắn của người dùng

@@ -171,5 +171,204 @@ export const authService = {
     await generateAndSendOtp(user);
     return true;
   },
+
+  /**
+   * Đăng nhập bằng Google OAuth 2.0
+   */
+  googleLogin: async (code: string, redirectUri: string) => {
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      throw new AppError(500, 'INTERNAL_ERROR', 'Google OAuth credentials are not configured on the server.');
+    }
+
+    try {
+      // 1. Đổi Authorization Code lấy Access Token
+      const tokenResponse = await globalThis.fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json();
+        console.error('Google Token Exchange Error:', errorData);
+        throw new AppError(400, 'BUSINESS_ERROR', 'Không thể xác thực mã code với Google.');
+      }
+
+      const tokenData = (await tokenResponse.json()) as any;
+      const accessToken = tokenData.access_token;
+
+      // 2. Lấy thông tin cá nhân của người dùng từ Google
+      const userInfoResponse = await globalThis.fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!userInfoResponse.ok) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Không thể lấy thông tin người dùng từ Google.');
+      }
+
+      const googleUser = (await userInfoResponse.json()) as any;
+      const { sub: googleId, email, name, picture: avatar } = googleUser;
+
+      if (!email) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản Google của bạn không cung cấp địa chỉ email.');
+      }
+
+      // 3. Khớp hoặc tạo tài khoản mới trong cơ sở dữ liệu
+      let user = await User.findOne({ where: { googleId } });
+
+      if (!user) {
+        // Tìm theo email xem đã có tài khoản thường chưa
+        user = await userRepository.findByEmail(email);
+        if (user) {
+          // Liên kết tài khoản hiện có với googleId
+          const updateData: Partial<User> = { googleId };
+          if (!user.avatar && avatar) {
+            updateData.avatar = avatar;
+          }
+          await user.update(updateData);
+        } else {
+          // Tạo tài khoản mới hoàn toàn
+          user = await userRepository.create({
+            name: name || 'Người dùng Google',
+            email: email.toLowerCase(),
+            googleId,
+            avatar,
+            role: 'user',
+            status: 'active', // Bỏ qua OTP kích hoạt
+          });
+        }
+      }
+
+      if (user.status === 'banned') {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
+      }
+
+      // Nếu tài khoản mới tạo hoặc pending, kích hoạt luôn
+      if (user.status === 'pending') {
+        await user.update({ status: 'active' });
+      }
+
+      // 4. Tạo token của hệ thống và trả về
+      const tokens = authService.generateTokens(user);
+
+      const userJson = user.toJSON() as any;
+      delete userJson.password;
+      delete userJson.otpCode;
+      delete userJson.otpExpiresAt;
+
+      return { user: userJson, ...tokens };
+    } catch (error: any) {
+      if (error instanceof AppError) throw error;
+      console.error('Google Login Service Error:', error);
+      throw new AppError(500, 'INTERNAL_ERROR', 'Đã xảy ra lỗi hệ thống trong quá trình đăng nhập bằng Google.');
+    }
+  },
+
+  /**
+   * Đăng nhập bằng Facebook OAuth 2.0
+   */
+  facebookLogin: async (code: string, redirectUri: string) => {
+    const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
+    const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+
+    console.log(`[FB OAUTH DEBUG] FACEBOOK_APP_ID (length: ${FACEBOOK_APP_ID?.length}): ${FACEBOOK_APP_ID}`);
+    console.log(`[FB OAUTH DEBUG] FACEBOOK_APP_SECRET (length: ${FACEBOOK_APP_SECRET?.length}): ${FACEBOOK_APP_SECRET ? FACEBOOK_APP_SECRET.slice(0, 10) + '...' : 'undefined'}`);
+
+    if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
+      throw new AppError(500, 'INTERNAL_ERROR', 'Facebook OAuth credentials are not configured on the server.');
+    }
+
+    try {
+      // 1. Đổi Authorization Code lấy Access Token
+      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&redirect_uri=${redirectUri}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}`;
+      const tokenResponse = await globalThis.fetch(tokenUrl);
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json();
+        console.error('Facebook Token Exchange Error:', errorData);
+        throw new AppError(400, 'BUSINESS_ERROR', 'Không thể xác thực mã code với Facebook.');
+      }
+
+      const tokenData = (await tokenResponse.json()) as any;
+      const fbAccessToken = tokenData.access_token;
+
+      // 2. Lấy thông tin cá nhân của người dùng từ Facebook
+      const userInfoUrl = `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${fbAccessToken}`;
+      const userInfoResponse = await globalThis.fetch(userInfoUrl);
+
+      if (!userInfoResponse.ok) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Không thể lấy thông tin người dùng từ Facebook.');
+      }
+
+      const fbUser = (await userInfoResponse.json()) as any;
+      const { id: facebookId, name, email } = fbUser;
+      const avatar = fbUser.picture?.data?.url;
+
+      // Đảm bảo cấu trúc DB bằng cách tạo email giả lập từ fbId nếu Facebook không trả về email
+      const userEmail = email ? email.toLowerCase() : `${facebookId}@facebook.com`;
+
+      // 3. Khớp hoặc tạo tài khoản mới trong cơ sở dữ liệu
+      let user = await User.findOne({ where: { facebookId } });
+
+      if (!user) {
+        // Tìm theo email xem đã có tài khoản thường chưa
+        user = await userRepository.findByEmail(userEmail);
+        if (user) {
+          // Liên kết tài khoản hiện có với facebookId
+          const updateData: Partial<User> = { facebookId };
+          if (!user.avatar && avatar) {
+            updateData.avatar = avatar;
+          }
+          await user.update(updateData);
+        } else {
+          // Tạo tài khoản mới hoàn toàn
+          user = await userRepository.create({
+            name: name || 'Người dùng Facebook',
+            email: userEmail,
+            facebookId,
+            avatar,
+            role: 'user',
+            status: 'active', // Bỏ qua OTP kích hoạt
+          });
+        }
+      }
+
+      if (user.status === 'banned') {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
+      }
+
+      // Nếu tài khoản mới tạo hoặc pending, kích hoạt luôn
+      if (user.status === 'pending') {
+        await user.update({ status: 'active' });
+      }
+
+      // 4. Tạo token của hệ thống và trả về
+      const tokens = authService.generateTokens(user);
+
+      const userJson = user.toJSON() as any;
+      delete userJson.password;
+      delete userJson.otpCode;
+      delete userJson.otpExpiresAt;
+
+      return { user: userJson, ...tokens };
+    } catch (error: any) {
+      if (error instanceof AppError) throw error;
+      console.error('Facebook Login Service Error:', error);
+      throw new AppError(500, 'INTERNAL_ERROR', 'Đã xảy ra lỗi hệ thống trong quá trình đăng nhập bằng Facebook.');
+    }
+  },
 };
 export default authService;

@@ -151,9 +151,10 @@ function generateBudgetCombos(items: any[], budget: number, servings: number = 1
     }];
 
     let total = Number(main.price) * servingsCount;
+    let sideQty = 0;
 
     if (side) {
-      const sideQty = Math.ceil(servingsCount / 2); // 1 món phụ cho mỗi 2 người ăn
+      sideQty = Math.ceil(servingsCount / 2); // 1 món phụ cho mỗi 2 người ăn
       comboItems.push({
         id: side.id,
         name: side.name,

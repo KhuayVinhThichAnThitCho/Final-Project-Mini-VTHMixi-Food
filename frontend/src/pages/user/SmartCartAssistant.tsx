@@ -25,7 +25,13 @@ interface Message {
 const SmartCartAssistant: React.FC = () => {
   const navigate = useNavigate();
   const { allCartItemsCount, addToCart } = useCart();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'greeting',
+      role: 'assistant',
+      content: 'Xin chào! Tôi là Smart Cart AI. Tôi có thể giúp bạn lên thực đơn, gợi ý món ăn dinh dưỡng phù hợp với ngân sách và khẩu phần của bạn. Bạn muốn ăn gì hôm nay?'
+    }
+  ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [navigatingItem, setNavigatingItem] = useState<string | null>(null);
@@ -72,7 +78,7 @@ const SmartCartAssistant: React.FC = () => {
             };
           });
 
-          setMessages(historyMessages);
+          setMessages(prev => [prev[0], ...historyMessages]);
         }
       } catch (error) {
         console.error('Failed to fetch chat history:', error);
@@ -303,32 +309,6 @@ const SmartCartAssistant: React.FC = () => {
       <div className="flex-1 overflow-y-auto w-full texture-paper custom-scrollbar relative z-0 pb-32">
         <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-8">
 
-          {/* Hero Section (Hiển thị khi chưa có chat) */}
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center pt-10 sm:pt-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#BF3A20] to-[#E9C46A] flex items-center justify-center shadow-lg mb-6 transform -rotate-3 hover:rotate-0 transition-transform">
-                <Sparkles className="text-white" size={40} />
-              </div>
-              <h1 className="font-display font-bold text-3xl text-[#2C1A0E] mb-3 text-center">Smart Cart AI</h1>
-              <p className="font-body text-[#7A5235] text-center max-w-md mb-8">
-                Trợ lý mua sắm cá nhân của bạn. Lập thực đơn theo ngân sách, tính toán khẩu phần và gợi ý món ăn dinh dưỡng.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl">
-                {suggestedQuestions.map((q, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(q.query)}
-                    className="p-4 bg-[#FEFCF9] border border-[#E8D8C6] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all text-left flex flex-col items-start gap-2 group"
-                  >
-                    <span className="font-bold text-[#5C1A0A] font-body text-sm">{q.title}</span>
-                    <span className="text-xs text-[#9E6E4A] font-mono opacity-80 group-hover:opacity-100 transition-opacity">Nhấp để thử →</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Messages */}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex gap-4 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
@@ -420,6 +400,24 @@ const SmartCartAssistant: React.FC = () => {
               )}
             </div>
           ))}
+
+          {/* Suggested Questions (Hiển thị khi chỉ có tin nhắn chào mừng) */}
+          {messages.length <= 1 && (
+            <div className="flex flex-col items-center justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl">
+                {suggestedQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(q.query)}
+                    className="p-4 bg-[#FEFCF9] border border-[#E8D8C6] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all text-left flex flex-col items-start gap-2 group"
+                  >
+                    <span className="font-bold text-[#5C1A0A] font-body text-sm">{q.title}</span>
+                    <span className="text-xs text-[#9E6E4A] font-mono opacity-80 group-hover:opacity-100 transition-opacity">Nhấp để thử →</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {loading && (
             <div className="flex gap-4 w-full justify-start animate-in fade-in duration-300">
