@@ -1,0 +1,910 @@
+SOFTWARE REQUIREMENTS SPECIFICATION
+GrabFood Mini
+Nền Tảng Đặt Đồ Ăn Trực Tuyến Đa Nhà Hàng
+Dự án
+GrabFood Mini
+Phiên bản
+1.0.0
+Ngày tạo
+2025
+Stack
+Node.js | Express.js | React.js | TypeScript | MySQL | Tailwind CSS
+Nhóm
+3 thành viên — Final Project
+1. GIỚI THIỆU
+1.1 Mục đích tài liệu
+Tài liệu SRS (Software Requirements Specification) này mô tả toàn bộ yêu cầu chức năng, yêu cầu phi chức năng, kiến trúc hệ thống và thiết kế API cho dự án GrabFood Mini — nền tảng đặt đồ ăn trực tuyến đa nhà hàng. Tài liệu phục vụ làm cơ sở cho quá trình phát triển và nghiệm thu sản phẩm cuối kỳ.
+1.2 Phạm vi dự án
+GrabFood Mini là nền tảng đặt đồ ăn trực tuyến cho phép:
+Guest duyệt nhà hàng và thực đơn mà không cần đăng nhập.
+User đăng ký, đăng nhập, đặt món, thanh toán, theo dõi đơn hàng và đánh giá.
+Vendor (chủ nhà hàng) đăng ký, quản lý nhà hàng, thực đơn, đơn hàng và ví điện tử.
+Manager giám sát và quản lý vendor, xử lý tranh chấp.
+Admin toàn quyền quản lý hệ thống, user, doanh thu và cấu hình quyền.
+1.3 Định nghĩa & Từ viết tắt
+Thuật ngữ
+Định nghĩa
+SRS
+Software Requirements Specification
+Guest
+Người dùng chưa đăng nhập
+User
+Người dùng đã đăng ký, có thể đặt đồ ăn
+Vendor
+Chủ nhà hàng đã đăng ký shop trên nền tảng
+Manager
+Quản lý nền tảng, phê duyệt vendor và sản phẩm
+Admin
+Quản trị viên cấp cao nhất, toàn quyền hệ thống
+JWT
+JSON Web Token — cơ chế xác thực stateless
+OTP
+One-Time Password — mã xác thực gửi qua email
+RBAC
+Role-Based Access Control — phân quyền theo vai trò
+API
+Application Programming Interface
+REST
+Representational State Transfer — kiến trúc API
+1.4 Tổng quan hệ thống
+Hệ thống được xây dựng theo mô hình Client-Server với kiến trúc RESTful API. Frontend (React + TypeScript + Tailwind CSS) giao tiếp với Backend (Node.js + Express.js) thông qua REST API. Dữ liệu được lưu trữ trong MySQL. Xác thực sử dụng JWT + Refresh Token. Email OTP được gửi qua Nodemailer
+2. YÊU CẦU CHỨC NĂNG
+2.1 Guest — Khách vãng lai
+Danh sách chức năng
+ID
+Chức năng
+Mô tả chi tiết
+G-01
+Trang chủ
+Hiển thị banner, nhà hàng nổi bật, món ăn phổ biến, danh mục món ăn. Hỗ trợ lọc theo khu vực, danh mục.
+G-02
+Danh sách nhà hàng
+Xem tất cả nhà hàng, lọc theo danh mục, khoảng cách, rating, giá. Phân trang.
+G-03
+Chi tiết nhà hàng
+Xem thông tin nhà hàng: tên, địa chỉ, giờ mở cửa, rating, thực đơn theo danh mục, ảnh bìa.
+G-04
+Chi tiết sản phẩm
+Xem chi tiết món ăn: ảnh, mô tả, giá, topping, đánh giá từ user khác.
+G-05
+Tìm kiếm
+Tìm kiếm theo tên món ăn, nhà hàng. Hiển thị gợi ý autocomplete. Kết quả phân tab (món / nhà hàng).
+2.2 User — Người dùng đã đăng ký
+Danh sách chức năng
+ID
+Chức năng
+Mô tả chi tiết
+U-01
+Đăng ký + OTP
+Nhập email, password, tên. Hệ thống gửi OTP 6 số qua email (hết hạn sau 5 phút). Xác thực OTP để kích hoạt tài khoản.
+U-02
+Đăng nhập
+Đăng nhập bằng email/password. Trả về JWT Access Token (15 phút) + Refresh Token (7 ngày). Lưu refresh token trong HTTP-only cookie.
+U-03
+Quên mật khẩu
+Nhập email → hệ thống gửi link reset qua email (token hết hạn 15 phút) → user nhập mật khẩu mới.
+U-04
+Giỏ hàng
+Thêm/xóa/cập nhật số lượng món. Giỏ hàng chỉ chứa món từ 1 nhà hàng tại một thời điểm. Cảnh báo khi thêm từ nhà hàng khác.
+U-05
+Thanh toán
+Chọn địa chỉ giao hàng, phương thức thanh toán (COD / ví nội bộ), áp dụng mã khuyến mãi. Tạo đơn hàng và xác nhận.
+U-06
+Theo dõi đơn hàng
+Xem trạng thái real-time: Pending → Confirmed → Preparing → Ready → Delivering → Completed. Hủy khi trạng thái còn Pending.
+U-07
+Lịch sử đơn hàng
+Xem danh sách đơn đã đặt. Lọc theo trạng thái, ngày. Đặt lại đơn cũ.
+U-08
+Đánh giá nhà hàng
+Đánh giá sao (1-5) + bình luận cho nhà hàng sau khi đơn hàng hoàn thành. Mỗi đơn chỉ đánh giá 1 lần.
+U-09
+Đánh giá đơn hàng
+Đánh giá trải nghiệm tổng thể của đơn hàng (thời gian, đóng gói, phục vụ).
+U-10
+Đánh giá sản phẩm
+Đánh giá từng món đã mua trong đơn hàng. Có thể upload ảnh kèm đánh giá.
+U-11
+Profile
+Cập nhật tên, avatar, số điện thoại, địa chỉ mặc định. Đổi mật khẩu. Quản lý địa chỉ giao hàng (CRUD).
+U-12
+Yêu thích
+Thêm/xóa nhà hàng vào danh sách yêu thích. Xem danh sách yêu thích.
+2.3 Vendor — Chủ nhà hàng
+Danh sách chức năng
+ID
+Chức năng
+Mô tả chi tiết
+V-01
+Đăng ký shop
+Điền thông tin nhà hàng: tên, địa chỉ, số điện thoại, danh mục. Upload ảnh bìa, logo. Gửi yêu cầu đến Manager duyệt.
+V-02
+Cấu hình shop
+Cập nhật thông tin nhà hàng, giờ mở cửa theo từng ngày trong tuần, trạng thái hoạt động (mở/đóng), phí giao hàng, đơn tối thiểu.
+V-03
+Quản lý sản phẩm
+CRUD món ăn: tên, mô tả, giá, danh mục, ảnh, trạng thái (có sẵn/hết hàng). Quản lý topping/option cho món.
+V-04
+Quản lý đơn hàng
+Xem đơn mới, xác nhận/từ chối đơn, cập nhật trạng thái (Preparing → Ready). Xem lịch sử đơn. Lọc theo ngày, trạng thái.
+V-05
+Quản lý khuyến mãi
+Tạo/sửa/xóa mã giảm giá: % hoặc số tiền, điều kiện áp dụng, thời gian hiệu lực, số lượng dùng tối đa.
+V-06
+Ví điện tử
+Xem số dư ví. Lịch sử giao dịch (thu/chi). Yêu cầu rút tiền về tài khoản ngân hàng. Trạng thái rút: Pending → Approved → Transferred.
+V-07
+Báo cáo doanh thu
+Thống kê doanh thu theo ngày/tuần/tháng. Top món ăn bán chạy. Số đơn hoàn thành / hủy. Export CSV.
+V-08
+Quản lý bình luận
+Xem tất cả đánh giá từ user. Phản hồi bình luận. Báo cáo bình luận vi phạm lên Manager.
+V-09
+Dashboard
+Tổng quan nhanh: đơn hôm nay, doanh thu hôm nay, rating trung bình, thông báo đơn mới.
+2.4 Manager — Quản lý nền tảng
+ID
+Chức năng
+Mô tả chi tiết
+M-01
+Quản lý Vendor
+Duyệt / Từ chối đăng ký shop mới. Xem danh sách tất cả vendor. Tạm khóa / mở khóa vendor vi phạm. Ghi chú lý do.
+M-02
+Quản lý sản phẩm vendor
+Tìm kiếm và xem tất cả sản phẩm của các vendor. Ẩn/xóa sản phẩm vi phạm nội quy. Lý do từ chối.
+M-03
+Xử lý báo cáo
+Xem và xử lý báo cáo bình luận vi phạm từ vendor. Quyết định ẩn bình luận hoặc cảnh cáo user.
+M-04
+Duyệt rút tiền
+Xem danh sách yêu cầu rút tiền của vendor. Phê duyệt hoặc từ chối với lý do rõ ràng.
+2.5 Admin — Quản trị viên
+ID
+Chức năng
+Mô tả chi tiết
+A-01
+Quản lý User
+Xem danh sách user, tìm kiếm, khóa/mở khóa tài khoản, xem thông tin chi tiết và lịch sử đơn hàng.
+A-02
+Quản lý Vendor
+Toàn quyền quản lý vendor. Override quyết định của Manager. Xem chi tiết doanh thu, đơn hàng của từng vendor.
+A-03
+Quản lý sản phẩm
+Xem và quản lý toàn bộ sản phẩm trên nền tảng. Xóa vĩnh viễn sản phẩm vi phạm.
+A-04
+Quản lý đơn hàng
+Xem toàn bộ đơn hàng hệ thống. Tìm kiếm theo ID, user, vendor, trạng thái. Can thiệp xử lý tranh chấp.
+A-05
+Báo cáo doanh thu
+Thống kê tổng doanh thu nền tảng. Doanh thu theo vendor. Biểu đồ theo ngày/tháng/năm. Export Excel.
+A-06
+Cấu hình quyền (RBAC)
+Thêm/sửa/xóa role. Gán quyền (permission) cho từng role. Gán role cho user/vendor/manager.
+A-07
+Cấu hình hệ thống
+Cấu hình phí nền tảng (%), phương thức thanh toán, banner trang chủ, thông báo hệ thống.
+3. YÊU CẦU PHI CHỨC NĂNG
+Danh mục
+Chỉ tiêu
+Chi tiết
+Hiệu năng
+Response time
+API response < 500ms cho 95% requests trong điều kiện tải bình thường.
+Bảo mật
+Xác thực & phân quyền
+JWT Access Token TTL 15 phút, Refresh Token HTTP-only cookie TTL 7 ngày. RBAC middleware trên tất cả protected routes.
+Bảo mật
+Mã hóa
+Password hash bằng bcrypt (salt rounds = 12). HTTPS toàn bộ. SQL Injection phòng chống qua parameterized queries / ORM.
+Bảo mật
+Rate Limiting
+Login endpoint: tối đa 5 lần/IP/phút. OTP endpoint: 3 lần/IP/5 phút. Dùng express-rate-limit.
+Khả năng dùng
+Responsive UI
+Giao diện tương thích mobile (320px+), tablet, desktop. Dùng Tailwind breakpoints.
+Khả dụng
+Uptime
+Hệ thống hoạt động ổn định trong môi trường demo/production của trường. Graceful error handling.
+Khả năng mở rộng
+Code structure
+Backend theo kiến trúc layered (Routes → Controllers → Services → Repositories). Frontend theo Atomic Design.
+Dữ liệu
+Tính nhất quán
+Sử dụng MySQL Transaction cho các thao tác phức tạp: tạo đơn hàng, thanh toán, cập nhật ví. Rollback khi lỗi.
+4. KIẾN TRÚC HỆ THỐNG
+4.1 Tech Stack
+Layer
+Công nghệ
+Vai trò
+Frontend
+React.js + TypeScript + Vite
+UI/UX, state management, routing
+Styling
+Tailwind CSS + shadcn/ui
+Component library, responsive design
+State
+Zustand / React Query
+Global state, server state & caching
+Backend
+Node.js + Express.js + TypeScript
+REST API server, business logic
+Database
+MySQL + TypeORM / Sequelize
+Relational data storage, migrations
+Auth
+JWT + bcrypt + Nodemailer
+Xác thực, mã hóa, gửi email OTP
+Upload
+Multer + Cloudinary
+Upload và lưu trữ ảnh
+Validation
+Zod / class-validator
+Validate request body, params, query
+4.2 Cấu trúc thư mục Backend
+backend/
+├── src/
+│   ├── config/           # DB config, env, multer, nodemailer
+│   ├── controllers/      # Xử lý request/response
+│   ├── services/         # Business logic
+│   ├── repositories/     # Database queries
+│   ├── models/           # TypeORM entities / Sequelize models
+│   ├── middlewares/      # Auth, RBAC, rate-limit, error handler
+│   ├── routes/           # Route definitions
+│   ├── utils/            # Helpers: jwt, otp, email, response
+│   ├── validators/       # Zod schemas
+│   └── app.ts            # Express app setup
+├── .env
+└── package.json
+4.3 Cấu trúc thư mục Frontend
+frontend/
+├── src/
+│   ├── assets/           # Images, icons
+│   ├── components/       # Shared UI components (Atomic Design)
+│   ├── pages/            # Page components theo role
+│   │   ├── guest/
+│   │   ├── user/
+│   │   ├── vendor/
+│   │   ├── manager/
+│   │   └── admin/
+│   ├── hooks/            # Custom React hooks
+│   ├── store/            # Zustand stores
+│   ├── services/         # API call functions (axios)
+│   ├── types/            # TypeScript interfaces
+│   ├── utils/            # Helper functions
+│   └── routes/           # React Router config + PrivateRoute
+└── package.json
+5. DATABASE SCHEMA (ERD Summary)
+Bảng
+Khóa chính
+Khóa ngoại
+Mô tả
+users
+id (UUID)
+—
+Tất cả tài khoản người dùng. role: guest/user/vendor/manager/admin
+restaurants
+id (UUID)
+owner_id → users
+Thông tin nhà hàng, trạng thái duyệt, giờ mở cửa
+categories
+id
+—
+Danh mục món ăn toàn cục (Cơm, Phở, Pizza...)
+menu_items
+id (UUID)
+restaurant_id, category_id
+Món ăn: tên, giá, ảnh, trạng thái
+toppings
+id
+menu_item_id
+Topping/option của món (size, extra topping, spicy level)
+orders
+id (UUID)
+user_id, restaurant_id, coupon_id
+Đơn hàng: tổng tiền, trạng thái, địa chỉ giao hàng
+order_items
+id
+order_id, menu_item_id
+Chi tiết từng món trong đơn: số lượng, giá tại thời điểm đặt
+reviews
+id
+user_id, order_id, restaurant_id
+Đánh giá nhà hàng, đơn hàng và sản phẩm. type: restaurant/order/item
+coupons
+id
+restaurant_id
+Mã giảm giá: type (percent/fixed), điều kiện, thời hạn
+wallets
+id
+user_id
+Ví điện tử của vendor: balance, pending_balance
+transactions
+id
+wallet_id, order_id
+Lịch sử giao dịch: type (credit/debit/withdraw), amount, status
+favorites
+id
+user_id, restaurant_id
+Danh sách nhà hàng yêu thích của user
+notifications
+id
+user_id
+Thông báo trong app: type, message, is_read
+permissions
+id
+—
+Danh sách quyền hệ thống (RBAC)
+role_permissions
+role_id, permission_id
+—
+Bảng trung gian gán quyền cho role
+6. THIẾT KẾ API
+Base URL: /api/v1
+Auth Header: Authorization: Bearer <access_token>
+Response format chuẩn:
+{
+  "success": true,
+  "message": "OK",
+  "data": { ... },
+  "pagination": { "page": 1, "limit": 10, "total": 100 }
+}
+6.1 Auth Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+POST
+/auth/register
+Public
+201
+Đăng ký tài khoản mới, gửi OTP qua email
+POST
+/auth/verify-otp
+Public
+200
+Xác thực OTP để kích hoạt tài khoản
+POST
+/auth/resend-otp
+Public
+200
+Gửi lại OTP (rate-limit: 3 lần/5 phút)
+POST
+/auth/login
+Public
+200
+Đăng nhập, trả về access_token + set refresh cookie
+POST
+/auth/refresh
+Cookie
+200
+Làm mới access_token bằng refresh token
+POST
+/auth/logout
+JWT
+200
+Xóa refresh token, blacklist access token
+POST
+/auth/forgot-password
+Public
+200
+Gửi email link reset mật khẩu
+POST
+/auth/reset-password
+Public
+200
+Đặt lại mật khẩu bằng reset token
+PATCH
+/auth/change-password
+JWT
+200
+Đổi mật khẩu khi đã đăng nhập
+6.2 User Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+GET
+/users/me
+JWT
+200
+Lấy thông tin profile của user hiện tại
+PATCH
+/users/me
+JWT
+200
+Cập nhật profile: tên, avatar, số điện thoại
+GET
+/users/me/addresses
+JWT
+200
+Lấy danh sách địa chỉ giao hàng
+POST
+/users/me/addresses
+JWT
+201
+Thêm địa chỉ giao hàng mới
+PUT
+/users/me/addresses/:id
+JWT
+200
+Cập nhật địa chỉ giao hàng
+DELETE
+/users/me/addresses/:id
+JWT
+200
+Xóa địa chỉ giao hàng
+GET
+/users/me/favorites
+JWT
+200
+Lấy danh sách nhà hàng yêu thích
+POST
+/users/me/favorites/:restaurantId
+JWT
+201
+Thêm nhà hàng vào yêu thích
+DELETE
+/users/me/favorites/:restaurantId
+JWT
+200
+Xóa nhà hàng khỏi yêu thích
+GET
+/users/me/notifications
+JWT
+200
+Lấy thông báo của user. Query: is_read
+PATCH
+/users/me/notifications/:id/read
+JWT
+200
+Đánh dấu thông báo đã đọc
+6.3 Restaurant Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+GET
+/restaurants
+Public
+200
+Lấy danh sách nhà hàng. Query: category, search, page, limit, sort
+GET
+/restaurants/:id
+Public
+200
+Lấy chi tiết nhà hàng + menu theo danh mục
+GET
+/restaurants/:id/reviews
+Public
+200
+Lấy đánh giá của nhà hàng. Query: page, limit, sort
+POST
+/restaurants
+JWT+Vendor
+201
+Đăng ký nhà hàng mới (status: pending)
+PUT
+/restaurants/:id
+JWT+Vendor
+200
+Cập nhật thông tin nhà hàng
+PATCH
+/restaurants/:id/status
+JWT+Vendor
+200
+Mở/đóng nhà hàng (open/closed)
+GET
+/restaurants/:id/stats
+JWT+Vendor
+200
+Thống kê nhanh: đơn hôm nay, doanh thu, rating
+6.4 Menu Item Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+GET
+/restaurants/:id/menu
+Public
+200
+Lấy toàn bộ menu, nhóm theo category
+GET
+/menu-items/:id
+Public
+200
+Lấy chi tiết món ăn + toppings + đánh giá
+POST
+/restaurants/:id/menu-items
+JWT+Vendor
+201
+Tạo món ăn mới (multipart: ảnh upload)
+PUT
+/menu-items/:id
+JWT+Vendor
+200
+Cập nhật thông tin món ăn
+PATCH
+/menu-items/:id/availability
+JWT+Vendor
+200
+Cập nhật trạng thái: available / sold_out
+DELETE
+/menu-items/:id
+JWT+Vendor
+200
+Xóa món ăn (soft delete)
+POST
+/menu-items/:id/toppings
+JWT+Vendor
+201
+Thêm topping/option cho món
+PUT
+/toppings/:id
+JWT+Vendor
+200
+Cập nhật topping
+DELETE
+/toppings/:id
+JWT+Vendor
+200
+Xóa topping
+6.5 Cart Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+GET
+/cart
+JWT
+200
+Lấy giỏ hàng hiện tại của user
+POST
+/cart/items
+JWT
+200
+Thêm món vào giỏ hàng. Body: menu_item_id, quantity, toppings[]
+PATCH
+/cart/items/:id
+JWT
+200
+Cập nhật số lượng món trong giỏ
+DELETE
+/cart/items/:id
+JWT
+200
+Xóa món khỏi giỏ hàng
+DELETE
+/cart
+JWT
+200
+Xóa toàn bộ giỏ hàng
+6.6 Order Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+POST
+/orders
+JWT
+201
+Tạo đơn hàng từ giỏ hàng. Body: address_id, payment_method, coupon_code
+GET
+/orders
+JWT
+200
+Lịch sử đơn hàng của user. Query: status, page, limit
+GET
+/orders/:id
+JWT
+200
+Chi tiết đơn hàng theo ID
+PATCH
+/orders/:id/cancel
+JWT
+200
+Hủy đơn hàng (chỉ khi status = pending)
+GET
+/vendor/orders
+JWT+Vendor
+200
+Danh sách đơn hàng của nhà hàng. Query: status, date, page
+PATCH
+/vendor/orders/:id/status
+JWT+Vendor
+200
+Cập nhật trạng thái đơn: confirmed / preparing / ready / rejected
+GET
+/admin/orders
+JWT+Admin
+200
+Toàn bộ đơn hàng hệ thống. Query: vendor_id, user_id, status, date
+6.7 Review Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+POST
+/reviews/restaurant
+JWT
+201
+Đánh giá nhà hàng. Body: order_id, rating, comment
+POST
+/reviews/order
+JWT
+201
+Đánh giá đơn hàng. Body: order_id, rating, comment
+POST
+/reviews/item
+JWT
+201
+Đánh giá sản phẩm. Body: order_item_id, rating, comment, images[]
+GET
+/reviews/menu-items/:id
+Public
+200
+Lấy đánh giá của một món ăn
+POST
+/reviews/:id/reply
+JWT+Vendor
+201
+Phản hồi đánh giá của user
+POST
+/reviews/:id/report
+JWT+Vendor
+201
+Báo cáo đánh giá vi phạm lên Manager
+PATCH
+/reviews/:id/hide
+JWT+Manager
+200
+Ẩn đánh giá vi phạm
+6.8 Coupon Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+POST
+/coupons/validate
+JWT
+200
+Kiểm tra mã giảm giá. Body: code, restaurant_id, order_total
+GET
+/vendor/coupons
+JWT+Vendor
+200
+Danh sách coupon của nhà hàng
+POST
+/vendor/coupons
+JWT+Vendor
+201
+Tạo coupon mới: code, type, value, min_order, max_uses, expires_at
+PUT
+/vendor/coupons/:id
+JWT+Vendor
+200
+Cập nhật coupon
+DELETE
+/vendor/coupons/:id
+JWT+Vendor
+200
+Xóa coupon
+6.9 Wallet Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+GET
+/vendor/wallet
+JWT+Vendor
+200
+Lấy thông tin ví: balance, pending_balance
+GET
+/vendor/wallet/transactions
+JWT+Vendor
+200
+Lịch sử giao dịch. Query: type, page, limit, date
+POST
+/vendor/wallet/withdraw
+JWT+Vendor
+201
+Yêu cầu rút tiền. Body: amount, bank_info
+GET
+/manager/withdrawals
+JWT+Manager
+200
+Danh sách yêu cầu rút tiền chờ duyệt
+PATCH
+/manager/withdrawals/:id
+JWT+Manager
+200
+Phê duyệt / từ chối rút tiền. Body: status, reason
+6.10 Analytics & Report Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+GET
+/vendor/analytics/revenue
+JWT+Vendor
+200
+Doanh thu vendor. Query: period (day/week/month/year)
+GET
+/vendor/analytics/top-items
+JWT+Vendor
+200
+Top 10 món ăn bán chạy nhất
+GET
+/vendor/analytics/orders
+JWT+Vendor
+200
+Thống kê đơn: total, completed, cancelled, avg_value
+GET
+/admin/analytics/revenue
+JWT+Admin
+200
+Doanh thu toàn nền tảng theo period
+GET
+/admin/analytics/vendors
+JWT+Admin
+200
+Thống kê theo vendor: top doanh thu, mới nhất
+GET
+/admin/analytics/users
+JWT+Admin
+200
+Thống kê user: đăng ký mới, active users
+6.11 Manager & Admin Endpoints
+Method
+Endpoint
+Auth
+Status
+Mô tả
+GET
+/manager/vendors/pending
+JWT+Manager
+200
+Danh sách đăng ký nhà hàng chờ duyệt
+PATCH
+/manager/vendors/:id/approve
+JWT+Manager
+200
+Duyệt nhà hàng. Body: status (approved/rejected), reason
+PATCH
+/manager/vendors/:id/lock
+JWT+Manager
+200
+Khóa/mở khóa vendor vi phạm
+GET
+/manager/products
+JWT+Manager
+200
+Tìm kiếm sản phẩm của vendor. Query: restaurant_id, search
+PATCH
+/manager/products/:id/hide
+JWT+Manager
+200
+Ẩn sản phẩm vi phạm
+GET
+/admin/users
+JWT+Admin
+200
+Danh sách user hệ thống. Query: role, search, status, page
+PATCH
+/admin/users/:id/status
+JWT+Admin
+200
+Khóa/mở khóa user
+GET
+/admin/roles
+JWT+Admin
+200
+Danh sách role và permissions
+POST
+/admin/roles
+JWT+Admin
+201
+Tạo role mới
+PUT
+/admin/roles/:id
+JWT+Admin
+200
+Cập nhật role: tên, permissions[]
+POST
+/admin/users/:id/role
+JWT+Admin
+200
+Gán role cho user
+7. KẾ HOẠCH PHÁT TRIỂN (1 THÁNG)
+7.1 Phân chia công việc nhóm 3 người
+Thành viên
+Vai trò
+Phụ trách
+Member 1
+Backend Lead
+DB Schema, Auth/RBAC, Order Flow, Wallet, Analytics API, API Documentation
+Member 2
+Frontend Lead
+UI/UX tất cả role (Guest, User, Vendor), React Router, State Management, API Integration
+Member 3
+Fullstack Support
+Manager/Admin UI + API, Upload, Email OTP, Report/Export, Testing, Deployment
+7.2 Timeline Sprint
+Sprint
+Thời gian
+Nội dung
+Sprint 1
+Tuần 1
+Setup project (BE + FE), DB schema, Auth (Register/Login/OTP/JWT), Guest pages (Home, Restaurant list, Search)
+Sprint 2
+Tuần 2
+User flow (Cart, Order, Payment, Order History), Vendor (Restaurant setup, Menu CRUD, Order management), Reviews
+Sprint 3
+Tuần 3
+Vendor (Coupon, Wallet, Analytics/Dashboard), Manager (Approve vendor, Manage products, Withdrawals), Email/Upload
+Sprint 4
+Tuần 4
+Admin (RBAC, User/Vendor management, Global analytics), Bug fix, UI polish, Testing, Deployment, Demo prep
+8. CHUẨN HÓA ERROR RESPONSE
+HTTP Code
+Error Code
+Mô tả
+400
+VALIDATION_ERROR
+Dữ liệu đầu vào không hợp lệ. Kèm chi tiết từng field.
+401
+UNAUTHORIZED
+Chưa đăng nhập hoặc token hết hạn.
+403
+FORBIDDEN
+Không có quyền thực hiện hành động này.
+404
+NOT_FOUND
+Tài nguyên không tồn tại.
+409
+CONFLICT
+Trùng lặp dữ liệu (email đã tồn tại, shop đã đăng ký...).
+410
+OTP_EXPIRED
+OTP đã hết hạn hoặc không hợp lệ.
+422
+BUSINESS_ERROR
+Lỗi nghiệp vụ: giỏ hàng từ nhiều nhà hàng, đơn không thể hủy...
+429
+RATE_LIMIT
+Quá nhiều request. Thử lại sau X giây.
+500
+INTERNAL_ERROR
+Lỗi server nội bộ. Log chi tiết ở server, không expose ra client.
+9. RÀNG BUỘC NGHIỆP VỤ QUAN TRỌNG
+9.1 Đặt hàng
+Giỏ hàng chỉ chứa món từ 1 nhà hàng. Khi thêm món từ nhà hàng khác, hỏi user có muốn xóa giỏ cũ không.
+Nhà hàng phải đang mở (status: open) mới nhận đơn.
+Đơn hàng chỉ hủy được khi trạng thái còn 'pending' (vendor chưa xác nhận).
+User chỉ đánh giá được sau khi đơn hàng 'completed'. Mỗi đơn chỉ đánh giá 1 lần.
+9.2 Ví điện tử
+Khi đơn hoàn thành, tiền tạm giữ (pending_balance) chuyển sang balance của vendor sau 24h.
+Vendor chỉ rút tiền khi balance >= 50,000 VND.
+Rút tiền phải được Manager duyệt trước khi xử lý.
+9.3 Vendor
+Vendor mới phải được Manager duyệt trước khi nhà hàng hiển thị công khai.
+Vendor bị khóa không thể nhận đơn hàng mới và không xuất hiện trong tìm kiếm.
+10. LỊCH SỬ PHIÊN BẢN
+Phiên bản
+Ngày
+Tác giả
+Nội dung thay đổi
+1.0.0
+2025
+Nhóm Final Project
+Tạo tài liệu SRS ban đầu. Bao gồm đầy đủ 5 role, API design, DB schema, timeline.
+--- Hết tài liệu SRS ---

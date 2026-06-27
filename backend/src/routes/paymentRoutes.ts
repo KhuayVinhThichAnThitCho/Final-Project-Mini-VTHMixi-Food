@@ -35,11 +35,11 @@ router.post('/webhook', async (req: Request, res: Response, next: NextFunction):
         return;
       }
 
-      // Nếu đơn hàng đang ở trạng thái pending, cập nhật sang confirmed
-      if (order.status === 'pending') {
-        order.status = 'confirmed';
+      // Đánh dấu đã thanh toán, giữ nguyên trạng thái để vendor xác nhận
+      if (order.status === 'pending' || order.status === 'confirmed') {
+        order.isPaid = true;
         await order.save();
-        console.log(`✅ Đơn hàng ${order.id} (PayOS: ${orderCode}) đã thanh toán thành công và chuyển trạng thái sang confirmed!`);
+        console.log(`✅ Đơn hàng ${order.id} (PayOS: ${orderCode}) đã thanh toán thành công!`);
       } else {
         console.log(`ℹ️  Đơn hàng ${order.id} đã ở trạng thái: ${order.status}`);
       }
@@ -69,8 +69,8 @@ router.post('/mock-success', async (req: Request, res: Response, next: NextFunct
       return;
     }
 
-    if (order.status === 'pending') {
-      order.status = 'confirmed';
+    if (order.status === 'pending' || order.status === 'confirmed') {
+      order.isPaid = true;
       await order.save();
       console.log(`✅ [PayOS Mock] Đơn hàng ${order.id} đã được giả lập thanh toán thành công!`);
     }

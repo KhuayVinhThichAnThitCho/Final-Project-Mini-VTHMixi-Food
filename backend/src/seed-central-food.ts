@@ -53,6 +53,10 @@ async function seedCentralFood() {
         name: 'Bún Bò Huế Đặc Biệt',
         price: 50000,
         description: 'Sợi bún to, thịt bò nạm, chả cua Huế thơm nồng, nước dùng đậm đà, cay xè đặc trưng vị Huế.',
+        image: 'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=800&q=80',
+        images: [
+          'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=800&q=80'
+        ],
         stock: 50,
         soldCount: 142,
         category: 'pho',
@@ -65,6 +69,10 @@ async function seedCentralFood() {
         name: 'Mì Quảng Gà Ta',
         price: 45000,
         description: 'Sợi mì Quảng vàng dai ngon kết hợp thịt gà ta dai ngọt, nước lèo xâm xấp đậm đà ăn kèm bánh đa giòn rụm và rau sống ngon chuẩn vị miền Trung.',
+        image: 'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=800&q=80',
+        images: [
+          'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=800&q=80'
+        ],
         stock: 40,
         soldCount: 98,
         category: 'pho',
@@ -77,6 +85,10 @@ async function seedCentralFood() {
         name: 'Bánh Bèo Chén Miền Trung',
         price: 35000,
         description: 'Mâm bánh bèo chén nhân tôm chấy, mỡ hành beo béo ăn kèm nước mắm ớt tỏi Lý Sơn cay mặn đậm đà.',
+        image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
+        images: [
+          'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80'
+        ],
         stock: 30,
         soldCount: 180,
         category: 'snack',
@@ -89,6 +101,10 @@ async function seedCentralFood() {
         name: 'Bún Lòng Nghệ Xào Hẹ',
         price: 40000,
         description: 'Bún xào lòng heo tươi giòn quyện với bột nghệ vàng tươi, hẹ lá thơm nồng nàn cay ấm bụng đúng vị miền Trung mặn mà.',
+        image: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80',
+        images: [
+          'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80'
+        ],
         stock: 25,
         soldCount: 65,
         category: 'pho',

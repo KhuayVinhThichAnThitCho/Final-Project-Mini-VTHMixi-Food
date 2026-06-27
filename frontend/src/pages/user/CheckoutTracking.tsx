@@ -135,6 +135,36 @@ export const CheckoutTracking: React.FC = () => {
     setAlertConfig({ isOpen: true, title, message, type });
   };
 
+  // QR Countdown Timer
+  const [qrCountdown, setQrCountdown] = useState<number>(120);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (screen === 'payment-simulation' && simulationData?.type === 'VIETQR') {
+      setQrCountdown(120);
+      timer = setInterval(() => {
+        setQrCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            showCustomAlert('Thời gian thanh toán (2 phút) đã hết. Vui lòng đặt lại đơn hàng.', 'Hết hạn', 'warning');
+            setScreen('checkout');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [screen, simulationData]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   // Fetch active vouchers
   useEffect(() => {
     const fetchVouchers = async () => {
@@ -211,6 +241,7 @@ export const CheckoutTracking: React.FC = () => {
 
     if (status && orderId) {
       if (status === 'success') {
+        clearSelected();
         showCustomAlert('Thanh toán đơn hàng qua VietQR thành công!', 'Thành công', 'info');
         navigate(`/orders/history?orderId=${orderId}`);
       } else if (status === 'cancelled') {
@@ -460,7 +491,9 @@ export const CheckoutTracking: React.FC = () => {
     try {
       const res = await orderApi.createOrder(orderData);
       if (res && res.success) {
-        clearSelected(); // Clear active items from cart store
+        if (paymentMethod !== 'VIETQR') {
+          clearSelected(); // Clear active items from cart store
+        }
         if (refetchMe) {
           await refetchMe(); // Cập nhật số dư điểm của user
         }
@@ -1629,9 +1662,12 @@ export const CheckoutTracking: React.FC = () => {
                 </div>
 
                 {/* VietQR Image */}
+                <div className="text-center font-mono font-bold text-[#BF3A20] text-sm mb-1 mt-2">
+                  Mã QR sẽ hết hạn sau: {formatTime(qrCountdown)}
+                </div>
                 <div className="p-3 bg-white border-2 border-neutral-900 shadow-retro-sm">
                   <img 
-                    src={`https://img.vietqr.io/image/mb-999999999999-compact.png?amount=${simulationData.amount}&addInfo=Gfood%20${simulationData.code}&accountName=GRABFOOD%20MINI%20TEST`}
+                    src={`https://img.vietqr.io/image/bidv-5901160005-compact.png?amount=${simulationData.amount}&addInfo=Gfood%20${simulationData.code}&accountName=DUONG%20THE%20VINH`}
                     alt="Mã QR Thanh Toán"
                     className="w-64 h-64 object-contain"
                   />
@@ -1645,15 +1681,15 @@ export const CheckoutTracking: React.FC = () => {
                 <div className="w-full bg-[#FAF7F3] border-2 border-neutral-900 p-4 font-body text-xs space-y-2">
                   <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
                     <span className="text-neutral-500 font-mono uppercase text-[9px]">Ngân hàng:</span>
-                    <span className="font-bold text-neutral-800">MB Bank (Quân Đội)</span>
+                    <span className="font-bold text-neutral-800">BIDV (Đầu Tư & Phát Triển VN)</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
                     <span className="text-neutral-500 font-mono uppercase text-[9px]">Số tài khoản:</span>
-                    <span className="font-bold text-neutral-800">999999999999</span>
+                    <span className="font-bold text-neutral-800">5901160005</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
                     <span className="text-neutral-500 font-mono uppercase text-[9px]">Chủ tài khoản:</span>
-                    <span className="font-bold text-neutral-800">GRABFOOD MINI TEST</span>
+                    <span className="font-bold text-neutral-800">DƯƠNG THẾ VINH</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed border-neutral-300 pb-1.5">
                     <span className="text-neutral-500 font-mono uppercase text-[9px]">Số tiền:</span>
@@ -1678,6 +1714,7 @@ export const CheckoutTracking: React.FC = () => {
                         orderId: simulationData.orderId,
                       });
                       if (res && (res as any).success) {
+                        clearSelected();
                         showCustomAlert('Thanh toán thành công (Giả lập)!', 'Thành công', 'info');
                         setSuccessOrderData({
                           orderId: simulationData.orderId || '',

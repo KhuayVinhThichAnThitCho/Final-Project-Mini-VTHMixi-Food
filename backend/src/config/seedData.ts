@@ -12,6 +12,8 @@ const SEED_RESTAURANTS = [
     rating: 4.8,
     deliveryFee: 15000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-2',
@@ -20,6 +22,8 @@ const SEED_RESTAURANTS = [
     rating: 4.6,
     deliveryFee: 18000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-3',
@@ -28,6 +32,8 @@ const SEED_RESTAURANTS = [
     rating: 4.5,
     deliveryFee: 12000,
     isOpen: false,
+    logo: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-4',
@@ -36,6 +42,8 @@ const SEED_RESTAURANTS = [
     rating: 4.9,
     deliveryFee: 10000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-5',
@@ -44,6 +52,8 @@ const SEED_RESTAURANTS = [
     rating: 4.7,
     deliveryFee: 22000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-6',
@@ -52,6 +62,8 @@ const SEED_RESTAURANTS = [
     rating: 4.4,
     deliveryFee: 15000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-7',
@@ -60,6 +72,8 @@ const SEED_RESTAURANTS = [
     rating: 4.7,
     deliveryFee: 20000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-8',
@@ -68,6 +82,8 @@ const SEED_RESTAURANTS = [
     rating: 4.8,
     deliveryFee: 12000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-9',
@@ -76,6 +92,8 @@ const SEED_RESTAURANTS = [
     rating: 4.5,
     deliveryFee: 8000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-10',
@@ -84,6 +102,8 @@ const SEED_RESTAURANTS = [
     rating: 4.6,
     deliveryFee: 12000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-11',
@@ -92,6 +112,8 @@ const SEED_RESTAURANTS = [
     rating: 4.7,
     deliveryFee: 10000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1558857563-b3719d367e5e?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1558857563-b3719d367e5e?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'rest-central',
@@ -100,6 +122,8 @@ const SEED_RESTAURANTS = [
     rating: 4.8,
     deliveryFee: 15000,
     isOpen: true,
+    logo: 'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=500&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=1200&q=80',
   },
 ];
 
@@ -113,9 +137,7 @@ const SEED_MENU_ITEMS = [
     description: 'Sợi hủ tiếu dai ngon kết hợp cùng mì tươi, sườn non ninh mềm ngọt nước dùng xương ống ninh 8 tiếng chuẩn vị Sài Gòn xưa.',
     imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 25,
@@ -129,9 +151,9 @@ const SEED_MENU_ITEMS = [
     name: 'Hủ Tiếu Mì Hoành Thánh',
     price: 40000,
     description: 'Hoành thánh nhân thịt heo và tôm xay nhuyễn gói trong lớp vỏ bột vàng dai, nước dùng hẹ xanh thanh mát ngọt thanh.',
-    imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: false,
     stock: 0,
@@ -145,10 +167,9 @@ const SEED_MENU_ITEMS = [
     name: 'Xí Quách Tô Đặc Biệt',
     price: 30000,
     description: 'Xương ống tủy béo ngậy ninh ngọt lịm chấm cùng tương đen pha sa tế cay nồng ấm bụng.',
-    imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1607532941433-304659e8198a?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1607532941433-304659e8198a?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 5,
@@ -162,10 +183,9 @@ const SEED_MENU_ITEMS = [
     name: 'Cơm Tấm Sườn Bì Chả Đặc Biệt',
     price: 65000,
     description: 'Sườn cốt lết dày dặn ướp mật ong nướng than hồng thơm phức, ăn kèm chả trứng chưng truyền thống, bì heo dai giòn trộn thính thơm.',
-    imageUrl: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 40,
@@ -179,9 +199,9 @@ const SEED_MENU_ITEMS = [
     name: 'Cơm Tấm Ba Chỉ Nướng Lu',
     price: 55000,
     description: 'Thịt ba chỉ thái bản dày nướng trong lu đất giữ nguyên độ ngọt thơm của thịt, lớp da giòn bóng bẩy.',
-    imageUrl: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 15,
@@ -195,10 +215,9 @@ const SEED_MENU_ITEMS = [
     name: 'Bột Chiên Trứng Đôi Giòn Rụm',
     price: 35000,
     description: 'Từng viên bột chiên bên ngoài giòn tan, bên trong mềm dẻo quyện cùng 2 quả trứng gà béo ngậy, hành lá thơm lừng.',
-    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1626804475315-9644b37a2fe4?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1626804475315-9644b37a2fe4?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 30,
@@ -212,10 +231,9 @@ const SEED_MENU_ITEMS = [
     name: 'Cà Phê Vợt Sữa Đá Sài Gòn',
     price: 22000,
     description: 'Ly cà phê vợt nóng hổi được pha chế qua chiếc vợt vải truyền thống tại khu Chợ Lớn hơn 70 năm tuổi, pha sữa đặc béo ngọt.',
-    imageUrl: 'https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 100,
@@ -229,9 +247,9 @@ const SEED_MENU_ITEMS = [
     name: 'Cà Phê Đen Vợt Đậm Đà',
     price: 18000,
     description: 'Hương vị cà phê đen truyền thống ngậy béo chưng cất bằng lò than, hậu vị đắng thanh dễ chịu chuẩn người Hoa Sài Gòn.',
-    imageUrl: 'https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 120,
@@ -245,11 +263,9 @@ const SEED_MENU_ITEMS = [
     name: 'Bánh Mì Huỳnh Hoa Đặc Biệt (Ổ 0.5kg)',
     price: 62000,
     description: 'Ổ bánh mì đắt sắt ra miếng với 5 lớp nhân chả lụa, chả bò, giò thủ, chà bông heo hảo hạng cùng lớp bơ thơm béo ngậy.',
-    imageUrl: 'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=79',
     images: [
-      'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=79'
     ],
     isAvailable: true,
     stock: 50,
@@ -263,10 +279,9 @@ const SEED_MENU_ITEMS = [
     name: 'Mâm Chè 16 Món Khánh Vy',
     price: 150000,
     description: 'Mâm chè khổng lồ mang thương hiệu chè chung cư Sư Vạn Hạnh bao gồm 16 loại chè khác nhau.',
-    imageUrl: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 15,
@@ -280,9 +295,9 @@ const SEED_MENU_ITEMS = [
     name: 'Bánh Hẹ Chiên Giòn Độc Đáo',
     price: 25000,
     description: 'Lớp vỏ bánh dai dẻo làm từ bột nếp, nhân hẹ tươi thơm ngọt, chiên giòn rụm xém cạnh.',
-    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 20,
@@ -296,10 +311,9 @@ const SEED_MENU_ITEMS = [
     name: 'Bánh Mì Pa-tê Xá Xíu Bơ Vàng',
     price: 50000,
     description: 'Phiên bản gọn gàng hơn của bánh mì Huỳnh Hoa với lát thịt xá xíu thơm phức, pa-tê gan siêu béo đặc trưng.',
-    imageUrl: 'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=78',
     images: [
-      'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=78'
     ],
     isAvailable: true,
     stock: 35,
@@ -313,10 +327,9 @@ const SEED_MENU_ITEMS = [
     name: 'Chè Thái Sầu Riêng Đệ Nhất',
     price: 35000,
     description: 'Hương vị chè Thái mát lạnh với thạch dừa giòn giòn, mít chín ngọt lịm, nhãn tươi và sầu riêng cơm vàng béo ngậy.',
-    imageUrl: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 45,
@@ -332,8 +345,7 @@ const SEED_MENU_ITEMS = [
     description: 'Sự kết hợp hoàn hảo từ nước dùng phở bò Hòa trứ danh ninh 12 tiếng cùng thịt gầu bò giòn sần sật, thịt tái mềm mọng.',
     imageUrl: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 60,
@@ -347,9 +359,9 @@ const SEED_MENU_ITEMS = [
     name: 'Phở Gà Xé Lá Chanh Thơm Nồng',
     price: 65000,
     description: 'Thịt gà ta thả vườn dai ngọt xé phay giòn giòn, da gà vàng óng bóng bẩy quyện cùng lá chanh cắt sợi mỏng.',
-    imageUrl: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1603105037880-880cd4edfb0d?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1603105037880-880cd4edfb0d?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 25,
@@ -365,8 +377,7 @@ const SEED_MENU_ITEMS = [
     description: 'Ổ bánh mì nóng giòn rụm kẹp thịt nướng xiên que thơm nức mũi, sốt bơ tỏi nhà làm béo ngậy.',
     imageUrl: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 80,
@@ -382,8 +393,7 @@ const SEED_MENU_ITEMS = [
     description: 'Dòng sữa tươi nguyên chất thanh trùng hòa quyện cùng trân châu thủ công dẻo dai nấu trong sốt mật mía đường đen.',
     imageUrl: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 150,
@@ -397,9 +407,9 @@ const SEED_MENU_ITEMS = [
     name: 'Bún Chả Nem Cua Bể Đặc Biệt',
     price: 55000,
     description: 'Bún tươi mềm mại ăn kèm chả nướng than hoa thơm lừng và nem cua bể giòn tan ngon miệng ngọt ngào.',
-    imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?auto=format&fit=crop&w=800&q=80',
     images: [
-      'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1585238342024-78d387f4a707?auto=format&fit=crop&w=800&q=80'
     ],
     isAvailable: true,
     stock: 30,
@@ -413,10 +423,9 @@ const SEED_MENU_ITEMS = [
     name: 'Trà Sữa Trân Châu Hoàng Gia Size L',
     price: 52000,
     description: 'Trà sữa ô long béo ngậy chuẩn Gong Cha với lớp bọt béo thơm ngon cùng trân châu đen ngâm mật ong.',
-    imageUrl: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=800&q=79',
     images: [
-      'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&w=800&q=79'
     ],
     isAvailable: true,
     stock: 120,
@@ -430,8 +439,10 @@ const SEED_MENU_ITEMS = [
     name: 'Bún Bò Huế Đặc Biệt',
     price: 50000,
     description: 'Sợi bún to, thịt bò nạm, chả cua Huế thơm nồng, nước dùng đậm đà, cay xè đặc trưng vị Huế.',
-    imageUrl: '',
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1625398407796-82650a8c135f?auto=format&fit=crop&w=800&q=80'
+    ],
     isAvailable: true,
     stock: 50,
     soldCount: 142,
@@ -444,8 +455,10 @@ const SEED_MENU_ITEMS = [
     name: 'Mì Quảng Gà Ta',
     price: 45000,
     description: 'Sợi mì Quảng vàng dai ngon kết hợp thịt gà ta dai ngọt, nước lèo xâm xấp đậm đà ăn kèm bánh đa giòn rụm và rau sống ngon chuẩn vị miền Trung.',
-    imageUrl: '',
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=800&q=80'
+    ],
     isAvailable: true,
     stock: 40,
     soldCount: 98,
@@ -458,8 +471,10 @@ const SEED_MENU_ITEMS = [
     name: 'Bánh Bèo Chén Miền Trung',
     price: 35000,
     description: 'Mâm bánh bèo chén nhân tôm chấy, mỡ hành beo béo ăn kèm nước mắm ớt tỏi Lý Sơn cay mặn đậm đà.',
-    imageUrl: '',
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80'
+    ],
     isAvailable: true,
     stock: 30,
     soldCount: 180,
@@ -472,8 +487,10 @@ const SEED_MENU_ITEMS = [
     name: 'Bún Lòng Nghệ Xào Hẹ',
     price: 40000,
     description: 'Bún xào lòng heo tươi giòn quyện với bột nghệ vàng tươi, hẹ lá thơm nồng nàn cay ấm bụng đúng vị miền Trung mặn mà.',
-    imageUrl: '',
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80'
+    ],
     isAvailable: true,
     stock: 25,
     soldCount: 65,
@@ -588,7 +605,20 @@ export const seedDatabase = async () => {
     }
 
     if (restaurantCount > 0) {
-      console.log('🌱 Database already seeded. Skipping restaurant/menu seeder.');
+      console.log('🌱 Database already seeded. Updating menu item and restaurant images to fix duplicates/errors...');
+      for (const item of SEED_MENU_ITEMS) {
+        await MenuItem.update(
+          { image: item.imageUrl, images: item.images },
+          { where: { id: item.id } }
+        );
+      }
+      for (const r of SEED_RESTAURANTS) {
+        await Restaurant.update(
+          { logo: r.logo, coverImage: r.coverImage },
+          { where: { id: r.id } }
+        );
+      }
+      console.log('✅ Updated menu item and restaurant images.');
       return;
     }
 
@@ -616,6 +646,8 @@ export const seedDatabase = async () => {
         ownerId: vendor!.id,
         name: r.name,
         address: r.address,
+        logo: r.logo,
+        coverImage: r.coverImage,
         deliveryFee: r.deliveryFee,
         minOrderValue: 20000,
         status: r.isOpen ? 'open' : 'closed',
