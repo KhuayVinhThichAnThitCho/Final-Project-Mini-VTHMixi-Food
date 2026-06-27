@@ -57,6 +57,11 @@ export class Order extends Model {
   paymentMethod!: PaymentMethod;
 
   @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isPaid!: boolean;
+
+  @AllowNull(false)
   @Default('pending')
   @Column(DataType.ENUM('pending', 'confirmed', 'preparing', 'ready', 'delivering', 'completed', 'cancelled'))
   status!: OrderStatus;

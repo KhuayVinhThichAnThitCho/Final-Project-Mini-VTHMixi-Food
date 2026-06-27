@@ -132,6 +132,7 @@ export const orderService = {
       deliveryAddress,
       paymentMethod,
       payosOrderCode,
+      isPaid: (paymentMethod === 'WALLET' || paymentMethod === 'POINTS'),
     });
 
     // 4b. Sinh link thanh toán PayOS nếu chọn phương thức VIETQR

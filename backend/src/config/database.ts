@@ -97,6 +97,13 @@ export const initializeDatabase = async (): Promise<boolean> => {
       if (pfColumns.length === 0) {
         await sequelize.query("ALTER TABLE orders ADD COLUMN platform_fee DECIMAL(12, 2) NOT NULL DEFAULT 0.00");
       }
+      
+      // Thêm cột is_paid nếu chưa tồn tại
+      const [isPaidCols]: any = await sequelize.query("SHOW COLUMNS FROM orders LIKE 'is_paid'");
+      if (isPaidCols.length === 0) {
+        await sequelize.query("ALTER TABLE orders ADD COLUMN is_paid BOOLEAN NOT NULL DEFAULT FALSE");
+      }
+      
       console.log('✅ Đã đồng bộ cấu trúc orders thành công.');
     } catch (e) {
       console.warn('Lưu ý: Không thể cập nhật cấu trúc orders thủ công, có thể đã được Sequelize đồng bộ:', e);

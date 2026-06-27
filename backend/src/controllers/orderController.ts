@@ -53,6 +53,20 @@ export const orderController = {
       const { id } = req.params;
       const { status } = req.body;
 
+      // Bảo mật cho người dùng bình thường (chỉ được Hủy đơn hàng của chính mình khi còn pending)
+      if (req.user.role === 'user') {
+        if (status !== 'cancelled') {
+          throw new AppError(403, 'FORBIDDEN', 'Khách hàng chỉ có quyền hủy đơn hàng.');
+        }
+        const order = await orderRepository.findById(id);
+        if (!order || order.userId !== req.user.id) {
+          throw new AppError(403, 'FORBIDDEN', 'Bạn không có quyền thao tác trên đơn hàng này.');
+        }
+        if (order.status !== 'pending') {
+          throw new AppError(400, 'BAD_REQUEST', 'Chỉ có thể hủy đơn hàng khi trạng thái đang chờ xác nhận (Pending).');
+        }
+      }
+
       const order = await orderService.updateOrderStatus(id, req.user.id, status);
 
       res.status(200).json({
