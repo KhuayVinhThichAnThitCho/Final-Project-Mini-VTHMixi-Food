@@ -719,7 +719,7 @@ export const adminService = {
       throw new AppError(400, 'BUSINESS_ERROR', 'Không thể thay đổi role của chính mình.');
     }
 
-    const validRoles = ['user', 'vendor', 'shipper', 'manager', 'admin'];
+    const validRoles = ['user', 'vendor', 'shipper', 'admin'];
     if (!validRoles.includes(role)) {
       throw new AppError(400, 'VALIDATION_ERROR', `Role không hợp lệ. Chỉ chấp nhận: ${validRoles.join(', ')}`);
     }
@@ -896,7 +896,7 @@ export const adminService = {
       }
     }
 
-    // Ghi log
+    // Ghi log & Tự động tạo System Notice
     if (adminId) {
       const successKeys = results.filter(r => r.success).map(r => r.key);
       if (successKeys.length > 0) {
@@ -908,6 +908,30 @@ export const adminService = {
           description: `Cập nhật hàng loạt ${successKeys.length} cấu hình: ${successKeys.join(', ')}`,
           details: { updatedKeys: successKeys, totalRequested: updates.length },
         });
+
+        // Chỉ tạo thông báo tự động nếu không phải là cập nhật thủ công system_notice
+        if (!successKeys.includes('system_notice')) {
+          const noticeParts: string[] = [];
+          for (const { key, value } of updates) {
+            if (key === 'platform_fee') {
+              noticeParts.push(`Phí dịch vụ cập nhật thành ${Number(value).toLocaleString('vi-VN')} VNĐ`);
+            } else if (key === 'min_order_amount') {
+              noticeParts.push(`Đơn hàng tối thiểu cập nhật thành ${Number(value).toLocaleString('vi-VN')} VNĐ`);
+            } else if (key === 'free_delivery_threshold') {
+              noticeParts.push(`Đơn hàng từ ${Number(value).toLocaleString('vi-VN')} VNĐ sẽ được miễn phí giao hàng`);
+            } else if (key === 'payment_methods') {
+              const methods = typeof value === 'string' ? JSON.parse(value) : value;
+              const activeMethods = Object.keys(methods).filter(k => methods[k]).map(m => m === 'COD' ? 'Tiền mặt' : m === 'WALLET' ? 'Ví điện tử' : 'Điểm tích lũy').join(', ');
+              noticeParts.push(`Phương thức thanh toán khả dụng: ${activeMethods}`);
+            } else if (key === 'homepage_banner') {
+              noticeParts.push(`Cập nhật Banner trang chủ mới`);
+            }
+          }
+          if (noticeParts.length > 0) {
+            const noticeMsg = `[Cập nhật hệ thống] ${noticeParts.join(' | ')}.`;
+            await adminService.createSystemNotice(noticeMsg, 'info');
+          }
+        }
       }
     }
 
@@ -975,6 +999,57 @@ export const adminService = {
         totalPages: Math.ceil(count / limit),
       },
     };
+  },
+
+  /**
+   * Tạo thông báo hệ thống tự động
+   */
+  createSystemNotice: async (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    try {
+      const config = await SystemConfig.findByPk('system_notice');
+      let notices: any[] = [];
+      if (config) {
+        const parsed = JSON.parse(config.value);
+        if (Array.isArray(parsed)) {
+          notices = parsed;
+        } else if (parsed && parsed.message) {
+          notices = [{ id: 'notice_legacy', ...parsed, createdAt: new Date().toISOString() }];
+        }
+      }
+
+      // Deactivate all existing notices
+      notices = notices.map(n => ({ ...n, isActive: false }));
+
+      // Create and prepend the new active notice
+      const newNotice = {
+        id: 'notice_auto_' + Date.now(),
+        message,
+        type,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+
+      notices.unshift(newNotice);
+
+      // Keep max 20 notices
+      if (notices.length > 20) {
+        notices = notices.slice(0, 20);
+      }
+
+      if (config) {
+        await config.update({ value: JSON.stringify(notices) });
+      } else {
+        await SystemConfig.create({
+          key: 'system_notice',
+          value: JSON.stringify(notices),
+          group: 'notice',
+          description: 'Thông báo hệ thống hiển thị cho toàn bộ người dùng'
+        });
+      }
+      console.log(`[Auto Notice] Created system notice: "${message}"`);
+    } catch (error) {
+      console.error('⚠️ Lỗi tạo thông báo hệ thống tự động:', error);
+    }
   },
 };
 

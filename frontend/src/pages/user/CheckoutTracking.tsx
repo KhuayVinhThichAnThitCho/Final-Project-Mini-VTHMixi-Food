@@ -139,7 +139,7 @@ export const CheckoutTracking: React.FC = () => {
   const [qrCountdown, setQrCountdown] = useState<number>(120);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: any;
     if (screen === 'payment-simulation' && simulationData?.type === 'VIETQR') {
       setQrCountdown(120);
       timer = setInterval(() => {

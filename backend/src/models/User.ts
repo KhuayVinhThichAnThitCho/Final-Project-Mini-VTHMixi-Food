@@ -16,7 +16,7 @@ import { Wallet } from './Wallet';
 import { Order } from './Order';
 import { Conversation } from './Conversation';
 
-export type UserRole = 'guest' | 'user' | 'vendor' | 'shipper' | 'manager' | 'admin';
+export type UserRole = 'guest' | 'user' | 'vendor' | 'shipper' | 'admin';
 export type UserStatus = 'pending' | 'active' | 'banned';
 
 @Table({
@@ -68,13 +68,8 @@ export class User extends Model {
 
   @AllowNull(false)
   @Default('user')
-  @Column(DataType.ENUM('guest', 'user', 'vendor', 'shipper', 'manager', 'admin'))
+  @Column(DataType.ENUM('guest', 'user', 'vendor', 'shipper', 'admin'))
   role!: UserRole;
-
-  // Khu vực mà Manager quản lý (Dành riêng cho role = 'manager')
-  @AllowNull(true)
-  @Column(DataType.STRING(100))
-  managedRegion?: string;
 
   // Khu vực hoạt động chung của User (Dùng để Manager query shipper theo khu vực)
   @AllowNull(true)

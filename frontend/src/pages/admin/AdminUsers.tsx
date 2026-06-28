@@ -7,7 +7,6 @@ import adminApi from '../../services/adminApi';
 const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
   const map: Record<string, string> = {
     admin: 'bg-primary-100 text-primary-800 border-primary-300',
-    manager: 'bg-secondary-100 text-secondary-800 border-secondary-300',
     vendor: 'bg-blue-100 text-blue-800 border-blue-300',
     shipper: 'bg-orange-100 text-orange-800 border-orange-300',
     user: 'bg-neutral-100 text-neutral-700 border-neutral-300',
@@ -64,7 +63,7 @@ const RoleModal: React.FC<{
               Chọn Role
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {['user', 'vendor', 'shipper', 'manager', 'admin'].map(r => (
+              {['user', 'vendor', 'shipper', 'admin'].map(r => (
                 <button
                   key={r}
                   onClick={() => setRole(r)}
@@ -158,7 +157,7 @@ const AdminUsers: React.FC = () => {
           className="px-4 py-2.5 bg-neutral-50 border-2 border-neutral-200 font-mono text-sm text-neutral-700 focus:outline-none focus:border-primary-500 transition-colors"
         >
           <option value="">Tất cả Role</option>
-          {['user', 'vendor', 'manager', 'admin'].map(r => (
+          {['user', 'vendor', 'shipper', 'admin'].map(r => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>

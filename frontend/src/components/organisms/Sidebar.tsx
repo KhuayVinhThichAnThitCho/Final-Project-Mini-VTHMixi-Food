@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, ShoppingBag, Settings, LogOut, Wallet, Store, Tag, MessageSquare, MessageCircle, Users, CheckSquare, Sparkles } from 'lucide-react';
+import { Home, ShoppingBag, Settings, LogOut, Wallet, Store, Tag, MessageSquare, MessageCircle, Sparkles } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import ConfirmModal from '../molecules/ConfirmModal';
 
@@ -8,7 +8,7 @@ interface SidebarProps {
   activeMenu?: string;
   onMenuClick?: (menu: string) => void;
   isVendor?: boolean;
-  role?: 'manager' | 'admin' | 'vendor' | 'user';
+  role?: 'admin' | 'vendor' | 'user';
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeMenu = 'overview', onMenuClick, isVendor = false, role }) => {
@@ -30,21 +30,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu = 'overview', onMen
     }
   };
 
-  const isManager = role === 'manager';
-  const isDark = isManager || role === 'admin';
+  const isDark = role === 'admin';
 
   let menuItems: any[] = [];
-  if (isManager) {
-    menuItems = [
-      { id: 'overview', label: 'Tổng Quan', icon: Home },
-      { id: 'approvals', label: 'Duyệt Nhà Hàng', icon: CheckSquare },
-      { id: 'vendors', label: 'Quản Lý Vendor', icon: Store },
-      { id: 'products', label: 'Quản Lý Sản Phẩm', icon: ShoppingBag },
-      { id: 'reports', label: 'Báo Cáo Vi Phạm', icon: MessageSquare },
-      { id: 'withdrawals', label: 'Yêu Cầu Rút Tiền', icon: Wallet },
-      { id: 'accounts', label: 'Tài Khoản', icon: Users },
-    ];
-  } else if (isVendor) {
+  if (isVendor) {
     menuItems = [
       { id: 'overview', label: 'Tổng Quan', icon: Home },
       { id: 'orders', label: 'Đơn Hàng', icon: ShoppingBag },
@@ -93,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu = 'overview', onMen
               isDark ? 'text-[#FEFCF9]' : 
               isVendor ? 'text-gray-800' : 'text-saigon-neutral-text'
             }`}>
-              {isManager ? 'Quản Lý' : isVendor ? 'Quán Ăn' : 'Khách Hàng'}
+              {isVendor ? 'Quán Ăn' : 'Khách Hàng'}
             </h2>
             <p className={`text-[10px] font-mono font-bold tracking-widest uppercase ${
               isDark ? 'text-[#E9C46A]' : 

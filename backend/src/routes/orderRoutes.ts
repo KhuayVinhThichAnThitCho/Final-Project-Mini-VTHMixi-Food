@@ -17,7 +17,7 @@ router.get('/mine', orderController.getMyOrders);
 // Route lấy đơn hàng của quán (Dành cho Vendor): GET /api/v1/orders/restaurant
 router.get('/restaurant', authorize(['vendor', 'admin']), orderController.getRestaurantOrders);
 
-// Route cập nhật trạng thái đơn hàng (VENDOR, MANAGER, ADMIN cập nhật mọi trạng thái, USER chỉ được Hủy): PATCH /api/v1/orders/:id/status
-router.patch('/:id/status', authorize(['user', 'vendor', 'manager', 'admin']), orderController.updateStatus);
+// Route cập nhật trạng thái đơn hàng (VENDOR, ADMIN cập nhật mọi trạng thái, USER chỉ được Hủy): PATCH /api/v1/orders/:id/status
+router.patch('/:id/status', authorize(['user', 'vendor', 'admin']), orderController.updateStatus);
 
 export default router;

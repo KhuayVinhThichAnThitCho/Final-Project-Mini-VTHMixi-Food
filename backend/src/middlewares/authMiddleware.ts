@@ -39,12 +39,10 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
           return next(new AppError(401, 'UNAUTHORIZED', 'Tài khoản đã bị khóa.'));
         }
 
-        // Đính kèm thông tin user từ DB vào request
         req.user = { 
           id: user.id, 
           email: user.email, 
-          role: user.role,
-          managedRegion: user.managedRegion
+          role: user.role
         };
         next();
       } catch (dbErr) {

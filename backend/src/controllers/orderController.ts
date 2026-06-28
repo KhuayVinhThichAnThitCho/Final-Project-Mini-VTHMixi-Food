@@ -6,13 +6,11 @@ import { Restaurant } from '../models/Restaurant';
 import { Order } from '../models/Order';
 import { User } from '../models/User';
 
-// Interface mở rộng định dạng Request từ Express để lưu trữ thông tin user sau khi giải mã JWT
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     email: string;
     role: string;
-    managedRegion?: string;
   };
 }
 
@@ -63,7 +61,7 @@ export const orderController = {
           throw new AppError(403, 'FORBIDDEN', 'Bạn không có quyền thao tác trên đơn hàng này.');
         }
         if (order.status !== 'pending') {
-          throw new AppError(400, 'BAD_REQUEST', 'Chỉ có thể hủy đơn hàng khi trạng thái đang chờ xác nhận (Pending).');
+          throw new AppError(400, 'BUSINESS_ERROR', 'Chỉ có thể hủy đơn hàng khi trạng thái đang chờ xác nhận (Pending).');
         }
       }
 
