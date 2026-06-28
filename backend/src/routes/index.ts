@@ -13,7 +13,6 @@ import chatRoutes from './chatRoutes';
 import walletRoutes from './walletRoutes';
 import adminRoutes from './adminRoutes';
 import shipperRoutes from './shipperRoutes';
-import managerRoutes from './managerRoutes';
 import { SystemConfig } from '../models/SystemConfig';
 import paymentRoutes from './paymentRoutes';
 
@@ -110,7 +109,6 @@ router.use('/chats', chatRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/admin', adminRoutes);
 router.use('/shipper', shipperRoutes);
-router.use('/manager', managerRoutes);
 router.use('/ai', aiRoutes);
 router.use('/payments', paymentRoutes);
 

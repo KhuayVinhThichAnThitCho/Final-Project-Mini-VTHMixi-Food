@@ -5,6 +5,7 @@ import { UserVoucher } from '../models/UserVoucher';
 import { Op } from 'sequelize';
 import { AuthenticatedRequest } from './orderController';
 import { AppError } from '../middlewares/errorHandler';
+import { adminService } from '../services/adminService';
 
 export const voucherController = {
   /**
@@ -109,6 +110,22 @@ export const voucherController = {
         restaurantId: finalRestaurantId,
         createdBy: req.user.id,
       });
+
+      // Tự động tạo System Notice nếu admin tạo mã giảm giá hệ thống (không thuộc quán nào)
+      if (req.user.role === 'admin' && !finalRestaurantId) {
+        let msg = `Mã giảm giá mới: ${voucher.code}! `;
+        if (voucher.discountType === 'percentage') {
+          msg += `Giảm ${voucher.discountValue}%`;
+          if (voucher.maxDiscountAmount) {
+            msg += ` (tối đa ${Number(voucher.maxDiscountAmount).toLocaleString('vi-VN')} VNĐ)`;
+          }
+        } else {
+          msg += `Giảm ngay ${Number(voucher.discountValue).toLocaleString('vi-VN')} VNĐ`;
+        }
+        msg += ` cho đơn từ ${Number(voucher.minOrderAmount).toLocaleString('vi-VN')} VNĐ. Hạn dùng đến ${new Date(voucher.endDate).toLocaleDateString('vi-VN')}. Thu thập ngay!`;
+        
+        await adminService.createSystemNotice(msg, 'success');
+      }
 
       res.status(201).json({
         success: true,

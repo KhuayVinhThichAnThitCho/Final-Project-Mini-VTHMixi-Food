@@ -120,13 +120,13 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
             <span>{cartCount > 0 ? `${cartCount} món` : 'Giỏ hàng'}</span>
           </button>
 
-          {/* Manager / Admin Button */}
-          {isAuthenticated && (user?.role === 'manager' || user?.role === 'admin') && (
+          {/* Admin Button */}
+          {isAuthenticated && user?.role === 'admin' && (
             <button
-              onClick={() => navigate(user.role === 'admin' ? '/admin/dashboard' : '/manager/dashboard')}
+              onClick={() => navigate('/admin/dashboard')}
               className="btn-retro text-xs py-1.5 px-4 bg-secondary-100 hover:bg-secondary-200 transition-colors flex items-center gap-1.5 cursor-pointer font-bold border-2 border-neutral-900 shadow-retro-sm"
             >
-              {user.role === 'admin' ? 'Trang Admin' : 'Trang Quản Lý'}
+              Trang Admin
             </button>
           )}
 

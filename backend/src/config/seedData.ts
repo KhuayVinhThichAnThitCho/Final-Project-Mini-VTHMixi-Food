@@ -519,21 +519,6 @@ export const seedDatabase = async () => {
       console.log('✅ Tạo tài khoản Admin thành công! Email: admin@grabfood.com | Pass: Admin@123456');
     }
 
-    // Tạo Manager nếu chưa có
-    const managerExists = await User.findOne({ where: { role: 'manager' } });
-    if (!managerExists) {
-      await User.create({
-        id: '00000000-0000-0000-0000-000000000002',
-        name: 'Platform Manager',
-        email: 'manager@grabfood.com',
-        password: 'Manager@123456',
-        role: 'manager',
-        status: 'active',
-        phone: '0900000002',
-      });
-      console.log('✅ Tạo tài khoản Manager thành công! Email: manager@grabfood.com | Pass: Manager@123456');
-    }
-
     // Tạo User thường mẫu nếu chưa có
     const userExists = await User.findOne({ where: { email: 'user@grabfood.com' } });
     if (!userExists) {
