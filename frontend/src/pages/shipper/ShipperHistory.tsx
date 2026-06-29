@@ -8,6 +8,16 @@ const statusMap: Record<string, { label: string; cls: string }> = {
   cancelled: { label: 'Đã Hủy', cls: 'bg-red-50 text-red-600 border-red-200' },
 };
 
+const getImageUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+  const backendBase = apiBaseUrl.replace('/api/v1', '');
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 const ShipperHistory: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,10 +157,10 @@ const ShipperHistory: React.FC = () => {
                             {order.pickupPhotoUrl ? (
                               <div
                                 className="relative bg-gray-900 rounded-xl overflow-hidden cursor-zoom-in group border border-gray-200"
-                                onClick={() => setLightboxSrc(order.pickupPhotoUrl)}
+                                onClick={() => setLightboxSrc(getImageUrl(order.pickupPhotoUrl))}
                               >
                                 <img
-                                  src={order.pickupPhotoUrl}
+                                  src={getImageUrl(order.pickupPhotoUrl)}
                                   alt="Ảnh lấy hàng"
                                   className="w-full object-contain max-h-56 block"
                                   style={{ background: '#111827' }}
@@ -178,10 +188,10 @@ const ShipperHistory: React.FC = () => {
                             {order.deliveryPhotoUrl ? (
                               <div
                                 className="relative bg-gray-900 rounded-xl overflow-hidden cursor-zoom-in group border border-gray-200"
-                                onClick={() => setLightboxSrc(order.deliveryPhotoUrl)}
+                                onClick={() => setLightboxSrc(getImageUrl(order.deliveryPhotoUrl))}
                               >
                                 <img
-                                  src={order.deliveryPhotoUrl}
+                                  src={getImageUrl(order.deliveryPhotoUrl)}
                                   alt="Ảnh giao hàng"
                                   className="w-full object-contain max-h-56 block"
                                   style={{ background: '#111827' }}

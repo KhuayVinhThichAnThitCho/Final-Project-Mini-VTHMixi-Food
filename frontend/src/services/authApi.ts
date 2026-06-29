@@ -65,7 +65,7 @@ export const authApi = {
   /**
    * Cập nhật thông tin hồ sơ cá nhân (tên, sđt, avatar)
    */
-  updateProfile: async (data: { name?: string; phone?: string; avatar?: string }) => {
+  updateProfile: async (data: { name?: string; phone?: string; avatar?: string; address?: string }) => {
     return api.put('/auth/profile', data) as any;
   },
 
@@ -88,6 +88,13 @@ export const authApi = {
    */
   loginWithFacebook: async (code: string, redirectUri: string) => {
     return api.post('/auth/facebook', { code, redirectUri }) as any;
+  },
+
+  /**
+   * Gửi đơn xin mở khóa tài khoản
+   */
+  submitAppeal: async (email: string, appealReason: string) => {
+    return api.post('/auth/appeal', { email, appealReason }) as any;
   },
 };
 

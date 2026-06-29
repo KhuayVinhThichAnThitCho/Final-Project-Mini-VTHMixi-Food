@@ -336,6 +336,7 @@ export const RestaurantDetail: React.FC = () => {
                         price: item.price,
                         imageUrl: item.image || item.imageUrl,
                         toppings: [],
+                        restaurantName: restaurant.name,
                       }, restaurant.id);
                       if (added) showToast(`🛵 Đã thêm "${item.name}"!`);
                     } else {

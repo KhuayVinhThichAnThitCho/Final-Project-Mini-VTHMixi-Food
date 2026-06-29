@@ -1,11 +1,12 @@
 import { Cart } from '../models/Cart';
 import { CartItem } from '../models/CartItem';
 import { MenuItem } from '../models/MenuItem';
+import { Restaurant } from '../models/Restaurant';
 import { AppError } from '../middlewares/errorHandler';
 
 export const cartService = {
   /**
-   * Lấy chi tiết giỏ hàng của người dùng (bao gồm danh sách món ăn)
+   * Lấy chi tiết giỏ hàng của người dùng (bao gồm danh sách món ăn và thông tin nhà hàng tương ứng)
    */
   getCart: async (userId: string): Promise<Cart> => {
     let cart = await Cart.findOne({
@@ -13,7 +14,12 @@ export const cartService = {
       include: [
         {
           model: CartItem,
-          include: [MenuItem], // Nạp chi tiết món ăn kèm theo
+          include: [
+            {
+              model: MenuItem,
+              include: [Restaurant], // Tải kèm thông tin nhà hàng để hiển thị trên frontend
+            },
+          ],
         },
       ],
     });
@@ -41,14 +47,9 @@ export const cartService = {
 
     const cart = await cartService.getCart(userId);
 
-    // 1. Kiểm tra xem giỏ hàng đang trống hay đã có món ăn
-    if (!cart.restaurantId) {
-      // Giỏ hàng trống: Thiết lập restaurantId của giỏ hàng là nhà hàng của món ăn này
-      cart.restaurantId = item.restaurantId;
-      await cart.save();
-    } else if (cart.restaurantId !== item.restaurantId) {
-      // Khác nhà hàng: Tự động dọn sạch giỏ hàng cũ và thiết lập nhà hàng mới
-      await CartItem.destroy({ where: { cartId: cart.id } });
+    // Cập nhật restaurantId của giỏ hàng sang nhà hàng của món vừa thêm nếu có sự thay đổi
+    // Lưu ý: Không xóa các món ăn của nhà hàng cũ (cho phép tồn tại song song)
+    if (cart.restaurantId !== item.restaurantId) {
       cart.restaurantId = item.restaurantId;
       await cart.save();
     }

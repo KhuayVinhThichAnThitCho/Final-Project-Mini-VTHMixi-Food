@@ -80,4 +80,19 @@ export const walletService = {
 
     return wallet;
   },
+
+  /**
+   * Chỉ ghi nhận lịch sử giao dịch (không làm thay đổi số dư - dùng khi đã tự cộng trừ balance)
+   */
+  recordTransaction: async (walletId: number, amount: number, type: 'DEPOSIT' | 'PAYMENT', description: string): Promise<void> => {
+    const transaction: ITransaction = {
+      id: `TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      walletId,
+      amount,
+      type,
+      description,
+      createdAt: new Date(),
+    };
+    transactionsMock.push(transaction);
+  },
 };

@@ -117,32 +117,8 @@ export const Profile: React.FC = () => {
   };
 
   // ─── Address book (local state) ────────────────────────────
-  const [addresses, setAddresses] = useState<Address[]>(() => {
-    const stored = localStorage.getItem('user_addresses');
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error('Lỗi phân tích cú pháp địa chỉ từ localStorage:', e);
-      }
-    }
-    return [
-      {
-        id: 'addr-1',
-        title: 'Nhà riêng (Mặc định)',
-        detail: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-        recipientName: 'Nguyễn Văn A',
-        recipientPhone: '0987654321',
-      },
-      {
-        id: 'addr-2',
-        title: 'Văn phòng',
-        detail: '33 Lê Duẩn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-        recipientName: 'Nguyễn Văn A',
-        recipientPhone: '0987654321',
-      },
-    ];
-  });
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
 
   // ─── Orders & Favorites ────────────────────────────────────
   const [realOrders, setRealOrders] = useState<any[]>([]);
@@ -272,9 +248,10 @@ export const Profile: React.FC = () => {
                 }
               };
               const noti = getStatusText(updated.status);
-              if (noti) {
+              if (noti && user) {
                 try {
-                  const stored = localStorage.getItem('user_notifications');
+                  const storageKey = `user_notifications_${user.id}`;
+                  const stored = localStorage.getItem(storageKey);
                   const customNotis = stored ? JSON.parse(stored) : [];
                   const newNoti = {
                     id: 'status_update_' + Date.now(),
@@ -287,7 +264,7 @@ export const Profile: React.FC = () => {
                     meta: { orderId: updated.id, orderStatus: updated.status }
                   };
                   customNotis.unshift(newNoti);
-                  localStorage.setItem('user_notifications', JSON.stringify(customNotis));
+                  localStorage.setItem(storageKey, JSON.stringify(customNotis));
                   window.dispatchEvent(new Event('new_notification'));
                 } catch (e) {
                   console.error('Error saving status update notification:', e);
@@ -305,33 +282,30 @@ export const Profile: React.FC = () => {
     return () => clearInterval(interval);
   }, [selectedOrderDetail?.id, selectedOrderDetail?.status]);
 
+  // Load addresses from dynamic key: user_addresses_${user.id}
+  useEffect(() => {
+    if (!user) return;
+    const storageKey = `user_addresses_${user.id}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        setAddresses(JSON.parse(stored));
+      } catch (e) {
+        console.error('Lỗi phân tích cú pháp địa chỉ từ localStorage:', e);
+        setAddresses([]);
+      }
+    } else {
+      setAddresses([]);
+    }
+    setAddressesLoaded(true);
+  }, [user]);
+
   // Sync addresses to localStorage
   useEffect(() => {
-    localStorage.setItem('user_addresses', JSON.stringify(addresses));
-  }, [addresses]);
-
-  // Synchronize default addresses recipient name/phone once user object is loaded
-  useEffect(() => {
-    if (user && !localStorage.getItem('user_addresses')) {
-      const defaultList = [
-        {
-          id: 'addr-1',
-          title: 'Nhà riêng (Mặc định)',
-          detail: (user as any).address || '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-          recipientName: user.name || 'Nguyễn Văn A',
-          recipientPhone: (user as any).phone || '0987654321',
-        },
-        {
-          id: 'addr-2',
-          title: 'Văn phòng',
-          detail: '33 Lê Duẩn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-          recipientName: user.name || 'Nguyễn Văn A',
-          recipientPhone: (user as any).phone || '0987654321',
-        },
-      ];
-      setAddresses(defaultList);
-    }
-  }, [user]);
+    if (!user || !addressesLoaded) return;
+    const storageKey = `user_addresses_${user.id}`;
+    localStorage.setItem(storageKey, JSON.stringify(addresses));
+  }, [addresses, user, addressesLoaded]);
 
   // Sync edit fields when user data loads
   useEffect(() => {
@@ -466,6 +440,7 @@ export const Profile: React.FC = () => {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [addrTitle, setAddrTitle] = useState('');
+  const [addrTitleType, setAddrTitleType] = useState('Nhà riêng');
   const [addrDetail, setAddrDetail] = useState('');
   const [addrRecipient, setAddrRecipient] = useState('');
   const [addrPhone, setAddrPhone] = useState('');
@@ -474,12 +449,18 @@ export const Profile: React.FC = () => {
     if (address) {
       setEditingAddress(address);
       setAddrTitle(address.title);
+      if (['Nhà riêng', 'Văn phòng', 'Trường học'].includes(address.title)) {
+        setAddrTitleType(address.title);
+      } else {
+        setAddrTitleType('Khác');
+      }
       setAddrDetail(address.detail);
       setAddrRecipient(address.recipientName);
       setAddrPhone(address.recipientPhone);
     } else {
       setEditingAddress(null);
-      setAddrTitle('');
+      setAddrTitleType('Nhà riêng');
+      setAddrTitle('Nhà riêng');
       setAddrDetail('');
       setAddrRecipient(user?.name || '');
       setAddrPhone((user as any)?.phone || '');
@@ -506,6 +487,17 @@ export const Profile: React.FC = () => {
       };
       setAddresses(prev => [...prev, newAddr]);
       showMessage('Thêm địa chỉ nhận hàng mới thành công!');
+
+      // Tự động cập nhật làm địa chỉ mặc định trong hồ sơ chính nếu đây là địa chỉ đầu tiên
+      if (addresses.length === 0) {
+        authApi.updateProfile({ address: addrDetail.trim(), phone: addrPhone.trim() })
+          .then((res) => {
+            if (res && res.success && refetchMe) {
+              refetchMe();
+            }
+          })
+          .catch((err) => console.error('Lỗi tự động cập nhật hồ sơ chính:', err));
+      }
     }
     setIsAddressModalOpen(false);
   };
@@ -719,12 +711,14 @@ export const Profile: React.FC = () => {
                 <Mail size={10} />
                 {user?.email || '—'}
               </p>
-              {(user as any)?.phone && (
-                <p className="text-[11px] font-mono text-neutral-500 mt-0.5 flex items-center gap-1 justify-center">
-                  <Phone size={10} />
-                  {(user as any).phone}
-                </p>
-              )}
+              <p className="text-[11px] font-mono text-neutral-500 mt-0.5 flex items-center gap-1 justify-center">
+                <Phone size={10} />
+                {(user as any)?.phone || 'SĐT: Chưa cập nhật'}
+              </p>
+              <p className="text-[11px] font-mono text-neutral-500 mt-0.5 flex items-center gap-1 justify-center max-w-[220px] truncate mx-auto" title={(user as any)?.address || 'Chưa cập nhật'}>
+                <MapPin size={10} className="flex-shrink-0 text-[#BF3A20]" />
+                <span className="truncate">{(user as any)?.address || 'Địa chỉ: Chưa cập nhật'}</span>
+              </p>
 
               {/* Change Password shortcut */}
               <div className="mt-5 border-t border-dashed border-neutral-200 pt-4">
@@ -1385,7 +1379,34 @@ export const Profile: React.FC = () => {
             <form onSubmit={handleSaveAddress} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-mono font-black uppercase text-neutral-500 mb-1">Nhãn địa chỉ</label>
-                <input type="text" placeholder="Nhà riêng, Văn phòng..." value={addrTitle} onChange={(e) => setAddrTitle(e.target.value)} className="w-full bg-[#F0E9DE] border-2 border-[#E8D8C6] focus:border-[#BF3A20] rounded px-3 py-2 text-xs text-neutral-900 focus:outline-none transition-all shadow-inner font-body" />
+                <select
+                  value={addrTitleType}
+                  onChange={(e) => {
+                    setAddrTitleType(e.target.value);
+                    if (e.target.value !== 'Khác') {
+                      setAddrTitle(e.target.value);
+                    } else {
+                      setAddrTitle('');
+                    }
+                  }}
+                  className="w-full bg-[#F0E9DE] border-2 border-[#E8D8C6] focus:border-[#BF3A20] rounded px-3 py-2 text-xs text-neutral-900 focus:outline-none transition-all shadow-inner font-body cursor-pointer font-bold"
+                >
+                  <option value="Nhà riêng">🏠 Nhà riêng</option>
+                  <option value="Văn phòng">🏢 Văn phòng</option>
+                  <option value="Trường học">🏫 Trường học</option>
+                  <option value="Khác">✏️ Khác...</option>
+                </select>
+
+                {addrTitleType === 'Khác' && (
+                  <input
+                    type="text"
+                    placeholder="Nhập nhãn tùy chỉnh..."
+                    value={addrTitle}
+                    onChange={(e) => setAddrTitle(e.target.value)}
+                    className="mt-2 w-full bg-[#F0E9DE] border-2 border-[#E8D8C6] focus:border-[#BF3A20] rounded px-3 py-2 text-xs text-neutral-900 focus:outline-none transition-all shadow-inner font-body"
+                    required
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-mono font-black uppercase text-neutral-500 mb-1">Địa chỉ chi tiết</label>
@@ -1563,6 +1584,12 @@ export const Profile: React.FC = () => {
                     {selectedOrderDetail.status === 'ready' && 'Món ngon đã hoàn thành và sẵn sàng di chuyển.'}
                     {selectedOrderDetail.status === 'delivering' && 'Bưu tá di chuyển Honda Cub 81 đang giao tới.'}
                   </p>
+                  {selectedOrderDetail.deliveryCode && selectedOrderDetail.status !== 'completed' && selectedOrderDetail.status !== 'cancelled' && (
+                    <div className="mt-2.5 p-2 bg-[#E8F5E9] border border-[#2D7A4F] rounded flex flex-col items-center">
+                      <span className="text-[9px] font-mono font-bold text-[#2D7A4F] uppercase tracking-wider block">Mã nhận hàng (Đưa cho Shipper)</span>
+                      <span className="text-lg font-mono font-black text-[#2D7A4F] tracking-widest mt-0.5">{selectedOrderDetail.deliveryCode}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 bg-[#FAF7F3] border border-neutral-200 rounded-md">

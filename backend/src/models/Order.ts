@@ -104,6 +104,11 @@ export class Order extends Model {
   @Column(DataType.BIGINT)
   payosOrderCode?: number;
 
+  // Mã nhận hàng ngẫu nhiên (4 chữ số) khách hàng cung cấp cho shipper để hoàn thành đơn
+  @AllowNull(true)
+  @Column(DataType.STRING(10))
+  deliveryCode?: string;
+
   // URL thanh toán của PayOS
   @AllowNull(true)
   @Column(DataType.TEXT)

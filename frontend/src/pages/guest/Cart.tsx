@@ -38,6 +38,35 @@ export const Cart: React.FC = () => {
     clearCart 
   } = useCart();
 
+  // Gom nhóm các món ăn theo nhà hàng
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, { restaurantName: string; items: typeof items }> = {};
+    items.forEach((item) => {
+      const rId = item.restaurantId || 'unknown';
+      if (!groups[rId]) {
+        groups[rId] = {
+          restaurantName: item.restaurantName || 'Quán ăn',
+          items: [],
+        };
+      }
+      groups[rId].items.push(item);
+    });
+    return groups;
+  }, [items]);
+
+  // Đếm số lượng nhà hàng khác nhau đang được tích chọn
+  const selectedRestaurantsCount = useMemo(() => {
+    const selectedRIds = new Set(items.filter((i) => i.selected !== false).map((i) => i.restaurantId));
+    return selectedRIds.size;
+  }, [items]);
+
+  // Tìm nhà hàng của các món đang được chọn (chỉ hợp lệ nếu chọn cùng 1 nhà hàng)
+  const selectedRestaurantId = useMemo(() => {
+    if (selectedRestaurantsCount !== 1) return null;
+    const selectedItem = items.find((item) => item.selected !== false);
+    return selectedItem ? selectedItem.restaurantId : null;
+  }, [items, selectedRestaurantsCount]);
+
   // Kiểm tra xem tất cả các món trong giỏ đã được tích chọn hay chưa
   const isAllSelected = useMemo(() => {
     return items.length > 0 && items.every((item) => item.selected !== false);
@@ -49,21 +78,23 @@ export const Cart: React.FC = () => {
     setSelectedItems(allIds, !isAllSelected);
   };
 
-  // Fetch thông tin nhà hàng thật từ API khi restaurantId thay đổi
+
+
+  // Fetch thông tin nhà hàng thật từ API khi selectedRestaurantId thay đổi
   useEffect(() => {
-    if (!restaurantId) {
+    if (!selectedRestaurantId) {
       setRestaurantInfo(null);
       return;
     }
-    restaurantApi.getRestaurantById(restaurantId)
+    restaurantApi.getRestaurantById(selectedRestaurantId)
       .then((data) => {
         if (data) setRestaurantInfo(data);
       })
       .catch(() => {
         // Fallback nếu API fail
-        setRestaurantInfo({ id: restaurantId, name: 'Quán ăn', address: '', deliveryFee: 15000 });
+        setRestaurantInfo({ id: selectedRestaurantId, name: 'Quán ăn', address: '', deliveryFee: 15000 });
       });
-  }, [restaurantId]);
+  }, [selectedRestaurantId]);
 
   const restaurant = restaurantInfo;
 
@@ -208,19 +239,6 @@ export const Cart: React.FC = () => {
           {/* LEFT COLUMN (8/12): Items List */}
           <div className="lg:col-span-8 space-y-6">
             
-            {/* Restaurant Info Header */}
-            {restaurant && (
-              <div className="card-retro bg-[#FEFCF9] border-l-4 border-l-[#BF3A20] p-4 flex flex-col gap-1">
-                <span className="text-[9px] font-mono font-bold text-neutral-400 uppercase tracking-widest">Đang đặt món từ</span>
-                <h2 className="text-xl font-display italic font-bold text-[#BF3A20]">
-                  {restaurant.name}
-                </h2>
-                <p className="text-xs text-neutral-500 font-body">
-                  {restaurant.address}
-                </p>
-              </div>
-            )}
-
             {/* Select All / Deselect All Controls */}
             <div className="card-retro bg-[#FEFCF9] px-4 py-3 flex items-center justify-between border-b border-neutral-900 select-none">
               <label className="flex items-center gap-3 cursor-pointer">
@@ -242,93 +260,111 @@ export const Cart: React.FC = () => {
               )}
             </div>
 
-            {/* Dishes list */}
-            <div className="space-y-4">
-              {items.map((item) => (
-                <div 
-                  key={item.id}
-                  className="card-retro bg-[#FEFCF9] p-4 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Item checkbox */}
-                    <input
-                      type="checkbox"
-                      checked={item.selected !== false}
-                      onChange={() => toggleSelectItem(item.id)}
-                      className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 rounded-sm cursor-pointer flex-shrink-0"
-                    />
+            {Object.keys(groupedItems).map((rId) => {
+              const group = groupedItems[rId];
 
-                    <div className="flex items-center gap-4">
-                      {/* Small Image aspect-square with sepia warm filter */}
-                      <div className="w-16 h-16 bg-neutral-100 border border-neutral-950 overflow-hidden flex-shrink-0">
-                        <img
-                          src={item.imageUrl || 'https://placehold.co/150x150/FAF7F3/2C1A0E?text=Sài+Gòn+90s'}
-                          alt={item.name}
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = `https://placehold.co/150x150/FEFCF9/BF3A20?text=${encodeURIComponent(item.name)}`;
-                          }}
-                          className="w-full h-full object-cover filter sepia-[8%] saturate-[115%] brightness-[96%]"
-                        />
-                      </div>
-
-                      {/* Text Details */}
-                      <div>
-                        {/* Name: Be Vietnam Pro 600 */}
-                        <h3 className="font-body font-semibold text-sm text-neutral-900 leading-snug">
-                          {item.name}
-                        </h3>
-                        {/* Toppings list: small text color #9E6E4A */}
-                        {item.toppings && item.toppings.length > 0 && (
-                          <p className="text-[11px] text-[#9E6E4A] font-semibold mt-1">
-                            + {item.toppings.join(', ')}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+              return (
+                <div key={rId} className="space-y-4 border-2 border-neutral-900 p-4 bg-[#FAF7F3] rounded-md shadow-retro-sm">
+                  {/* Restaurant Header */}
+                  <div className="border-b-2 border-neutral-900 pb-2">
+                    <span className="text-[9px] font-mono font-bold text-neutral-400 block uppercase">Cửa hàng</span>
+                    <h2 className="text-lg font-display italic font-bold text-[#BF3A20]">{group.restaurantName}</h2>
                   </div>
 
-                  {/* Right controls: Price and count */}
-                  <div className="flex items-center gap-6 ml-auto flex-shrink-0">
-                    {/* Unit Price (Font Space Mono) */}
-                    <span className="font-mono text-sm font-bold text-neutral-900">
-                      {(item.price * item.quantity).toLocaleString('vi-VN')}đ
-                    </span>
+                  {/* Dishes list */}
+                  <div className="space-y-3">
+                    {group.items.map((item) => (
+                      <div 
+                        key={item.id}
+                        className="card-retro bg-[#FEFCF9] p-4 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {/* Item checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={item.selected !== false}
+                            onChange={() => toggleSelectItem(item.id)}
+                            className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 rounded-sm cursor-pointer flex-shrink-0"
+                          />
 
-                    {/* Quantity controls: [-] [ quantity ] [+] */}
-                    <div className="flex items-center border border-neutral-900 bg-white">
-                      <button
-                        onClick={() => {
-                          if (item.quantity === 1) {
-                            setConfirmDelete(item);
-                          } else {
-                            updateQuantity(item.id, item.quantity - 1);
-                          }
-                        }}
-                        className="w-7 h-7 flex items-center justify-center text-xs hover:bg-neutral-100 transition-colors"
-                        title={item.quantity === 1 ? 'Xóa khỏi giỏ' : 'Giảm số lượng'}
-                      >
-                        {item.quantity === 1 ? (
-                          <Trash2 size={12} strokeWidth={1.5} className="text-[#BF3A20]" />
-                        ) : (
-                          <Minus size={12} strokeWidth={1.5} />
-                        )}
-                      </button>
-                      <span className="w-8 text-center font-mono font-bold text-xs text-neutral-900 select-none">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-7 h-7 flex items-center justify-center text-xs hover:bg-neutral-100 transition-colors"
-                        title="Tăng số lượng"
-                      >
-                        <Plus size={12} strokeWidth={1.5} />
-                      </button>
-                    </div>
+                          <div className="flex items-center gap-4 min-w-0">
+                            {/* Small Image aspect-square with sepia warm filter */}
+                            <div className="w-16 h-16 bg-neutral-100 border border-neutral-950 overflow-hidden flex-shrink-0">
+                              <img
+                                src={item.imageUrl || 'https://placehold.co/150x150/FAF7F3/2C1A0E?text=Sài+Gòn+90s'}
+                                alt={item.name}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = `https://placehold.co/150x150/FEFCF9/BF3A20?text=${encodeURIComponent(item.name)}`;
+                                }}
+                                className="w-full h-full object-cover filter sepia-[8%] saturate-[115%] brightness-[96%]"
+                              />
+                            </div>
+
+                            {/* Text Details */}
+                            <div className="min-w-0">
+                              {/* Name: Be Vietnam Pro 600 */}
+                              <h3 className="font-body font-semibold text-sm text-neutral-900 leading-snug truncate">
+                                {item.name}
+                              </h3>
+                              {/* Toppings list: small text color #9E6E4A */}
+                              {item.toppings && item.toppings.length > 0 && (
+                                <p className="text-[11px] text-[#9E6E4A] font-semibold mt-1">
+                                  + {item.toppings.join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right controls: Price and count */}
+                        <div className="flex items-center gap-4 ml-auto flex-shrink-0">
+                          {/* Unit Price (Font Space Mono) */}
+                          <span className="font-mono text-sm font-bold text-neutral-900">
+                            {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                          </span>
+
+                          {/* Quantity controls: [-] [ quantity ] [+] */}
+                          <div className="flex items-center border border-neutral-900 bg-white">
+                            {item.quantity > 1 ? (
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                className="w-7 h-7 flex items-center justify-center text-xs hover:bg-neutral-100 transition-colors border-r border-neutral-900"
+                                title="Giảm số lượng"
+                              >
+                                <Minus size={12} strokeWidth={1.5} />
+                              </button>
+                            ) : (
+                              // Ẩn dấu trừ khi số lượng là 1
+                              <div className="w-7 h-7 border-r border-neutral-900 bg-neutral-50/50" />
+                            )}
+                            <span className="w-8 text-center font-mono font-bold text-xs text-neutral-900 select-none">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              className="w-7 h-7 flex items-center justify-center text-xs hover:bg-neutral-100 transition-colors"
+                              title="Tăng số lượng"
+                            >
+                              <Plus size={12} strokeWidth={1.5} />
+                            </button>
+                          </div>
+
+                          {/* Separate Delete/Trash button for each item */}
+                          <button
+                            onClick={() => setConfirmDelete(item)}
+                            className="w-7 h-7 flex items-center justify-center border border-neutral-900 bg-white hover:bg-red-50 text-[#BF3A20] transition-colors rounded-sm"
+                            title="Xóa món ăn"
+                          >
+                            <Trash2 size={13} strokeWidth={1.5} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
 
             {/* Clear Cart Button */}
             <div className="flex justify-end pt-2">

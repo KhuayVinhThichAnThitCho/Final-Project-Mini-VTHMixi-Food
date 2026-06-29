@@ -98,7 +98,7 @@ const SEED_RESTAURANTS = [
   {
     id: 'rest-10',
     name: 'Bún Chả Sinh Từ',
-    address: '18 Hàng Vải, Quận Hoàn Kiếm',
+    address: '18 Hàng Vải, Quận 1, TP.HCM',
     rating: 4.6,
     deliveryFee: 12000,
     isOpen: true,
@@ -609,26 +609,30 @@ export const seedDatabase = async () => {
 
     console.log('🌱 Database is empty. Starting seeder...');
 
-    // 1. Create vendor user if not exists
-    let vendor = await User.findOne({ where: { role: 'vendor' } });
-    if (!vendor) {
-      vendor = await User.create({
-        id: '11111111-1111-1111-1111-111111111111',
-        name: 'Chủ Quán Sài Gòn',
-        email: 'vendor@saigon.com',
-        password: 'Vendor@123456',
-        role: 'vendor',
-        status: 'active',
-        phone: '0900000004',
-      });
-      console.log('Created seeder vendor user!');
-    }
+    // 1. Create separate vendor users and insert restaurants
+    console.log('🌱 Creating unique vendor users for each restaurant...');
+    for (let i = 0; i < SEED_RESTAURANTS.length; i++) {
+      const r = SEED_RESTAURANTS[i];
+      const indexStr = (i + 1).toString();
+      const email = `vendor${indexStr}@saigon.com`;
+      const id = `11111111-1111-1111-1111-11111111111${(i + 1).toString(16)}`;
+      
+      let rVendor = await User.findOne({ where: { email } });
+      if (!rVendor) {
+        rVendor = await User.create({
+          id,
+          name: `Chủ Quán ${r.name}`,
+          email,
+          password: 'Vendor@123456',
+          role: 'vendor',
+          status: 'active',
+          phone: `09000000${(i + 1).toString().padStart(2, '0')}`,
+        });
+      }
 
-    // 2. Insert restaurants
-    await Restaurant.bulkCreate(
-      SEED_RESTAURANTS.map((r) => ({
+      await Restaurant.create({
         id: r.id,
-        ownerId: vendor!.id,
+        ownerId: rVendor.id,
         name: r.name,
         address: r.address,
         logo: r.logo,
@@ -637,9 +641,9 @@ export const seedDatabase = async () => {
         minOrderValue: 20000,
         status: r.isOpen ? 'open' : 'closed',
         ratingAvg: r.rating,
-      }))
-    );
-    console.log(`Seeded ${SEED_RESTAURANTS.length} restaurants!`);
+      });
+    }
+    console.log(`Seeded ${SEED_RESTAURANTS.length} restaurants with unique vendor users!`);
 
     // 3. Insert menu items
     await MenuItem.bulkCreate(

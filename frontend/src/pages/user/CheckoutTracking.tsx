@@ -22,6 +22,7 @@ import voucherApi from '../../services/voucherApi';
 import { VoucherCard } from '../../components/molecules/VoucherCard';
 import api from '../../services/api';
 import restaurantApi from '../../services/restaurantApi';
+import { authApi } from '../../services/authApi';
 
 interface CheckoutItem {
   id: string;
@@ -45,6 +46,7 @@ export const CheckoutTracking: React.FC = () => {
     restaurantName: string;
     paymentMethod: string;
     itemCount: number;
+    deliveryCode?: string;
   } | null>(null);
   const [simulationData, setSimulationData] = useState<{
     type: 'VIETQR' | 'WALLET';
@@ -87,6 +89,7 @@ export const CheckoutTracking: React.FC = () => {
 
   // Restaurant state and fetching
   const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
+  const [restaurantsMap, setRestaurantsMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!restaurantId) {
@@ -102,6 +105,24 @@ export const CheckoutTracking: React.FC = () => {
         setRestaurantInfo({ id: restaurantId, name: 'Quán ăn', address: '', deliveryFee: 15000 });
       });
   }, [restaurantId]);
+
+  useEffect(() => {
+    const uniqueIds = Array.from(new Set(selectedItems.map(item => item.restaurantId).filter(Boolean)));
+    uniqueIds.forEach(id => {
+      if (!restaurantsMap[id]) {
+        restaurantApi.getRestaurantById(id)
+          .then((data) => {
+            if (data) {
+              setRestaurantsMap(prev => ({ ...prev, [id]: data }));
+            }
+          })
+          .catch((err) => {
+            console.error('Error fetching restaurant info in checkout:', err);
+            setRestaurantsMap(prev => ({ ...prev, [id]: { id, name: 'Quán ăn', address: '', deliveryFee: 15000 } }));
+          });
+      }
+    });
+  }, [selectedItems, restaurantsMap]);
 
   // Load ví voucher
   useEffect(() => {
@@ -286,40 +307,30 @@ export const CheckoutTracking: React.FC = () => {
   // New address form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newTitleType, setNewTitleType] = useState('Nhà riêng');
   const [newRecipient, setNewRecipient] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newDetail, setNewDetail] = useState('');
 
-  // Load addresses
+  // Load addresses from dynamic key: user_addresses_${user.id}
   useEffect(() => {
-    const stored = localStorage.getItem('user_addresses');
+    if (!user) return;
+    const storageKey = `user_addresses_${user.id}`;
+    const stored = localStorage.getItem(storageKey);
     let list = [];
     if (stored) {
-      list = JSON.parse(stored);
-    } else if (user) {
-      // Default fallback list using user info
-      list = [
-        {
-          id: 'addr-1',
-          title: 'Nhà riêng (Mặc định)',
-          detail: (user as any).address || '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-          recipientName: user.name || 'Nguyễn Văn A',
-          recipientPhone: (user as any).phone || '0987654321',
-        },
-        {
-          id: 'addr-2',
-          title: 'Văn phòng',
-          detail: '33 Lê Duẩn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-          recipientName: user.name || 'Nguyễn Văn A',
-          recipientPhone: (user as any).phone || '0987654321',
-        }
-      ];
-      localStorage.setItem('user_addresses', JSON.stringify(list));
+      try {
+        list = JSON.parse(stored);
+      } catch (e) {
+        console.error('Lỗi phân tích cú pháp địa chỉ từ localStorage:', e);
+      }
     }
     
+    setAddresses(list);
     if (list.length > 0) {
-      setAddresses(list);
       setSelectedAddress(list[0]);
+    } else {
+      setSelectedAddress(null);
     }
   }, [user]);
 
@@ -330,6 +341,23 @@ export const CheckoutTracking: React.FC = () => {
       showCustomAlert('Vui lòng điền đầy đủ các thông tin địa chỉ.', 'Thiếu thông tin', 'warning');
       return;
     }
+
+    const normalized = newDetail.trim().toLowerCase();
+    const isHCM = 
+      normalized.includes('hồ chí minh') ||
+      normalized.includes('ho chi minh') ||
+      normalized.includes('tp.hcm') ||
+      normalized.includes('tphcm') ||
+      normalized.includes('hcmc') ||
+      normalized.includes('hcm') ||
+      normalized.includes('sài gòn') ||
+      normalized.includes('sai gon');
+
+    if (!isHCM) {
+      showCustomAlert('Hệ thống hiện tại chỉ hỗ trợ giao hàng tại khu vực TP. Hồ Chí Minh. Vui lòng nhập địa chỉ ở TP.HCM.', 'Ngoài khu vực phục vụ', 'warning');
+      return;
+    }
+
     const newAddr = {
       id: `addr-${Date.now()}`,
       title: newTitle.trim(),
@@ -339,16 +367,29 @@ export const CheckoutTracking: React.FC = () => {
     };
     const updatedList = [...addresses, newAddr];
     setAddresses(updatedList);
-    localStorage.setItem('user_addresses', JSON.stringify(updatedList));
+    if (user) {
+      localStorage.setItem(`user_addresses_${user.id}`, JSON.stringify(updatedList));
+    }
     setSelectedAddress(newAddr);
     setShowAddForm(false);
+
+    // Tự động cập nhật làm địa chỉ mặc định trong hồ sơ chính nếu đây là địa chỉ đầu tiên
+    if (addresses.length === 0) {
+      authApi.updateProfile({ address: newDetail.trim(), phone: newPhone.trim() })
+        .then((res) => {
+          if (res && res.success && refetchMe) {
+            refetchMe();
+          }
+        })
+        .catch((err) => console.error('Lỗi tự động cập nhật hồ sơ chính:', err));
+    }
   };
 
   const deliveryAddress = selectedAddress || {
-    title: 'Đang tải...',
-    detail: 'Đang tải...',
-    recipientName: user?.name || 'Nguyễn Văn A',
-    recipientPhone: '0987654321'
+    title: 'Chưa có địa chỉ',
+    detail: 'Vui lòng thêm địa chỉ nhận hàng',
+    recipientName: '',
+    recipientPhone: ''
   };
 
   // Determine items to display (fallback to mock items if cart is empty for testing/demo robustness)
@@ -374,10 +415,18 @@ export const CheckoutTracking: React.FC = () => {
   }, [selectedItems, totalPrice, checkoutItems]);
 
   const deliveryFee = useMemo(() => {
-    if (!restaurantInfo || checkoutItems.length === 0) return 0;
-    const fee = Number(restaurantInfo.deliveryFee);
-    return isNaN(fee) ? 15000 : fee;
-  }, [restaurantInfo, checkoutItems]);
+    if (checkoutItems.length === 0) return 0;
+    if (selectedItems.length === 0) {
+      const fee = restaurantInfo ? Number(restaurantInfo.deliveryFee) : 15000;
+      return isNaN(fee) ? 15000 : fee;
+    }
+    const uniqueIds = Array.from(new Set(selectedItems.map(item => item.restaurantId).filter(Boolean)));
+    return uniqueIds.reduce((sum, id) => {
+      const rest = restaurantsMap[id];
+      const fee = rest ? Number(rest.deliveryFee) : 15000;
+      return sum + (isNaN(fee) ? 15000 : fee);
+    }, 0);
+  }, [restaurantInfo, checkoutItems, selectedItems, restaurantsMap]);
 
   const platformFee = useMemo(() => {
     return Math.round(subtotal * (feeConfigs.platformFee / 100));
@@ -456,31 +505,83 @@ export const CheckoutTracking: React.FC = () => {
       showCustomAlert(`Đơn hàng chưa đạt giá trị tối thiểu ${feeConfigs.minOrderAmount.toLocaleString('vi-VN')}đ để đặt hàng.`, 'Đơn hàng chưa đạt tối thiểu', 'warning');
       return;
     }
+    if (!selectedAddress) {
+      showCustomAlert('Vui lòng thêm địa chỉ nhận hàng trước khi thanh toán.', 'Thiếu địa chỉ', 'warning');
+      return;
+    }
+
+    const normalized = selectedAddress.detail.toLowerCase();
+    const isHCM = 
+      normalized.includes('hồ chí minh') ||
+      normalized.includes('ho chi minh') ||
+      normalized.includes('tp.hcm') ||
+      normalized.includes('tphcm') ||
+      normalized.includes('hcmc') ||
+      normalized.includes('hcm') ||
+      normalized.includes('sài gòn') ||
+      normalized.includes('sai gon');
+
+    if (!isHCM) {
+      showCustomAlert('Hệ thống hiện tại chỉ hỗ trợ giao hàng tại khu vực TP. Hồ Chí Minh. Vui lòng chọn địa chỉ khác ở TP.HCM.', 'Ngoài khu vực phục vụ', 'warning');
+      return;
+    }
+
     setShowConfirmModal(true);
   };
 
   const submitOrder = async () => {
     setShowConfirmModal(false);
     
-    const orderData = {
-      restaurantId: restaurantId || 'res-1',
-      items: selectedItems.map(item => ({
-        menuItemId: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price
-      })),
-      deliveryAddress: deliveryAddress.detail,
-      paymentMethod: paymentMethod, // 'COD' | 'WALLET' | 'POINTS'
-      voucherCode: appliedCode || undefined
-    };
+    // Tách các món ăn theo nhà hàng để tạo các đơn tương ứng
+    const uniqueRestaurantIds = Array.from(new Set(selectedItems.map(item => item.restaurantId).filter(Boolean)));
+    
+    if (uniqueRestaurantIds.length > 1 && paymentMethod === 'VIETQR') {
+      showCustomAlert(
+        'Thanh toán chuyển khoản VietQR hiện tại chỉ hỗ trợ đơn hàng đơn lẻ. Vui lòng sử dụng phương thức thanh toán bằng Ví điện tử Saigon-Pay hoặc Tiền mặt (COD) khi đặt món từ nhiều nhà hàng.',
+        'Không hỗ trợ VietQR gộp',
+        'warning'
+      );
+      return;
+    }
+
+    const ordersData = uniqueRestaurantIds.map(rId => {
+      const restItems = selectedItems.filter(item => item.restaurantId === rId);
+      const isFirst = uniqueRestaurantIds[0] === rId;
+      
+      // Áp dụng voucher: Chỉ áp dụng voucherCode cho đơn hàng có restaurantId khớp với voucher.restaurantId
+      // Hoặc nếu voucher dùng chung (không có restaurantId), áp dụng cho đơn đầu tiên
+      let voucherToUse: string | undefined = undefined;
+      if (appliedCode) {
+        const matchingVoucher = collectedVouchers.find(wrapper => wrapper.voucher?.code === appliedCode)?.voucher;
+        if (matchingVoucher) {
+          if (matchingVoucher.restaurantId === rId || (!matchingVoucher.restaurantId && isFirst)) {
+            voucherToUse = appliedCode;
+          }
+        } else if (appliedCode === 'SAIGON90S' && isFirst) {
+          voucherToUse = appliedCode;
+        }
+      }
+
+      return {
+        restaurantId: rId,
+        items: restItems.map(item => ({
+          menuItemId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        deliveryAddress: selectedAddress?.detail || '',
+        paymentMethod: paymentMethod, // 'COD' | 'WALLET' | 'POINTS'
+        voucherCode: voucherToUse
+      };
+    });
 
     if (paymentMethod === 'WALLET') {
       // Chuyển sang màn hình giả lập cổng thanh toán Saigon-Pay
       setSimulationData({
         type: 'WALLET',
         amount: finalTotal,
-        orderData
+        orderData: ordersData // Lưu danh sách các đơn hàng con cần tạo
       });
       setPin(''); // Reset PIN nhập
       setScreen('payment-simulation');
@@ -489,55 +590,67 @@ export const CheckoutTracking: React.FC = () => {
 
     setIsOrdering(true);
     try {
-      const res = await orderApi.createOrder(orderData);
-      if (res && res.success) {
-        if (paymentMethod !== 'VIETQR') {
-          clearSelected(); // Clear active items from cart store
+      const createdOrders: any[] = [];
+      
+      for (const singleOrderData of ordersData) {
+        const res = await orderApi.createOrder(singleOrderData);
+        if (res && res.success) {
+          createdOrders.push(res.data);
+        } else {
+          throw new Error(res?.message || 'Có lỗi xảy ra khi gửi đơn hàng.');
         }
-        if (refetchMe) {
-          await refetchMe(); // Cập nhật số dư điểm của user
-        }
-        
-        // Add to local notifications list
-        const orderId = res.data?.id || res.data?._id || '';
-        const orderCode = res.data?.code || '';
+      }
+
+      if (paymentMethod !== 'VIETQR') {
+        clearSelected(); // Clear active items from cart store
+      }
+      if (refetchMe) {
+        await refetchMe(); // Cập nhật số dư điểm của user
+      }
+      
+      // Add to local notifications list for each created order
+      createdOrders.forEach(order => {
+        const orderId = order.id || order._id || '';
+        const orderCode = order.code || '';
+        const restName = restaurantsMap[order.restaurantId]?.name || 'Cửa hàng';
         try {
-          const stored = localStorage.getItem('user_notifications');
+          if (!user) return;
+          const storageKey = `user_notifications_${user.id}`;
+          const stored = localStorage.getItem(storageKey);
           const customNotis = stored ? JSON.parse(stored) : [];
           const newNoti = {
-            id: 'order_' + Date.now(),
+            id: 'order_' + Date.now() + '_' + orderId,
             type: 'order' as const,
             title: 'Đặt đơn hàng mới thành công ✓',
-            message: `Đơn hàng #${orderCode || orderId.slice(0, 8)} tại quán ${restaurantInfo?.name || 'cửa hàng'} đã được gửi đi. Đang chờ xác nhận!`,
+            message: `Đơn hàng #${orderCode || orderId.slice(0, 8)} tại quán ${restName} đã được gửi đi. Đang chờ xác nhận!`,
             time: 'Vừa xong',
             isRead: false,
             createdAt: new Date().toISOString(),
             meta: { orderId, orderStatus: 'pending' }
           };
           customNotis.unshift(newNoti);
-          localStorage.setItem('user_notifications', JSON.stringify(customNotis));
-          window.dispatchEvent(new Event('new_notification'));
+          localStorage.setItem(storageKey, JSON.stringify(customNotis));
         } catch (err) {
           console.error('Lỗi lưu thông báo đặt đơn hàng:', err);
         }
+      });
+      window.dispatchEvent(new Event('new_notification'));
 
-        if (paymentMethod === 'VIETQR' && res.data?.payosCheckoutUrl) {
-          // Chuyển hướng đến trang thanh toán của PayOS
-          window.location.href = res.data.payosCheckoutUrl;
-        } else {
-          // Hiển thị màn hình đặt hàng thành công
-          setSuccessOrderData({
-            orderId: res.data.id || res.data._id || '',
-            orderCode: res.data?.code || (res.data.id || res.data._id || '').slice(0, 8).toUpperCase(),
-            totalAmount: finalTotal,
-            restaurantName: restaurantInfo?.name || 'Cửa hàng',
-            paymentMethod,
-            itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
-          });
-          setScreen('success');
-        }
+      if (paymentMethod === 'VIETQR' && createdOrders[0]?.payosCheckoutUrl) {
+        // Chuyển hướng đến trang thanh toán của PayOS
+        window.location.href = createdOrders[0].payosCheckoutUrl;
       } else {
-        showCustomAlert(res?.message || 'Có lỗi xảy ra khi gửi đơn hàng.', 'Đặt hàng thất bại', 'error');
+        // Hiển thị màn hình đặt hàng thành công
+        setSuccessOrderData({
+          orderId: createdOrders.map(o => o.id || o._id).join(','),
+          orderCode: createdOrders.map(o => o.code || (o.id || o._id).slice(0, 8).toUpperCase()).join(', '),
+          totalAmount: finalTotal,
+          restaurantName: createdOrders.map(o => restaurantsMap[o.restaurantId]?.name || 'Cửa hàng').join(' & '),
+          paymentMethod,
+          itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
+          deliveryCode: createdOrders.map(o => o.deliveryCode).filter(Boolean).join(', '),
+        });
+        setScreen('success');
       }
     } catch (err: any) {
       console.error('Lỗi đặt hàng:', err);
@@ -609,9 +722,10 @@ export const CheckoutTracking: React.FC = () => {
     };
 
     const notiData = getStageNotification(currentStage);
-    if (notiData) {
+    if (notiData && user) {
       try {
-        const stored = localStorage.getItem('user_notifications');
+        const storageKey = `user_notifications_${user.id}`;
+        const stored = localStorage.getItem(storageKey);
         const customNotis = stored ? JSON.parse(stored) : [];
         const newNoti = {
           id: `stage_${currentStage}_` + Date.now(),
@@ -623,13 +737,13 @@ export const CheckoutTracking: React.FC = () => {
           createdAt: new Date().toISOString(),
         };
         customNotis.unshift(newNoti);
-        localStorage.setItem('user_notifications', JSON.stringify(customNotis));
+        localStorage.setItem(storageKey, JSON.stringify(customNotis));
         window.dispatchEvent(new Event('new_notification'));
       } catch (err) {
         console.error('Lỗi khi cập nhật thông báo tiến trình đơn hàng:', err);
       }
     }
-  }, [currentStage, screen, restaurantInfo]);
+  }, [currentStage, screen, restaurantInfo, user]);
 
   return (
     <div className="texture-paper min-h-screen flex flex-col bg-neutral-50 selection:bg-[#BF3A20] selection:text-white">
@@ -812,6 +926,13 @@ export const CheckoutTracking: React.FC = () => {
                     </div>
                   </div>
 
+                  {successOrderData.deliveryCode && (
+                    <div className="border-2 border-[#2D7A4F] p-3 bg-[#E8F5E9] shadow-retro-sm text-center">
+                      <p className="text-[10px] font-mono text-[#2D7A4F] uppercase tracking-widest mb-1 font-bold">Mã nhận hàng (Đưa cho bưu tá)</p>
+                      <p className="font-mono font-black text-[#2D7A4F] text-2xl tracking-widest">{successOrderData.deliveryCode}</p>
+                    </div>
+                  )}
+
                   {/* Dashed divider */}
                   <div className="border-t-2 border-dashed border-neutral-200" />
 
@@ -945,36 +1066,42 @@ export const CheckoutTracking: React.FC = () => {
 
                   {/* Address List */}
                   <div className="space-y-3">
-                    {addresses.map((addr) => (
-                      <label 
-                        key={addr.id}
-                        onClick={() => setSelectedAddress(addr)}
-                        className={`flex items-start gap-3 p-3.5 border-2 rounded-md cursor-pointer select-none transition-all ${
-                          selectedAddress?.id === addr.id
-                            ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
-                            : 'border-neutral-200 bg-white hover:bg-neutral-50/50'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="address_select"
-                          checked={selectedAddress?.id === addr.id}
-                          onChange={() => setSelectedAddress(addr)}
-                          className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 mt-0.5 cursor-pointer flex-shrink-0"
-                        />
-                        <div className="flex-grow min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="bg-[#FAF0D2] border border-[#C98F0A]/30 text-[9px] font-bold font-mono px-2 py-0.5 text-neutral-800 rounded-sm uppercase tracking-wide">
-                              {addr.title}
-                            </span>
+                    {addresses.length === 0 ? (
+                      <div className="border-2 border-dashed border-neutral-300 p-4 text-center text-xs font-mono text-neutral-500 bg-white">
+                        📍 Chưa có địa chỉ nhận hàng nào. Vui lòng thêm địa chỉ nhận hàng dưới đây.
+                      </div>
+                    ) : (
+                      addresses.map((addr) => (
+                        <label 
+                          key={addr.id}
+                          onClick={() => setSelectedAddress(addr)}
+                          className={`flex items-start gap-3 p-3.5 border-2 rounded-md cursor-pointer select-none transition-all ${
+                            selectedAddress?.id === addr.id
+                              ? 'border-neutral-900 bg-[#FAF7F3] ring-1 ring-neutral-900/10'
+                              : 'border-neutral-200 bg-white hover:bg-neutral-50/50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="address_select"
+                            checked={selectedAddress?.id === addr.id}
+                            onChange={() => setSelectedAddress(addr)}
+                            className="w-4 h-4 accent-[#BF3A20] border-2 border-neutral-900 mt-0.5 cursor-pointer flex-shrink-0"
+                          />
+                          <div className="flex-grow min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="bg-[#FAF0D2] border border-[#C98F0A]/30 text-[9px] font-bold font-mono px-2 py-0.5 text-neutral-800 rounded-sm uppercase tracking-wide">
+                                {addr.title}
+                              </span>
+                            </div>
+                            <p className="text-sm font-semibold font-body text-neutral-800 break-words">{addr.detail}</p>
+                            <p className="text-[10px] font-mono text-neutral-500 mt-1">
+                              Người nhận: <span className="font-bold text-neutral-700">{addr.recipientName}</span> — SĐT: <span className="font-bold text-neutral-700">{addr.recipientPhone}</span>
+                            </p>
                           </div>
-                          <p className="text-sm font-semibold font-body text-neutral-800 break-words">{addr.detail}</p>
-                          <p className="text-[10px] font-mono text-neutral-500 mt-1">
-                            Người nhận: <span className="font-bold text-neutral-700">{addr.recipientName}</span> — SĐT: <span className="font-bold text-neutral-700">{addr.recipientPhone}</span>
-                          </p>
-                        </div>
-                      </label>
-                    ))}
+                        </label>
+                      ))
+                    )}
                   </div>
 
                   {/* New Address Inline Form */}
@@ -985,14 +1112,34 @@ export const CheckoutTracking: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[9px] font-mono font-black uppercase text-neutral-500 mb-1">Tên nhãn địa chỉ</label>
-                          <input
-                            type="text"
-                            value={newTitle}
-                            onChange={(e) => setNewTitle(e.target.value)}
-                            placeholder="Ví dụ: Nhà riêng, Văn phòng, Trường học..."
-                            className="w-full bg-white border-2 border-neutral-300 focus:border-neutral-900 rounded px-2.5 py-1.5 text-xs text-neutral-900 focus:outline-none font-body"
-                            required
-                          />
+                          <select
+                            value={newTitleType}
+                            onChange={(e) => {
+                              setNewTitleType(e.target.value);
+                              if (e.target.value !== 'Khác') {
+                                setNewTitle(e.target.value);
+                              } else {
+                                setNewTitle('');
+                              }
+                            }}
+                            className="w-full bg-white border-2 border-neutral-900 focus:border-neutral-900 rounded px-2.5 py-1.5 text-xs text-neutral-900 focus:outline-none font-body cursor-pointer font-bold"
+                          >
+                            <option value="Nhà riêng">🏠 Nhà riêng</option>
+                            <option value="Văn phòng">🏢 Văn phòng</option>
+                            <option value="Trường học">🏫 Trường học</option>
+                            <option value="Khác">✏️ Khác...</option>
+                          </select>
+                          
+                          {newTitleType === 'Khác' && (
+                            <input
+                              type="text"
+                              value={newTitle}
+                              onChange={(e) => setNewTitle(e.target.value)}
+                              placeholder="Nhập nhãn tùy chỉnh..."
+                              className="mt-2 w-full bg-white border-2 border-neutral-900 focus:border-neutral-900 rounded px-2.5 py-1.5 text-xs text-neutral-900 focus:outline-none font-body"
+                              required
+                            />
+                          )}
                         </div>
                         <div>
                           <label className="block text-[9px] font-mono font-black uppercase text-neutral-500 mb-1">Họ và tên người nhận</label>
@@ -1052,7 +1199,8 @@ export const CheckoutTracking: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setNewTitle('');
+                        setNewTitleType('Nhà riêng');
+                        setNewTitle('Nhà riêng');
                         setNewRecipient(user?.name || '');
                         setNewPhone((user as any)?.phone || '');
                         setNewDetail('');
@@ -1723,6 +1871,7 @@ export const CheckoutTracking: React.FC = () => {
                           restaurantName: restaurantInfo?.name || 'Cửa hàng',
                           paymentMethod: 'VIETQR',
                           itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
+                          deliveryCode: (res as any).data?.deliveryCode,
                         });
                         setScreen('success');
                       } else {
@@ -1814,49 +1963,63 @@ export const CheckoutTracking: React.FC = () => {
 
                     try {
                       setIsOrdering(true);
-                      const res = await orderApi.createOrder(simulationData.orderData);
-                      if (res && res.success) {
-                        clearSelected();
-                        if (refetchMe) {
-                          await refetchMe();
+                      const createdOrders: any[] = [];
+                      const isArray = Array.isArray(simulationData.orderData);
+                      const ordersToSubmit = isArray ? simulationData.orderData : [simulationData.orderData];
+
+                      for (const singleOrderData of ordersToSubmit) {
+                        const res = await orderApi.createOrder(singleOrderData);
+                        if (res && res.success) {
+                          createdOrders.push(res.data);
+                        } else {
+                          throw new Error(res?.message || 'Không thể hoàn tất thanh toán qua ví.');
                         }
-                        await fetchWalletBalance(); // Cập nhật lại số dư ví cục bộ
-                        
-                        // Add to local notifications list
-                        const orderId = res.data?.id || res.data?._id || '';
-                        const orderCode = res.data?.code || '';
+                      }
+
+                      clearSelected();
+                      if (refetchMe) {
+                        await refetchMe();
+                      }
+                      await fetchWalletBalance(); // Cập nhật lại số dư ví cục bộ
+                      
+                      // Add to local notifications list for each order
+                      createdOrders.forEach(order => {
+                        const orderId = order.id || order._id || '';
+                        const orderCode = order.code || '';
+                        const restName = restaurantsMap[order.restaurantId]?.name || 'Cửa hàng';
                         try {
-                          const stored = localStorage.getItem('user_notifications');
+                          const storageKey = `user_notifications_${user?.id}`;
+                          const stored = localStorage.getItem(storageKey);
                           const customNotis = stored ? JSON.parse(stored) : [];
                           const newNoti = {
-                            id: 'order_' + Date.now(),
+                            id: 'order_' + Date.now() + '_' + orderId,
                             type: 'order' as const,
                             title: 'Đặt đơn hàng mới thành công ✓',
-                            message: `Đơn hàng #${orderCode || orderId.slice(0, 8)} tại quán ${restaurantInfo?.name || 'cửa hàng'} đã được gửi đi. Đang chờ xác nhận!`,
+                            message: `Đơn hàng #${orderCode || orderId.slice(0, 8)} tại quán ${restName} đã được gửi đi. Đang chờ xác nhận!`,
                             time: 'Vừa xong',
                             isRead: false,
                             createdAt: new Date().toISOString(),
                             meta: { orderId, orderStatus: 'pending' }
                           };
                           customNotis.unshift(newNoti);
-                          localStorage.setItem('user_notifications', JSON.stringify(customNotis));
-                          window.dispatchEvent(new Event('new_notification'));
+                          localStorage.setItem(storageKey, JSON.stringify(customNotis));
                         } catch (err) {
                           console.error('Lỗi lưu thông báo đặt đơn hàng:', err);
                         }
+                      });
+                      window.dispatchEvent(new Event('new_notification'));
 
-                        showCustomAlert('Khấu trừ trực tiếp vào ví Saigon-Pay thành công!', 'Thành công', 'info');
-                        setSuccessOrderData({
-                          orderId: res.data.id || res.data._id || '',
-                          orderCode: res.data?.code || (res.data.id || res.data._id || '').slice(0, 8).toUpperCase(),
-                          totalAmount: simulationData.amount,
-                          restaurantName: restaurantInfo?.name || 'Cửa hàng',
-                          paymentMethod: 'WALLET',
-                          itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
-                        });
-                        setScreen('success');                      } else {
-                        showCustomAlert(res?.message || 'Không thể hoàn tất thanh toán qua ví.', 'Lỗi', 'error');
-                      }
+                      showCustomAlert('Khấu trừ trực tiếp vào ví Saigon-Pay thành công!', 'Thành công', 'info');
+                      setSuccessOrderData({
+                        orderId: createdOrders.map(o => o.id || o._id).join(','),
+                        orderCode: createdOrders.map(o => o.code || (o.id || o._id).slice(0, 8).toUpperCase()).join(', '),
+                        totalAmount: simulationData.amount,
+                        restaurantName: createdOrders.map(o => restaurantsMap[o.restaurantId]?.name || 'Cửa hàng').join(' & '),
+                        paymentMethod: 'WALLET',
+                        itemCount: selectedItems.reduce((s, i) => s + i.quantity, 0),
+                        deliveryCode: createdOrders.map(o => o.deliveryCode).filter(Boolean).join(', '),
+                      });
+                      setScreen('success');
                     } catch (err: any) {
                       console.error('Lỗi thanh toán ví:', err);
                       showCustomAlert(err.message || 'Lỗi thanh toán qua ví.', 'Lỗi', 'error');

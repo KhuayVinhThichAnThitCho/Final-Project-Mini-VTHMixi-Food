@@ -68,7 +68,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (data && data.title && data.message) {
         // 1. Lưu thông báo vào localStorage để hiển thị trong Notification Bell
         try {
-          const stored = localStorage.getItem('user_notifications');
+          const storageKey = `user_notifications_${user.id}`;
+          const stored = localStorage.getItem(storageKey);
           const customNotis = stored ? JSON.parse(stored) : [];
           const newNoti = {
             id: 'custom_' + Date.now(),
@@ -80,7 +81,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             createdAt: new Date().toISOString(),
           };
           customNotis.unshift(newNoti);
-          localStorage.setItem('user_notifications', JSON.stringify(customNotis));
+          localStorage.setItem(storageKey, JSON.stringify(customNotis));
           
           // Bắn event để thông báo cho UserNotificationPanel reload lại danh sách
           window.dispatchEvent(new Event('new_notification'));

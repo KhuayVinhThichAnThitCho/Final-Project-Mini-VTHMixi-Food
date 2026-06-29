@@ -102,12 +102,13 @@ export const authService = {
     }
 
     if (user.status === 'banned') {
-      throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
+      throw new AppError(400, 'BUSINESS_ERROR', user.banReason ? `Tài khoản của bạn đã bị khóa. Lý do: ${user.banReason}` : 'Tài khoản của bạn đã bị khóa.');
     }
 
-    // Nếu tài khoản mới đăng ký đang ở trạng thái pending, tự động kích hoạt khi đăng nhập thành công
+    // Nếu tài khoản mới đăng ký đang ở trạng thái pending, yêu cầu xác thực OTP và gửi lại mã OTP mới
     if (user.status === 'pending') {
-      await user.update({ status: 'active' });
+      await generateAndSendOtp(user);
+      return { requiresOtp: true, email: user.email };
     }
 
     // Tạo Access Token & Refresh Token và đăng nhập trực tiếp
@@ -131,7 +132,7 @@ export const authService = {
     }
 
     if (user.status === 'banned') {
-      throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
+      throw new AppError(400, 'BUSINESS_ERROR', user.banReason ? `Tài khoản của bạn đã bị khóa. Lý do: ${user.banReason}` : 'Tài khoản của bạn đã bị khóa.');
     }
 
     if (!user.otpCode || user.otpCode !== otp || !user.otpExpiresAt || user.otpExpiresAt < new Date()) {
@@ -165,7 +166,7 @@ export const authService = {
     }
 
     if (user.status === 'banned') {
-      throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
+      throw new AppError(400, 'BUSINESS_ERROR', user.banReason ? `Tài khoản của bạn đã bị khóa. Lý do: ${user.banReason}` : 'Tài khoản của bạn đã bị khóa.');
     }
 
     await generateAndSendOtp(user);
@@ -253,7 +254,7 @@ export const authService = {
       }
 
       if (user.status === 'banned') {
-        throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
+        throw new AppError(400, 'BUSINESS_ERROR', user.banReason ? `Tài khoản của bạn đã bị khóa. Lý do: ${user.banReason}` : 'Tài khoản của bạn đã bị khóa.');
       }
 
       // Nếu tài khoản mới tạo hoặc pending, kích hoạt luôn
@@ -347,7 +348,7 @@ export const authService = {
       }
 
       if (user.status === 'banned') {
-        throw new AppError(400, 'BUSINESS_ERROR', 'Tài khoản của bạn đã bị khóa.');
+        throw new AppError(400, 'BUSINESS_ERROR', user.banReason ? `Tài khoản của bạn đã bị khóa. Lý do: ${user.banReason}` : 'Tài khoản của bạn đã bị khóa.');
       }
 
       // Nếu tài khoản mới tạo hoặc pending, kích hoạt luôn

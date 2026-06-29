@@ -77,7 +77,9 @@ export const VendorPromotions: React.FC = () => {
         startDate: form.startDate,
         endDate: form.endDate,
       });
-      setVouchers(prev => [res?.data, ...prev]);
+      if (res?.data) {
+        setVouchers(prev => [res.data, ...prev]);
+      }
       setShowModal(false);
       setForm(emptyForm);
     } catch (err: any) {
@@ -170,7 +172,7 @@ export const VendorPromotions: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {vouchers.map(promo => {
+                {vouchers.filter(Boolean).map(promo => {
                   const expired = isExpired(promo);
                   const active = promo.isActive && !expired;
                   return (
