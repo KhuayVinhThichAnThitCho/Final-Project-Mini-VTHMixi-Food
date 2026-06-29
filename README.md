@@ -217,9 +217,9 @@ Dự án phân chia nghiệp vụ chặt chẽ qua 5 nhóm quyền hạn:
 
 ## 👥 Thành Viên Nhóm Thực Hiện (Nhóm 3 Người)
 
-*   **Member 1 (Backend Lead):** Phụ trách thiết kế Database Schema, Cấu hình Master-Slave replication, Thiết lập bảo mật Auth/RBAC, Luồng xử lý Đơn hàng (Order Flow), Quản lý Ví điện tử, Xây dựng API Analytics và viết tài liệu API.
-*   **Member 2 (Frontend Lead):** Phụ trách phát triển UI/UX cho tất cả các giao diện người dùng (Guest, User, Vendor), Cấu hình React Router, Quản lý State tập trung (Zustand & React Query), Tích hợp gọi API từ backend và vẽ biểu đồ dashboard.
-*   **Member 3 (Fullstack Support):** Thiết kế giao diện Manager/Admin, Tích hợp cổng thanh toán VietQR (PayOS), Cấu hình Nodemailer gửi OTP, Tích hợp Cloudinary upload ảnh, Xây dựng module AI Agent, Viết kịch bản Docker-compose và triển khai hệ thống.
+*   **The Vinh (Backend Lead):** Phụ trách thiết kế Database Schema, Cấu hình Master-Slave replication, Thiết lập bảo mật Auth/RBAC, Luồng xử lý Đơn hàng (Order Flow), Quản lý Ví điện tử, Xây dựng API Analytics và viết tài liệu API.
+*   **LV Thuy (Frontend Lead):** Phụ trách phát triển UI/UX cho tất cả các giao diện người dùng (Guest, User, Vendor), Cấu hình React Router, Quản lý State tập trung (Zustand & React Query), Tích hợp gọi API từ backend và vẽ biểu đồ dashboard.
+*   **Van Hieu (Fullstack Support):** Thiết kế giao diện Manager/Admin, Tích hợp cổng thanh toán VietQR (PayOS), Cấu hình Nodemailer gửi OTP, Tích hợp Cloudinary upload ảnh, Xây dựng module AI Agent, Viết kịch bản Docker-compose và triển khai hệ thống.
 
 ---
-*Dự án GrabFood Mini được xây dựng nhằm đáp ứng yêu cầu môn học Đồ Án Tốt Nghiệp / Dự Án Cuối Kỳ, hướng tới sản phẩm đạt chuẩn chất lượng cao về cả tính năng, kiến trúc hệ thống lẫn khả năng ứng dụng thực tế.*
+*Dự án GrabFood Mini được xây dựng nhằm đáp ứng yêu cầu môn học Đồ Án Cuối Kỳ, hướng tới sản phẩm đạt chuẩn chất lượng cao về cả tính năng, kiến trúc hệ thống lẫn khả năng ứng dụng thực tế.*
