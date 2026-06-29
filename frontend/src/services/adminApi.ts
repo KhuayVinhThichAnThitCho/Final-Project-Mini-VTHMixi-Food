@@ -8,8 +8,8 @@ export const adminApi = {
   getUsers: (params?: { role?: string; search?: string; status?: string; page?: number; limit?: number }) =>
     api.get('/admin/users', { params }),
   getUserDetail: (id: string) => api.get(`/admin/users/${id}`),
-  updateUserStatus: (id: string, status: 'active' | 'banned') =>
-    api.patch(`/admin/users/${id}/status`, { status }),
+  updateUserStatus: (id: string, status: 'active' | 'banned', banReason?: string) =>
+    api.patch(`/admin/users/${id}/status`, { status, banReason }),
   assignRole: (id: string, role: string) =>
     api.post(`/admin/users/${id}/role`, { role }),
 
@@ -51,6 +51,12 @@ export const adminApi = {
   // Activity Logs
   getActivityLogs: (params?: { action?: string; adminId?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) =>
     api.get('/admin/activity-logs', { params }),
+
+  // Unban Appeals
+  getAppeals: (params?: { page?: number; limit?: number }) =>
+    api.get('/admin/appeals', { params }),
+  resolveAppeal: (id: string, status: 'approved' | 'rejected', adminResponse?: string) =>
+    api.post(`/admin/appeals/${id}/resolve`, { status, adminResponse }),
 };
 
 export default adminApi;

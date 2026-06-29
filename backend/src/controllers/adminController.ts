@@ -67,13 +67,13 @@ export const adminController = {
     try {
       if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Chưa xác thực.');
       const { id } = req.params;
-      const { status } = req.body;
+      const { status, banReason } = req.body;
 
       if (!['active', 'banned'].includes(status)) {
         throw new AppError(400, 'VALIDATION_ERROR', 'Trạng thái không hợp lệ. Chỉ chấp nhận: active, banned');
       }
 
-      const data = await adminService.updateUserStatus(id, status, req.user.id);
+      const data = await adminService.updateUserStatus(id, status, req.user.id, banReason);
       res.status(200).json({
         success: true,
         message: status === 'banned' ? 'Đã khóa tài khoản người dùng.' : 'Đã mở khóa tài khoản người dùng.',

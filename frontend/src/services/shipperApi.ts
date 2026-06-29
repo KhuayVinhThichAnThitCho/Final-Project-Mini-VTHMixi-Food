@@ -30,8 +30,8 @@ export const shipperApi = {
   /**
    * Xác nhận giao hàng xong + upload ảnh
    */
-  completeDelivery: async (orderId: string, photo?: string) => {
-    return api.post(`/shipper/orders/${orderId}/complete`, { photo }) as any;
+  completeDelivery: async (orderId: string, photo?: string, deliveryCode?: string) => {
+    return api.post(`/shipper/orders/${orderId}/complete`, { photo, deliveryCode }) as any;
   },
 
   /**

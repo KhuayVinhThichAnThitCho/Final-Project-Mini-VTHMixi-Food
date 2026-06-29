@@ -25,6 +25,16 @@ interface Order {
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivering' | 'completed' | 'cancelled';
 
+const getImageUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+  const backendBase = apiBaseUrl.replace('/api/v1', '');
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 export const VendorOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,7 +243,7 @@ export const VendorOrders: React.FC = () => {
                     <div className="mb-3">
                       <p className="text-xs font-semibold text-gray-500 mb-1">📸 Ảnh shipper lấy hàng:</p>
                       <img
-                        src={order.pickupPhotoUrl}
+                        src={getImageUrl(order.pickupPhotoUrl)}
                         alt="Pickup"
                         className="w-full h-32 object-cover rounded-xl border border-gray-200"
                       />

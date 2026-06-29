@@ -13,18 +13,18 @@ async function seedCentralFood() {
     }
 
     console.log('🔍 Checking for vendor user...');
-    let vendor = await User.findOne({ where: { role: 'vendor' } });
+    let vendor = await User.findOne({ where: { email: 'vendor12@saigon.com' } });
     if (!vendor) {
       vendor = await User.create({
-        id: '11111111-1111-1111-1111-111111111111',
-        name: 'Chủ Quán Sài Gòn',
-        email: 'vendor@saigon.com',
+        id: '11111111-1111-1111-1111-11111111111c',
+        name: 'Chủ Quán Quán Ăn Miền Trung O Nở',
+        email: 'vendor12@saigon.com',
         password: 'Vendor@123456',
         role: 'vendor',
         status: 'active',
-        phone: '0900000004',
+        phone: '0900000012',
       });
-      console.log('✅ Created default vendor user.');
+      console.log('✅ Created vendor12 user for Quán Ăn Miền Trung O Nở.');
     }
 
     console.log('🔍 Checking if Quán Ăn Miền Trung O Nở already exists...');

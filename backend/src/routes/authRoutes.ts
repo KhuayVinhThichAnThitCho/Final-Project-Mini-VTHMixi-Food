@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authController } from '../controllers/authController';
+import { appealController } from '../controllers/appealController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -36,6 +37,9 @@ router.post('/google', authController.googleLogin);
 
 // Route Đăng nhập bằng Facebook: POST /api/v1/auth/facebook
 router.post('/facebook', authController.facebookLogin);
+
+// Route Gửi đơn xin mở khóa tài khoản: POST /api/v1/auth/appeal
+router.post('/appeal', appealController.submitAppeal);
 
 export default router;
 

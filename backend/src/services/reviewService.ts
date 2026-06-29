@@ -88,6 +88,37 @@ export const reviewService = {
       rewardPoints: rewardType === 'points' ? rewardPoints : 0,
     });
 
+    // 4. Tự động tính toán lại rating trung bình của nhà hàng và cập nhật vào bảng restaurants
+    try {
+      const restaurantId = order.restaurantId;
+      if (restaurantId) {
+        const allReviews = await Review.findAll({
+          include: [
+            {
+              model: Order,
+              where: { restaurantId },
+              attributes: [],
+            },
+          ],
+          attributes: ['rating']
+        });
+
+        if (allReviews.length > 0) {
+          const sumRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
+          const calculatedAvg = sumRating / allReviews.length;
+          
+          const { Restaurant } = await import('../models/Restaurant');
+          await Restaurant.update(
+            { ratingAvg: parseFloat(calculatedAvg.toFixed(1)) },
+            { where: { id: restaurantId } }
+          );
+          console.log(`⭐ Đã tự động cập nhật ratingAvg của Restaurant ${restaurantId} thành ${calculatedAvg.toFixed(1)}`);
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi tự động cập nhật ratingAvg cho nhà hàng:', err);
+    }
+
     return { review, rewardPoints, voucherCode };
   },
 

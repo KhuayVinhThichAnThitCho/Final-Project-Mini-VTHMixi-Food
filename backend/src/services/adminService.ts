@@ -11,6 +11,8 @@ import { SystemConfig } from '../models/SystemConfig';
 import { AdminLog } from '../models/AdminLog';
 import { AppError } from '../middlewares/errorHandler';
 import { notificationService } from './notificationService';
+import { reconciliationService } from './reconciliationService';
+import orderService from './orderService';
 
 // ============================================================
 // HELPER: Ghi log hành động Admin
@@ -150,7 +152,7 @@ export const adminService = {
   /**
    * A-01: Khóa / Mở khóa tài khoản user
    */
-  updateUserStatus: async (userId: string, status: 'active' | 'banned', adminId: string) => {
+  updateUserStatus: async (userId: string, status: 'active' | 'banned', adminId: string, banReason?: string) => {
     if (userId === adminId) {
       throw new AppError(400, 'BUSINESS_ERROR', 'Không thể tự khóa tài khoản của chính mình.');
     }
@@ -165,7 +167,35 @@ export const adminService = {
     }
 
     const oldStatus = user.status;
-    await user.update({ status });
+    const updateData: any = { status };
+    if (status === 'banned') {
+      updateData.banReason = banReason || 'Không có lý do cụ thể';
+    } else {
+      updateData.banReason = null;
+    }
+
+    await user.update(updateData);
+
+    // Gửi thông báo email và realtime cho người dùng
+    try {
+      if (status === 'banned') {
+        await notificationService.sendSystemNotification(
+          user.id,
+          user.email,
+          'Tài khoản của bạn đã bị khóa',
+          `Tài khoản của bạn trên hệ thống đã bị khóa bởi Quản trị viên. Lý do: ${updateData.banReason}`
+        );
+      } else {
+        await notificationService.sendSystemNotification(
+          user.id,
+          user.email,
+          'Tài khoản của bạn đã được mở khóa',
+          `Tài khoản của bạn trên hệ thống đã được mở khóa bởi Quản trị viên. Bạn hiện có thể đăng nhập và sử dụng dịch vụ.`
+        );
+      }
+    } catch (notifError) {
+      console.error('⚠️ Lỗi gửi thông báo đổi trạng thái user:', notifError);
+    }
 
     // Ghi log
     await createAdminLog({
@@ -173,8 +203,8 @@ export const adminService = {
       action: 'USER_STATUS_CHANGE',
       targetType: 'user',
       targetId: userId,
-      description: `${status === 'banned' ? 'Khóa' : 'Mở khóa'} tài khoản "${user.name}" (${user.email})`,
-      details: { oldStatus, newStatus: status, userName: user.name, userEmail: user.email },
+      description: `${status === 'banned' ? 'Khóa' : 'Mở khóa'} tài khoản "${user.name}" (${user.email})${status === 'banned' ? ` - Lý do: ${updateData.banReason}` : ''}`,
+      details: { oldStatus, newStatus: status, userName: user.name, userEmail: user.email, banReason: updateData.banReason },
     });
 
     return {
@@ -183,6 +213,7 @@ export const adminService = {
       email: user.email,
       role: user.role,
       status: user.status,
+      banReason: user.banReason,
     };
   },
 
@@ -544,6 +575,16 @@ export const adminService = {
     const oldStatus = order.status;
     await order.update({ status: newStatus as any });
 
+    // Nếu chuyển sang hoàn thành, thực hiện đối soát tài chính qua Ví điện tử
+    if (newStatus === 'completed' && oldStatus !== 'completed') {
+      await reconciliationService.settleOrderPayment(order);
+    }
+
+    // Nếu chuyển sang trạng thái hủy và trạng thái cũ không phải là hủy, hoàn lại tồn kho
+    if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
+      await orderService.restoreOrderStock(order);
+    }
+
     // Ghi log
     await createAdminLog({
       adminId,
@@ -727,6 +768,10 @@ export const adminService = {
     const user = await User.findByPk(userId);
     if (!user) {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy người dùng.');
+    }
+
+    if (user.status === 'banned') {
+      throw new AppError(400, 'BUSINESS_ERROR', 'Không thể gán vai trò mới cho tài khoản đang bị khóa.');
     }
 
     const oldRole = user.role;

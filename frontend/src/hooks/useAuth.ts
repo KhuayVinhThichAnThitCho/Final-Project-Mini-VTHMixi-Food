@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { authApi } from '../services/authApi';
 import { useCartStore } from '../store/useCartStore';
@@ -8,6 +9,7 @@ import cartApi from '../services/cartApi';
 export const useAuth = () => {
   const { setUser, setTokens, clearAuth, user, isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Tự động tải thông tin cá nhân và điểm tích lũy khi đã đăng nhập nhưng thiếu thông tin user (ví dụ sau F5)
   const { data: profileData, refetch: refetchMe } = useQuery({
@@ -41,6 +43,8 @@ export const useAuth = () => {
               imageUrl: item.menuItem?.image || item.menuItem?.imageUrl,
               toppings: [],
               selected: true, // Mặc định tích chọn thanh toán
+              restaurantId: item.menuItem?.restaurantId || cartData.restaurantId || '',
+              restaurantName: item.menuItem?.restaurant?.name || 'Quán ăn',
             }));
             useCartStore.getState().setCartItems(mappedItems, cartData.restaurantId);
           }
@@ -91,6 +95,7 @@ export const useAuth = () => {
     clearAuth();
     queryClient.removeQueries();
     useCartStore.getState().clearCart(); // Dọn sạch giỏ hàng khi đăng xuất
+    navigate('/login');
   };
 
   return {

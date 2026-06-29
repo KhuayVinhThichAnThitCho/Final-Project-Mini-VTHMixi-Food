@@ -23,6 +23,7 @@ import { AiMessage } from '../models/AiMessage';
 import { CustomerAiConversation } from '../models/CustomerAiConversation';
 import { CustomerAiMessage } from '../models/CustomerAiMessage';
 import { UserVoucher } from '../models/UserVoucher';
+import { UnbanAppeal } from '../models/UnbanAppeal';
 
 // Nạp các biến môi trường từ .env
 dotenv.config();
@@ -39,7 +40,7 @@ export const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'grabfood_mini',
   
   // Đăng ký toàn bộ Model vào Sequelize Instance
-  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite, Conversation, Message, SystemConfig, Report, WithdrawalRequest, AdminLog,AiConversation, AiMessage, CustomerAiConversation, CustomerAiMessage, UserVoucher],
+  models: [User, Restaurant, MenuItem, Order, Wallet, Cart, CartItem, Review, Voucher, Favorite, Conversation, Message, SystemConfig, Report, WithdrawalRequest, AdminLog, AiConversation, AiMessage, CustomerAiConversation, CustomerAiMessage, UserVoucher, UnbanAppeal],
   
   // Cấu hình ghi log SQL ra console trong môi trường phát triển
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
@@ -102,6 +103,13 @@ export const initializeDatabase = async (): Promise<boolean> => {
       const [isPaidCols]: any = await sequelize.query("SHOW COLUMNS FROM orders LIKE 'is_paid'");
       if (isPaidCols.length === 0) {
         await sequelize.query("ALTER TABLE orders ADD COLUMN is_paid BOOLEAN NOT NULL DEFAULT FALSE");
+      }
+
+      // Thêm cột delivery_code nếu chưa tồn tại
+      const [dcCols]: any = await sequelize.query("SHOW COLUMNS FROM orders LIKE 'delivery_code'");
+      if (dcCols.length === 0) {
+        await sequelize.query("ALTER TABLE orders ADD COLUMN delivery_code VARCHAR(10) NULL");
+        console.log('  + Đã thêm cột delivery_code cho bảng orders.');
       }
       
       console.log('✅ Đã đồng bộ cấu trúc orders thành công.');

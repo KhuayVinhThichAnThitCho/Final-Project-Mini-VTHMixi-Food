@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Lock, Unlock, UserCog, ChevronLeft, ChevronRight, X, AlertCircle } from 'lucide-react';
+import { Search, Lock, UserCog, ChevronLeft, ChevronRight, X, AlertCircle } from 'lucide-react';
 import adminApi from '../../services/adminApi';
 
 
@@ -99,6 +99,87 @@ const RoleModal: React.FC<{
   );
 };
 
+// ─── Ban Reason Modal ───────────────────────────────────────
+const SUGGESTED_REASONS = [
+  'Bom hàng / Hủy đơn liên tục không lý do',
+  'Gian lận khuyến mãi / Tạo tài khoản ảo',
+  'Vi phạm tiêu chuẩn cộng đồng / Ngôn từ quấy rối',
+  'Hành vi bất thường / Nghi ngờ xâm nhập',
+];
+
+const BanModal: React.FC<{
+  user: any;
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+  isLoading: boolean;
+}> = ({ user, onClose, onSubmit, isLoading }) => {
+  const [reason, setReason] = useState('');
+
+  return (
+    <div className="fixed inset-0 bg-neutral-950/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro-lg w-full max-w-md"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-6 py-4 border-b-2 border-neutral-200 flex items-center justify-between">
+          <h3 className="font-heading font-bold text-neutral-900">Khóa Tài Khoản</h3>
+          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-700">
+            <X size={18} strokeWidth={1.5} />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-neutral-50 border border-neutral-200 p-3">
+            <p className="font-body text-sm font-semibold text-neutral-900">{user?.name}</p>
+            <p className="font-mono text-xs text-neutral-500 mt-0.5">{user?.email}</p>
+          </div>
+          <div>
+            <label className="block font-body text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-1.5">
+              Gợi ý lý do khóa nhanh
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {SUGGESTED_REASONS.map(r => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setReason(r)}
+                  className="px-2.5 py-1 text-[11px] font-body text-left bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-800 transition-colors duration-150"
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <label className="block font-body text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-2">
+              Lý do chi tiết
+            </label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Nhập hoặc chỉnh sửa lý do khóa tài khoản..."
+              rows={3}
+              className="w-full px-3 py-2 bg-neutral-50 border-2 border-neutral-200 font-body text-sm text-neutral-900 focus:outline-none focus:border-primary-500 focus:bg-white transition-colors resize-none"
+            />
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t-2 border-neutral-200 flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border-2 border-neutral-200 font-mono text-sm text-neutral-600 hover:bg-neutral-50 transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={() => onSubmit(reason.trim())}
+            disabled={isLoading || !reason.trim()}
+            className="px-4 py-2 bg-red-600 text-white border-2 border-red-700 font-mono text-sm font-bold uppercase tracking-wider hover:bg-red-500 transition-colors shadow-retro-sm disabled:opacity-50"
+          >
+            {isLoading ? 'Đang thực hiện...' : 'Khóa tài khoản'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────
 const AdminUsers: React.FC = () => {
   const queryClient = useQueryClient();
@@ -107,6 +188,7 @@ const AdminUsers: React.FC = () => {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [roleModalUser, setRoleModalUser] = useState<any>(null);
+  const [banModalUser, setBanModalUser] = useState<any>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', search, role, status, page],
@@ -117,9 +199,12 @@ const AdminUsers: React.FC = () => {
   const pagination = (data as any)?.pagination;
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'active' | 'banned' }) =>
-      adminApi.updateUserStatus(id, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    mutationFn: ({ id, status, banReason }: { id: string; status: 'active' | 'banned'; banReason?: string }) =>
+      adminApi.updateUserStatus(id, status, banReason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setBanModalUser(null);
+    },
   });
 
   const roleMutation = useMutation({
@@ -234,31 +319,26 @@ const AdminUsers: React.FC = () => {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         {/* Lock/Unlock */}
-                        <button
-                          onClick={() => statusMutation.mutate({
-                            id: user.id,
-                            status: user.status === 'banned' ? 'active' : 'banned',
-                          })}
-                          disabled={statusMutation.isPending}
-                          title={user.status === 'banned' ? 'Mở khóa' : 'Khóa tài khoản'}
-                          className={`p-2 border transition-all ${
-                            user.status === 'banned'
-                              ? 'border-green-300 text-green-600 hover:bg-green-50'
-                              : 'border-red-300 text-red-600 hover:bg-red-50'
-                          }`}
-                        >
-                          {user.status === 'banned'
-                            ? <Unlock size={14} strokeWidth={1.5} />
-                            : <Lock size={14} strokeWidth={1.5} />}
-                        </button>
+                        {user.status !== 'banned' && (
+                          <button
+                            onClick={() => setBanModalUser(user)}
+                            disabled={statusMutation.isPending}
+                            title="Khóa tài khoản"
+                            className="p-2 border border-red-300 text-red-600 hover:bg-red-50 transition-all"
+                          >
+                            <Lock size={14} strokeWidth={1.5} />
+                          </button>
+                        )}
                         {/* Assign Role */}
-                        <button
-                          onClick={() => setRoleModalUser(user)}
-                          title="Gán role"
-                          className="p-2 border border-secondary-300 text-secondary-700 hover:bg-secondary-50 transition-colors"
-                        >
-                          <UserCog size={14} strokeWidth={1.5} />
-                        </button>
+                        {user.status !== 'banned' && (
+                          <button
+                            onClick={() => setRoleModalUser(user)}
+                            title="Gán role"
+                            className="p-2 border border-secondary-300 text-secondary-700 hover:bg-secondary-50 transition-colors"
+                          >
+                            <UserCog size={14} strokeWidth={1.5} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -301,6 +381,16 @@ const AdminUsers: React.FC = () => {
           onClose={() => setRoleModalUser(null)}
           onSubmit={(role) => roleMutation.mutate({ id: roleModalUser.id, role })}
           isLoading={roleMutation.isPending}
+        />
+      )}
+
+      {/* Ban Modal */}
+      {banModalUser && (
+        <BanModal
+          user={banModalUser}
+          onClose={() => setBanModalUser(null)}
+          onSubmit={(reason) => statusMutation.mutate({ id: banModalUser.id, status: 'banned', banReason: reason })}
+          isLoading={statusMutation.isPending}
         />
       )}
     </div>

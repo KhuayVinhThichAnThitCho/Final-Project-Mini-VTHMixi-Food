@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Store, Package, ShoppingBag,
-  BarChart3, LogOut, ChevronRight, Shield, Settings, ClipboardList, Tag
+  BarChart3, LogOut, ChevronRight, Shield, Settings, ClipboardList, Tag, AlertCircle
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import ConfirmModal from '../../components/molecules/ConfirmModal';
@@ -18,6 +18,7 @@ const menuItems = [
   { id: 'vendors', label: 'Quản Lý Vendor', icon: Store },
   { id: 'products', label: 'Sản Phẩm', icon: Package },
   { id: 'orders', label: 'Đơn Hàng', icon: ShoppingBag },
+  { id: 'appeals', label: 'Yêu Cầu Mở Khóa', icon: AlertCircle },
   { id: 'vouchers', label: 'Mã Giảm Giá', icon: Tag },
   { id: 'analytics', label: 'Báo Cáo & Doanh Thu', icon: BarChart3 },
   { id: 'settings', label: 'Cấu Hình Hệ Thống', icon: Settings },

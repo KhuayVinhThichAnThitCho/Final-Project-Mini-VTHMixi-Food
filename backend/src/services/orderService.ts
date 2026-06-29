@@ -6,6 +6,8 @@ import { User } from '../models/User';
 import { Voucher } from '../models/Voucher';
 import { UserVoucher } from '../models/UserVoucher';
 import { SystemConfig } from '../models/SystemConfig';
+import { MenuItem } from '../models/MenuItem';
+import { Restaurant } from '../models/Restaurant';
 
 export const orderService = {
   /**
@@ -21,6 +23,63 @@ export const orderService = {
   ): Promise<Order> => {
     if (items.length === 0) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Đơn hàng phải chứa ít nhất một món ăn.');
+    }
+
+    // Kiểm tra trạng thái của nhà hàng trước khi đặt hàng
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy thông tin quán ăn.');
+    }
+    if (restaurant.status === 'banned') {
+      throw new AppError(400, 'BUSINESS_ERROR', 'Quán ăn này hiện đã bị cấm/tạm khóa bởi quản trị viên. Bạn không thể đặt hàng.');
+    }
+    if (restaurant.status !== 'open') {
+      throw new AppError(400, 'BUSINESS_ERROR', 'Quán ăn này hiện đang đóng cửa hoặc chưa được kích hoạt.');
+    }
+
+    // Kiểm tra địa chỉ nhận hàng có thuộc TP.HCM hay không
+    const normalizedAddress = deliveryAddress.toLowerCase();
+    const isInHCM = 
+      normalizedAddress.includes('hồ chí minh') ||
+      normalizedAddress.includes('ho chi minh') ||
+      normalizedAddress.includes('tp.hcm') ||
+      normalizedAddress.includes('tphcm') ||
+      normalizedAddress.includes('hcmc') ||
+      normalizedAddress.includes('hcm') ||
+      normalizedAddress.includes('sài gòn') ||
+      normalizedAddress.includes('sai gon');
+
+    if (!isInHCM) {
+      throw new AppError(400, 'BUSINESS_ERROR', 'Hệ thống hiện tại chỉ hỗ trợ giao hàng tại khu vực TP. Hồ Chí Minh. Vui lòng chọn địa chỉ giao hàng hợp lệ ở TP.HCM.');
+    }
+
+    // 0. Kiểm tra tồn kho và lấy thông tin giá chuẩn từ DB để chống hack giá từ client
+    const menuItemUpdates: { menuItem: MenuItem; quantity: number }[] = [];
+    for (const item of items) {
+      const menuItem = await MenuItem.findByPk(item.menuItemId);
+      if (!menuItem) {
+        throw new AppError(404, 'NOT_FOUND', `Món ăn với ID ${item.menuItemId} không tồn tại.`);
+      }
+
+      if (menuItem.restaurantId !== restaurantId) {
+        throw new AppError(400, 'BUSINESS_ERROR', `Món ăn "${menuItem.name}" không thuộc về quán ăn này.`);
+      }
+
+      if (menuItem.stock < item.quantity) {
+        throw new AppError(400, 'BUSINESS_ERROR', `Món ăn "${menuItem.name}" đã hết hàng hoặc không đủ tồn kho (Còn lại: ${menuItem.stock}).`);
+      }
+
+      // Ghi đè giá và tên từ DB
+      item.price = Number(menuItem.price);
+      item.name = menuItem.name;
+
+      menuItemUpdates.push({ menuItem, quantity: item.quantity });
+    }
+
+    // Trừ tồn kho trong DB
+    for (const update of menuItemUpdates) {
+      update.menuItem.stock -= update.quantity;
+      await update.menuItem.save();
     }
 
     // 1. Tính tổng tiền gốc của món ăn
@@ -123,6 +182,9 @@ export const orderService = {
       payosOrderCode = Number(String(Date.now()).slice(-9)) + Math.floor(Math.random() * 1000);
     }
 
+    // Sinh mã nhận hàng ngẫu nhiên 4 số
+    const deliveryCode = Math.floor(1000 + Math.random() * 9000).toString();
+
     // 4. Tạo đơn hàng lưu vào database
     const order = await orderRepository.create({
       userId,
@@ -132,6 +194,7 @@ export const orderService = {
       deliveryAddress,
       paymentMethod,
       payosOrderCode,
+      deliveryCode,
       isPaid: (paymentMethod === 'WALLET' || paymentMethod === 'POINTS'),
     });
 
@@ -193,6 +256,26 @@ export const orderService = {
   },
 
   /**
+   * Hoàn lại số lượng món ăn vào tồn kho (khi hủy đơn hàng)
+   */
+  restoreOrderStock: async (order: Order): Promise<void> => {
+    try {
+      if (order.items && Array.isArray(order.items)) {
+        for (const item of order.items) {
+          const menuItem = await MenuItem.findByPk(item.menuItemId);
+          if (menuItem) {
+            menuItem.stock = Number(menuItem.stock || 0) + Number(item.quantity);
+            await menuItem.save();
+            console.log(`♻️ [Stock Restore] Đã hoàn lại tồn kho món "${menuItem.name}": +${item.quantity} (Tồn kho mới: ${menuItem.stock})`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`❌ [Stock Restore Error] Lỗi hoàn tồn kho cho đơn #${order.id}:`, error);
+    }
+  },
+
+  /**
    * Cập nhật trạng thái đơn hàng (Dành cho Vendor, Manager hoặc Admin)
    */
   updateOrderStatus: async (orderId: string, userId: string, newStatus: OrderStatus): Promise<Order> => {
@@ -201,8 +284,21 @@ export const orderService = {
       throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy đơn hàng yêu cầu.');
     }
 
-    // Trong thực tế cần phân quyền: chỉ có Vendor chủ cửa hàng đó hoặc Admin mới được cập nhật
-    // if (order.restaurantOwnerId !== userId) { throw new AppError(403, 'FORBIDDEN', 'Bạn không có quyền cập nhật đơn hàng này.'); }
+    // Kiểm tra xem người cập nhật có phải là vendor của quán bị cấm hay không
+    const user = await User.findByPk(userId);
+    if (user && user.role === 'vendor') {
+      const restaurant = await Restaurant.findOne({ where: { ownerId: userId } });
+      if (restaurant && restaurant.status === 'banned') {
+        throw new AppError(403, 'FORBIDDEN', 'Tài khoản quán của bạn đã bị cấm/tạm khóa bởi quản trị viên. Bạn không thể thực hiện xử lý đơn hàng.');
+      }
+    }
+
+    const oldStatus = order.status;
+
+    // Nếu đơn hàng chuyển sang trạng thái hủy và trạng thái cũ không phải là hủy
+    if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
+      await orderService.restoreOrderStock(order);
+    }
 
     const updatedOrder = await orderRepository.updateStatus(orderId, newStatus);
     if (!updatedOrder) {

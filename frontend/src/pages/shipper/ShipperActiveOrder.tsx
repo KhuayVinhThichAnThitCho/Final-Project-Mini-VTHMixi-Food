@@ -12,6 +12,7 @@ const ShipperActiveOrder: React.FC = () => {
   const [photo, setPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(false);
+  const [deliveryCodeInput, setDeliveryCodeInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchActiveOrder = useCallback(async () => {
@@ -59,9 +60,13 @@ const ShipperActiveOrder: React.FC = () => {
 
   const handleComplete = async () => {
     if (!order) return;
+    if (!deliveryCodeInput || deliveryCodeInput.length !== 4) {
+      alert('Vui lòng nhập đầy đủ mã nhận hàng gồm 4 chữ số từ khách hàng.');
+      return;
+    }
     setUploading(true);
     try {
-      await shipperApi.completeDelivery(order.id, photo || undefined);
+      await shipperApi.completeDelivery(order.id, photo || undefined, deliveryCodeInput);
       setDone(true);
     } catch (err: any) {
       alert(err?.message || 'Xác nhận thất bại!');
@@ -240,6 +245,20 @@ const ShipperActiveOrder: React.FC = () => {
           className="hidden"
           onChange={handleSelectPhoto}
         />
+
+        {step === 'delivery' && (
+          <div className="border border-gray-100 p-4 rounded-xl space-y-2 bg-gray-50/50">
+            <label className="block text-sm font-semibold text-gray-700">🔑 Nhập mã nhận hàng từ khách:</label>
+            <input
+              type="text"
+              maxLength={4}
+              placeholder="Nhập 4 chữ số..."
+              value={deliveryCodeInput}
+              onChange={(e) => setDeliveryCodeInput(e.target.value.replace(/\D/g, ''))}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg text-center font-mono text-xl tracking-widest focus:border-primary-500 focus:outline-none"
+            />
+          </div>
+        )}
 
         {/* Action button */}
         <button

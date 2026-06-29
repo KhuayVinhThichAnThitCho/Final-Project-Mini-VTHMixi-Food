@@ -8,6 +8,8 @@ export interface CartItem {
   imageUrl?: string;
   toppings?: string[];
   selected?: boolean; // Mặc định là true khi thêm mới
+  restaurantId: string;
+  restaurantName?: string;
 }
 
 interface CartStore {
@@ -15,7 +17,11 @@ interface CartStore {
   restaurantId: string | null;
   isCartLoaded: boolean;
   setCartItems: (items: CartItem[], restaurantId: string | null) => void;
-  addToCart: (item: Omit<CartItem, 'quantity' | 'selected'>, restaurantId: string, quantity?: number) => void;
+  addToCart: (
+    item: Omit<CartItem, 'quantity' | 'selected' | 'restaurantId'> & { restaurantName?: string }, 
+    restaurantId: string, 
+    quantity?: number
+  ) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   toggleSelectItem: (itemId: string) => void;
@@ -32,25 +38,27 @@ export const useCartStore = create<CartStore>((set) => ({
   setCartItems: (items, restaurantId) => set({ items, restaurantId, isCartLoaded: true }),
 
   addToCart: (item, restaurantId, quantity = 1) => set((state) => {
-    // Nếu giỏ hàng đang trống hoặc mua cùng một nhà hàng
-    if (!state.restaurantId || state.restaurantId === restaurantId) {
-      const existingIndex = state.items.findIndex((i) => i.id === item.id);
-      
-      if (existingIndex > -1) {
-        const updatedItems = [...state.items];
-        updatedItems[existingIndex].quantity += quantity;
-        updatedItems[existingIndex].selected = true; // Tự động chọn lại nếu thêm tiếp
-        return { items: updatedItems, restaurantId };
-      } else {
-        return { items: [...state.items, { ...item, quantity, selected: true }], restaurantId };
-      }
-    } 
+    const existingIndex = state.items.findIndex((i) => i.id === item.id);
     
-    // Nếu mua từ nhà hàng khác, ghi đè giỏ hàng mới
-    return {
-      items: [{ ...item, quantity, selected: true }],
-      restaurantId,
-    };
+    if (existingIndex > -1) {
+      const updatedItems = [...state.items];
+      updatedItems[existingIndex].quantity += quantity;
+      updatedItems[existingIndex].selected = true; // Tự động chọn lại nếu thêm tiếp
+      return { items: updatedItems, restaurantId };
+    } else {
+      const newItem: CartItem = {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        toppings: item.toppings,
+        quantity,
+        selected: true,
+        restaurantId,
+        restaurantName: item.restaurantName || 'Quán ăn',
+      };
+      return { items: [...state.items, newItem], restaurantId };
+    }
   }),
 
   removeFromCart: (itemId) => set((state) => {
@@ -90,7 +98,7 @@ export const useCartStore = create<CartStore>((set) => ({
     return { items: updatedItems };
   }),
 
-  clearCart: () => set({ items: [], restaurantId: null }),
+  clearCart: () => set({ items: [], restaurantId: null, isCartLoaded: false }),
 
   clearSelected: () => set((state) => {
     const updatedItems = state.items.filter((item) => item.selected === false);

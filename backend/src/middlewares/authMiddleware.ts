@@ -36,7 +36,18 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
         }
         
         if (user.status === 'banned') {
-          return next(new AppError(401, 'UNAUTHORIZED', 'Tài khoản đã bị khóa.'));
+          return next(new AppError(401, 'UNAUTHORIZED', user.banReason ? `Tài khoản đã bị khóa. Lý do: ${user.banReason}` : 'Tài khoản đã bị khóa.'));
+        }
+
+        // Kiểm tra xem nếu người dùng là vendor và cửa hàng của họ bị cấm (banned)
+        if (user.role === 'vendor') {
+          const { Restaurant } = await import('../models/Restaurant');
+          const restaurant = await Restaurant.findOne({ where: { ownerId: user.id } });
+          if (restaurant && restaurant.status === 'banned') {
+            if (req.method !== 'GET') {
+              return next(new AppError(403, 'FORBIDDEN', 'Cửa hàng của bạn đã bị cấm bởi quản trị viên. Không thể thực hiện thao tác này.'));
+            }
+          }
         }
 
         req.user = { 

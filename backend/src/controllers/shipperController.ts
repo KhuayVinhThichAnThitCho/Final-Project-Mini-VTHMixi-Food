@@ -7,6 +7,7 @@ import { Restaurant } from '../models/Restaurant';
 import { sequelize } from '../config/database';
 import path from 'path';
 import fs from 'fs';
+import { reconciliationService } from '../services/reconciliationService';
 
 export const shipperController = {
   /**
@@ -131,12 +132,17 @@ export const shipperController = {
       if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập.');
 
       const { id } = req.params;
-      const { photo } = req.body; // base64 data URL
+      const { photo, deliveryCode } = req.body;
 
       const order = await Order.findByPk(id);
       if (!order) throw new AppError(404, 'NOT_FOUND', 'Không tìm thấy đơn hàng.');
       if (order.shipperId !== req.user.id) throw new AppError(403, 'FORBIDDEN', 'Bạn không phải shipper của đơn này.');
       if (order.status !== 'delivering') throw new AppError(400, 'BUSINESS_ERROR', 'Đơn hàng chưa ở trạng thái đang giao.');
+
+      // Xác thực mã nhận hàng từ khách để chống bưu tá trục lợi
+      if (order.deliveryCode && order.deliveryCode !== deliveryCode) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Mã xác nhận giao hàng từ khách hàng không chính xác.');
+      }
 
       let deliveryPhotoUrl: string | undefined;
       if (photo && photo.startsWith('data:image/')) {
@@ -152,7 +158,9 @@ export const shipperController = {
 
       await order.update({ status: 'completed', deliveryPhotoUrl });
 
-      // Cộng thu nhập (shippingFee) vào thống kê (hiện tại lưu trên order, sau có thể cộng vào wallet)
+      // Thực hiện đối soát tài chính qua Ví điện tử hệ thống
+      await reconciliationService.settleOrderPayment(order);
+
       console.log(`💰 Shipper ${req.user.id} hoàn thành đơn ${id} — Thu nhập: ${order.shippingFee}đ`);
 
       res.status(200).json({

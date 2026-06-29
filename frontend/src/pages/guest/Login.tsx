@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import FormField from '../../components/molecules/FormField';
 import Button from '../../components/atoms/Button';
 import SaigonDivider from '../../components/molecules/SaigonDivider';
-import { LogIn, Key, ArrowLeft, RefreshCw } from 'lucide-react';
+import { LogIn, Key, ArrowLeft, RefreshCw, X } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -16,12 +16,15 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [requiresOtp, setRequiresOtp] = useState(false);
+  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
   const [isOauthLoading, setIsOauthLoading] = useState(false);
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [isAppealing, setIsAppealing] = useState(false);
   const oauthProcessed = React.useRef(false);
 
   // Xử lý callback OAuth 2.0 từ Google & Facebook
@@ -132,6 +135,13 @@ export const Login: React.FC = () => {
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  const handleProceedToVerify = () => {
+    setShowVerifyPrompt(false);
+    setRequiresOtp(true);
+    setInfoMsg('Mã xác thực OTP đã được gửi đến email của bạn.');
+    setCountdown(60);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -140,15 +150,15 @@ export const Login: React.FC = () => {
     }
     setError('');
     setInfoMsg('');
+    setShowVerifyPrompt(false);
     
     login(
       { email, passwordString: password },
       {
         onSuccess: (res: any) => {
           if (res.requiresOtp) {
-            setRequiresOtp(true);
-            setInfoMsg(res.message || 'Mã xác thực OTP đã được gửi đến email của bạn.');
-            setCountdown(60);
+            setShowVerifyPrompt(true);
+            setError('');
           } else {
             const user = res.data.user;
             const role = user.role.toLowerCase();
@@ -213,9 +223,26 @@ export const Login: React.FC = () => {
 
   const handleBackToLogin = () => {
     setRequiresOtp(false);
+    setShowVerifyPrompt(false);
     setOtp('');
     setError('');
     setInfoMsg('');
+  };
+
+  const handleAppealSubmit = async (appealEmail: string, appealReason: string) => {
+    setIsAppealing(true);
+    setError('');
+    setInfoMsg('');
+    try {
+      const res = await authApi.submitAppeal(appealEmail, appealReason);
+      setInfoMsg(res.message || 'Đã gửi yêu cầu mở khóa tài khoản thành công.');
+      setShowAppealModal(false);
+    } catch (err: any) {
+      setError(err.message || 'Gửi yêu cầu mở khóa thất bại. Vui lòng thử lại.');
+      setShowAppealModal(false);
+    } finally {
+      setIsAppealing(false);
+    }
   };
 
   const handleResend = async () => {
@@ -261,13 +288,51 @@ export const Login: React.FC = () => {
 
         {error && (
           <div className="border-2 border-primary-600 bg-[#BF3A20]/5 p-3 text-xs font-mono font-bold text-primary-600 mb-4">
-            ⚠️ {error}
+            <div>⚠️ {error}</div>
+            {error.includes('khóa') && (
+              <div className="mt-2 pt-2 border-t border-primary-600/20">
+                <button
+                  type="button"
+                  onClick={() => setShowAppealModal(true)}
+                  className="text-primary-600 underline font-bold hover:text-primary-500 cursor-pointer"
+                >
+                  Gửi đơn xin mở khóa tài khoản
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {infoMsg && (
           <div className="border-2 border-green-700 bg-green-50 p-3 text-xs font-mono font-bold text-green-700 mb-4">
             ℹ️ {infoMsg}
+          </div>
+        )}
+
+        {showVerifyPrompt && (
+          <div className="border-2 border-neutral-900 bg-amber-50 p-4 text-xs font-mono font-bold text-neutral-900 mb-4 space-y-3 shadow-retro-sm">
+            <div className="flex items-start gap-2">
+              <span className="text-sm">⚠️</span>
+              <div>
+                Tài khoản của bạn chưa được xác thực email. Vui lòng bấm vào nút dưới đây để chuyển sang trang xác thực mã OTP.
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowVerifyPrompt(false)}
+                className="px-3 py-1.5 border-2 border-neutral-900 bg-white text-neutral-700 hover:bg-neutral-50 font-mono font-bold text-[10px] uppercase shadow-retro-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#2c1a0e] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-150"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleProceedToVerify}
+                className="bg-amber-400 text-neutral-900 px-3 py-1.5 border-2 border-neutral-900 font-mono font-bold text-[10px] uppercase shadow-retro-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#2c1a0e] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-150"
+              >
+                Xác thực ngay
+              </button>
+            </div>
           </div>
         )}
 
@@ -416,6 +481,105 @@ export const Login: React.FC = () => {
           </p>
         </div>
 
+      </div>
+
+      {/* Appeal Modal */}
+      {showAppealModal && (
+        <AppealModal
+          onClose={() => setShowAppealModal(false)}
+          onSubmit={handleAppealSubmit}
+          isLoading={isAppealing}
+          initialEmail={email}
+        />
+      )}
+    </div>
+  );
+};
+
+// ─── Appeal Modal Component ──────────────────────────────────
+const AppealModal: React.FC<{
+  onClose: () => void;
+  onSubmit: (email: string, reason: string) => void;
+  isLoading: boolean;
+  initialEmail: string;
+}> = ({ onClose, onSubmit, isLoading, initialEmail }) => {
+  const [email, setEmail] = useState(initialEmail);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !reason.trim()) {
+      setError('Vui lòng điền đầy đủ email và lý do giải trình.');
+      return;
+    }
+    setError('');
+    onSubmit(email, reason.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 bg-neutral-950/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro-lg w-full max-w-md p-6 relative"
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700">
+          <X size={18} strokeWidth={1.5} />
+        </button>
+        <div className="text-center mb-5">
+          <span className="bg-primary-600 text-white text-[10px] font-mono font-bold px-2 py-0.5 border border-neutral-900 rotate-[-2deg] inline-block mb-2">
+            ĐƠN XIN MỞ KHÓA
+          </span>
+          <h3 className="font-heading font-black text-xl text-neutral-900">Yêu Cầu Xem Xét Lại</h3>
+        </div>
+
+        {error && (
+          <div className="border-2 border-primary-600 bg-[#BF3A20]/5 p-2.5 text-xs font-mono font-bold text-primary-600 mb-4">
+            ⚠️ {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormField
+            label="Địa chỉ email của bạn"
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            disabled={isLoading}
+            placeholder="email@example.com"
+          />
+          <div>
+            <label className="block font-body text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-2">
+              Lý do xin mở khóa / Cam kết
+            </label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Trình bày lý do hoặc cam kết khắc phục vi phạm..."
+              rows={4}
+              className="w-full px-3 py-2 bg-neutral-50 border-2 border-neutral-200 font-body text-sm text-neutral-900 focus:outline-none focus:border-primary-500 focus:bg-white transition-colors resize-none text-[13px]"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border-2 border-neutral-200 font-mono text-sm text-neutral-600 hover:bg-neutral-50 transition-colors"
+              disabled={isLoading}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading || !reason.trim() || !email}
+              className="px-4 py-2 bg-primary-600 text-white border-2 border-primary-700 font-mono text-sm font-bold uppercase tracking-wider hover:bg-primary-500 transition-colors shadow-retro-sm disabled:opacity-50"
+            >
+              {isLoading ? 'Đang gửi...' : 'Gửi yêu cầu'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

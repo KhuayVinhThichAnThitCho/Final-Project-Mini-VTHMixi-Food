@@ -33,7 +33,11 @@ export const useCart = () => {
    * Nếu chưa đăng nhập, mở modal thông báo yêu cầu đăng nhập.
    * @returns true nếu thêm thành công, false nếu bị chặn
    */
-  const addToCart = (item: Omit<CartItem, 'quantity' | 'selected'>, rId: string, quantity = 1): boolean => {
+  const addToCart = (
+    item: Omit<CartItem, 'quantity' | 'selected' | 'restaurantId'> & { restaurantName?: string }, 
+    rId: string, 
+    quantity = 1
+  ): boolean => {
     if (!isAuthenticated) {
       setShowAuthModal(true, window.location.pathname);
       return false;

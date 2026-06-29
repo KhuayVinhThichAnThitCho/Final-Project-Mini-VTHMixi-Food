@@ -68,9 +68,16 @@ export const AdminVouchers: React.FC = () => {
 
   const fetchRestaurants = useCallback(async () => {
     try {
-      const res = await api.get('/restaurants');
+      const res = await api.get('/restaurants', { params: { limit: 100 } });
       if (res && (res as any).success) {
-        setRestaurants((res as any).data || []);
+        const payload = (res as any).data;
+        if (payload && Array.isArray(payload.restaurants)) {
+          setRestaurants(payload.restaurants);
+        } else if (Array.isArray(payload)) {
+          setRestaurants(payload);
+        } else {
+          setRestaurants(MOCK_RESTAURANTS);
+        }
       } else {
         setRestaurants(MOCK_RESTAURANTS);
       }
@@ -111,8 +118,9 @@ export const AdminVouchers: React.FC = () => {
           newV.restaurant = rest ? { name: rest.name } : null;
         }
       }
-      
-      setVouchers(prev => [newV, ...prev]);
+      if (newV) {
+        setVouchers(prev => [newV, ...prev]);
+      }
       setShowModal(false);
       setForm(emptyForm);
     } catch (err: any) {
@@ -208,7 +216,7 @@ export const AdminVouchers: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y border-t border-neutral-200">
-                {vouchers.map(promo => {
+                {vouchers.filter(Boolean).map(promo => {
                   const expired = isExpired(promo);
                   const active = promo.isActive && !expired;
                   const isPlatform = !promo.restaurantId;

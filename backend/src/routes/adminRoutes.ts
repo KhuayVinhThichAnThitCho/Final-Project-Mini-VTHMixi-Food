@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { adminController } from '../controllers/adminController';
+import { appealController } from '../controllers/appealController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { authorize } from '../middlewares/rbacMiddleware';
 
@@ -102,5 +103,15 @@ router.post('/settings/batch', adminController.batchUpdateConfigs);
 
 // PATCH /api/v1/admin/settings/:key     — Cập nhật một config theo key
 router.patch('/settings/:key', adminController.updateSystemConfig);
+
+// ============================================================
+// QUẢN LÝ YÊU CẦU MỞ KHÓA (UNBAN APPEALS)
+// ============================================================
+
+// GET /api/v1/admin/appeals              — Danh sách đơn yêu cầu mở khóa
+router.get('/appeals', appealController.getAppeals);
+
+// POST /api/v1/admin/appeals/:id/resolve  — Xử lý yêu cầu mở khóa (approved/rejected)
+router.post('/appeals/:id/resolve', appealController.resolveAppeal);
 
 export default router;

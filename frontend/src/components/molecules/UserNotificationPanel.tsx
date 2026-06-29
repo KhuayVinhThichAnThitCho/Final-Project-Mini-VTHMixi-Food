@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useAuth from '../../hooks/useAuth';
 import {
   Bell,
   ShoppingBag,
@@ -33,64 +34,7 @@ export interface UserNotification {
 }
 
 // ─── Mock Notifications ──────────────────────────────────────────────────────
-const MOCK_NOTIFICATIONS: UserNotification[] = [
-  {
-    id: 'n1',
-    type: 'order',
-    title: 'Đơn hàng đang được giao',
-    message: 'Tài xế Minh Tùng đang trên đường giao đơn #DH2024 của bạn. Dự kiến 15 phút nữa.',
-    time: '3 phút trước',
-    isRead: false,
-    meta: { orderStatus: 'shipping' },
-  },
-  {
-    id: 'n2',
-    type: 'promo',
-    title: '🎉 Voucher mới dành cho bạn!',
-    message: 'Nhập mã HUNGRY30 để được giảm 30% cho đơn hàng tiếp theo. Hạn dùng: hôm nay.',
-    time: '1 giờ trước',
-    isRead: false,
-    actionUrl: '/menu',
-    meta: { promoCode: 'HUNGRY30', discount: '30%' },
-  },
-  {
-    id: 'n3',
-    type: 'order',
-    title: 'Đơn hàng đã hoàn thành ✓',
-    message: 'Đơn #DH2023 – Bún Bò Huế Mệ Loan đã được giao thành công. Cảm ơn bạn đã tin tưởng!',
-    time: '2 giờ trước',
-    isRead: true,
-    meta: { orderStatus: 'delivered' },
-  },
-  {
-    id: 'n4',
-    type: 'promo',
-    title: 'Flash Sale – Chỉ còn 2 tiếng!',
-    message: 'Giảm đến 50% tất cả món từ Phở Thìn Lò Đúc. Đặt ngay trước 12:00!',
-    time: '4 giờ trước',
-    isRead: true,
-    actionUrl: '/restaurants',
-    meta: { discount: '50%' },
-  },
-  {
-    id: 'n5',
-    type: 'system',
-    title: 'Chào mừng bạn trở lại!',
-    message: 'Bạn có 500 điểm tích luỹ chưa sử dụng. Dùng ngay để được giảm giá đơn hàng.',
-    time: 'Hôm qua',
-    isRead: true,
-    actionUrl: '/profile',
-  },
-  {
-    id: 'n6',
-    type: 'order',
-    title: 'Đang chuẩn bị món',
-    message: 'Nhà hàng Cơm Tấm Thuận Kiều đang chuẩn bị đơn #DH2022 của bạn.',
-    time: 'Hôm qua',
-    isRead: true,
-    meta: { orderStatus: 'preparing' },
-  },
-];
+const MOCK_NOTIFICATIONS: UserNotification[] = [];
 
 // ─── Tab Config ──────────────────────────────────────────────────────────────
 const TABS = [
@@ -154,50 +98,70 @@ interface UserNotificationPanelProps {
 export const UserNotificationPanel: React.FC<UserNotificationPanelProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('all');
-  
-  const loadNotifications = (): UserNotification[] => {
-    try {
-      const stored = localStorage.getItem('user_notifications');
-      const customNotis: UserNotification[] = stored ? JSON.parse(stored) : [];
-      return [...customNotis, ...MOCK_NOTIFICATIONS];
-    } catch (e) {
-      console.error(e);
-      return MOCK_NOTIFICATIONS;
-    }
-  };
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const updateStoredNotificationRead = (id: string, isRead: boolean) => {
+    if (!user) return;
+    const storageKey = `user_notifications_${user.id}`;
     try {
-      const stored = localStorage.getItem('user_notifications');
+      const stored = localStorage.getItem(storageKey);
       if (!stored) return;
       const customNotis: UserNotification[] = JSON.parse(stored);
       const updated = customNotis.map(n => n.id === id ? { ...n, isRead } : n);
-      localStorage.setItem('user_notifications', JSON.stringify(updated));
+      localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (e) {
       console.error(e);
     }
   };
 
   const updateAllStoredNotificationsRead = () => {
+    if (!user) return;
+    const storageKey = `user_notifications_${user.id}`;
     try {
-      const stored = localStorage.getItem('user_notifications');
+      const stored = localStorage.getItem(storageKey);
       if (!stored) return;
       const customNotis: UserNotification[] = JSON.parse(stored);
       const updated = customNotis.map(n => ({ ...n, isRead: true }));
-      localStorage.setItem('user_notifications', JSON.stringify(updated));
+      localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (e) {
       console.error(e);
     }
   };
 
-  const [notifications, setNotifications] = useState<UserNotification[]>(loadNotifications);
-  const panelRef = useRef<HTMLDivElement>(null);
+  // Load notifications from local storage and MOCK notifications
+  useEffect(() => {
+    const fetchNotis = () => {
+      if (!user) {
+        setNotifications(MOCK_NOTIFICATIONS);
+        return;
+      }
+      const storageKey = `user_notifications_${user.id}`;
+      try {
+        const stored = localStorage.getItem(storageKey);
+        const customNotis: UserNotification[] = stored ? JSON.parse(stored) : [];
+        setNotifications([...customNotis, ...MOCK_NOTIFICATIONS]);
+      } catch (e) {
+        console.error(e);
+        setNotifications(MOCK_NOTIFICATIONS);
+      }
+    };
+
+    fetchNotis();
+
+    const handleNewNoti = () => {
+      fetchNotis();
+    };
+    window.addEventListener('new_notification', handleNewNoti);
+    return () => window.removeEventListener('new_notification', handleNewNoti);
+  }, [user, isOpen]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   // Mark all as read when panel opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && user) {
       const timer = setTimeout(() => {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
         updateAllStoredNotificationsRead();
@@ -205,16 +169,7 @@ export const UserNotificationPanel: React.FC<UserNotificationPanelProps> = ({ is
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [isOpen]);
-
-  // Listen for real-time notifications saved to localStorage
-  useEffect(() => {
-    const handleNewNoti = () => {
-      setNotifications(loadNotifications());
-    };
-    window.addEventListener('new_notification', handleNewNoti);
-    return () => window.removeEventListener('new_notification', handleNewNoti);
-  }, []);
+  }, [isOpen, user]);
 
   // Close on outside click
   useEffect(() => {
