@@ -5,6 +5,7 @@ import AppRoutes from './routes/AppRoutes';
 import AuthConfirmModal from './components/molecules/AuthConfirmModal';
 import SystemNoticeBanner from './components/molecules/SystemNoticeBanner';
 import { SocketProvider } from './context/SocketContext';
+import { ToastProvider } from './context/ToastContext';
 import { ChatWidget } from './components/chat/ChatWidget';
 
 import { Provider } from 'react-redux';
@@ -17,13 +18,15 @@ export const App: React.FC = () => {
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <SocketProvider>
-          <BrowserRouter>
-            {/* Thông báo hệ thống — hiện trên đầu tất cả các trang */}
-            <SystemNoticeBanner />
-            <AppRoutes />
-            <AuthConfirmModal />
-            <ChatWidget />
-          </BrowserRouter>
+          <ToastProvider>
+            <BrowserRouter>
+              {/* Thông báo hệ thống — hiện trên đầu tất cả các trang */}
+              <SystemNoticeBanner />
+              <AppRoutes />
+              <AuthConfirmModal />
+              <ChatWidget />
+            </BrowserRouter>
+          </ToastProvider>
         </SocketProvider>
       </QueryClientProvider>
     </Provider>

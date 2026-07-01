@@ -580,9 +580,9 @@ export const adminService = {
       await reconciliationService.settleOrderPayment(order);
     }
 
-    // Nếu chuyển sang trạng thái hủy và trạng thái cũ không phải là hủy, hoàn lại tồn kho
+    // Nếu chuyển sang trạng thái hủy và trạng thái cũ không phải là hủy, hoàn lại tồn kho & tiền (nếu có)
     if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
-      await orderService.restoreOrderStock(order);
+      await orderService.handleOrderCancellation(order);
     }
 
     // Ghi log

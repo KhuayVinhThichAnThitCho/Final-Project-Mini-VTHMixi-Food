@@ -6,14 +6,17 @@ import VoucherCard, { VoucherData } from '../../components/molecules/VoucherCard
 import voucherApi from '../../services/voucherApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import useCart from '../../hooks/useCart';
+import { useToast } from '../../context/ToastContext';
 
 export const VouchersPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const { allCartItemsCount } = useCart();
   const { isAuthenticated } = useAuthStore();
 
   const [vouchers, setVouchers] = useState<VoucherData[]>([]);
   const [collectedIds, setCollectedIds] = useState<string[]>([]);
+  const [usedVoucherIds, setUsedVoucherIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'platform' | 'restaurant' | 'freeship'>('all');
   const [collectingId, setCollectingId] = useState<string | null>(null);
@@ -30,10 +33,9 @@ export const VouchersPage: React.FC = () => {
         if (isAuthenticated) {
           const collRes = await voucherApi.getMyCollectedVouchers();
           if (collRes && collRes.success) {
-            const ids = (collRes.data || [])
-              .filter((item: any) => !item.isUsed)
-              .map((item: any) => item.voucherId);
-            setCollectedIds(ids);
+            const allCollected = collRes.data || [];
+            setCollectedIds(allCollected.map((item: any) => item.voucherId));
+            setUsedVoucherIds(allCollected.filter((item: any) => item.isUsed).map((item: any) => item.voucherId));
           }
         }
       } catch (err) {
@@ -47,7 +49,7 @@ export const VouchersPage: React.FC = () => {
 
   const handleCollect = async (voucherId: string) => {
     if (!isAuthenticated) {
-      alert('Vui lòng đăng nhập để thu thập mã giảm giá.');
+      toast.warning('Vui lòng đăng nhập để thu thập mã giảm giá.');
       navigate('/login');
       return;
     }
@@ -56,10 +58,10 @@ export const VouchersPage: React.FC = () => {
       const res = await voucherApi.collectVoucher(voucherId);
       if (res && res.success) {
         setCollectedIds(prev => [...prev, voucherId]);
-        alert(res.message || 'Đã lưu mã giảm giá vào ví!');
+        toast.success(res.message || 'Đã lưu mã giảm giá vào ví!');
       }
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi lưu mã giảm giá.');
+      toast.error(err.message || 'Lỗi khi lưu mã giảm giá.');
     } finally {
       setCollectingId(null);
     }
@@ -138,6 +140,7 @@ export const VouchersPage: React.FC = () => {
                 key={voucher.id}
                 voucher={voucher}
                 isCollected={collectedIds.includes(voucher.id)}
+                isUsed={usedVoucherIds.includes(voucher.id)}
                 onCollect={() => handleCollect(voucher.id)}
                 onUse={() => navigate(voucher.restaurantId ? `/restaurants/${voucher.restaurantId}` : '/')}
                 loading={collectingId === voucher.id}

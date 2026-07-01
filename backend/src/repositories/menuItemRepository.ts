@@ -20,7 +20,7 @@ export const menuItemRepository = {
         {
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg'],
+          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg', 'operatingHours'],
         },
       ],
     });
@@ -40,7 +40,7 @@ export const menuItemRepository = {
         {
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg'],
+          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg', 'operatingHours'],
         },
       ],
     });
@@ -58,7 +58,7 @@ export const menuItemRepository = {
         {
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg'],
+          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg', 'operatingHours'],
         },
       ],
     });
@@ -74,7 +74,7 @@ export const menuItemRepository = {
         {
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg'],
+          attributes: ['name', 'deliveryFee', 'status', 'ratingAvg', 'operatingHours'],
         },
       ],
     });

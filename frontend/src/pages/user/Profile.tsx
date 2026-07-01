@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   User as UserIcon, 
@@ -122,6 +122,32 @@ export const Profile: React.FC = () => {
 
   // ─── Orders & Favorites ────────────────────────────────────
   const [realOrders, setRealOrders] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [timeFilter, setTimeFilter] = useState<string>('all');
+
+  const filteredOrders = useMemo(() => {
+    return realOrders.filter((order) => {
+      if (statusFilter !== 'all' && order.status !== statusFilter) {
+        return false;
+      }
+      if (timeFilter !== 'all') {
+        const orderDate = new Date(order.createdAt);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - orderDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (timeFilter === 'today') {
+          return orderDate.toDateString() === now.toDateString();
+        } else if (timeFilter === 'week' && diffDays > 7) {
+          return false;
+        } else if (timeFilter === 'month' && diffDays > 30) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [realOrders, statusFilter, timeFilter]);
+
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
   const [favoriteItems, setFavoriteItems] = useState<any[]>([]);
@@ -1043,13 +1069,47 @@ export const Profile: React.FC = () => {
             {/* ─────────── TAB 2: LỊCH SỬ ĐƠN HÀNG ─────────── */}
             {activeTab === 'orders' && (
               <div className="space-y-4 max-h-[700px] overflow-y-auto pr-1">
+                {/* Bộ lọc đơn hàng */}
+                <div className="flex flex-col sm:flex-row gap-3 bg-[#FEFCF9] border-2 border-neutral-900 p-3 shadow-retro-sm select-none mb-2 font-mono text-xs">
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="font-bold text-neutral-700">Trạng thái:</span>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="flex-grow bg-[#F0E9DE] border-2 border-neutral-950 p-1.5 focus:outline-none text-[11px] font-bold cursor-pointer"
+                    >
+                      <option value="all">Tất cả trạng thái</option>
+                      <option value="pending">Chờ xác nhận</option>
+                      <option value="confirmed">Đã xác nhận</option>
+                      <option value="preparing">Đang chuẩn bị</option>
+                      <option value="delivering">Đang giao hàng</option>
+                      <option value="completed">Đã hoàn thành</option>
+                      <option value="cancelled">Đã hủy</option>
+                    </select>
+                  </div>
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="font-bold text-neutral-700">Thời gian:</span>
+                    <select
+                      value={timeFilter}
+                      onChange={(e) => setTimeFilter(e.target.value)}
+                      className="flex-grow bg-[#F0E9DE] border-2 border-neutral-950 p-1.5 focus:outline-none text-[11px] font-bold cursor-pointer"
+                    >
+                      <option value="all">Tất cả thời gian</option>
+                      <option value="today">Hôm nay</option>
+                      <option value="week">7 ngày qua</option>
+                      <option value="month">30 ngày qua</option>
+                    </select>
+                  </div>
+                </div>
+
                 {ordersLoading ? (
                   <div className="text-center py-12 gap-2 font-mono text-xs text-[#BF3A20] uppercase font-bold">
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent border-[#BF3A20] inline-block mr-2"></div>
                     <span>Đang tải đơn hàng...</span>
                   </div>
                 ) : realOrders.length > 0 ? (
-                  realOrders.map((order) => {
+                  filteredOrders.length > 0 ? (
+                    filteredOrders.map((order) => {
                     const isCompleted = order.status === 'completed';
                     const isCancelled = order.status === 'cancelled';
                     return (
@@ -1158,8 +1218,13 @@ export const Profile: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    );
-                  })
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-12 font-mono text-xs text-neutral-400 select-none border-2 border-dashed border-neutral-200 bg-[#FAF7F3] rounded-sm">
+                      [ Không tìm thấy đơn hàng nào khớp với bộ lọc ]
+                    </div>
+                  )
                 ) : (
                   <div className="text-center py-8 text-neutral-400 font-mono italic">
                     [ Chưa có lịch sử đơn hàng nào ]
@@ -1237,7 +1302,7 @@ export const Profile: React.FC = () => {
           MODAL: Đổi mật khẩu
       ════════════════════════════════════════════════════════ */}
       {isChangePwModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="card-retro bg-[#FEFCF9] max-w-md w-full p-6 relative shadow-saigon-card border-2 border-neutral-900">
             <button
               onClick={() => { setIsChangePwModalOpen(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
@@ -1365,7 +1430,7 @@ export const Profile: React.FC = () => {
           MODAL: Địa chỉ
       ════════════════════════════════════════════════════════ */}
       {isAddressModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="card-retro bg-[#FEFCF9] max-w-md w-full p-6 relative shadow-saigon-card border-2 border-neutral-900">
             <button onClick={() => setIsAddressModalOpen(false)} className="absolute top-3 right-3 text-neutral-500 hover:text-neutral-900 cursor-pointer">
               <X size={20} strokeWidth={1.5} />
@@ -1437,7 +1502,7 @@ export const Profile: React.FC = () => {
           MODAL: Đánh giá món ăn
       ════════════════════════════════════════════════════════ */}
       {isRatingModalOpen && ratingOrderId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[10010] flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="card-retro bg-[#FEFCF9] max-w-md w-full p-6 relative shadow-saigon-card border-2 border-neutral-900">
             <button onClick={() => setIsRatingModalOpen(false)} className="absolute top-3 right-3 text-neutral-500 hover:text-neutral-900 cursor-pointer">
               <X size={20} strokeWidth={1.5} />
@@ -1497,8 +1562,8 @@ export const Profile: React.FC = () => {
           MODAL: Chi tiết đơn hàng lịch sử
       ════════════════════════════════════════════════════════ */}
       {selectedOrderDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="card-retro bg-[#FEFCF9] max-w-xl w-full p-6 relative shadow-saigon-card border-2 border-neutral-900 max-h-[90vh] flex flex-col justify-between overflow-hidden">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="card-retro bg-[#FEFCF9] max-w-lg w-full p-4 sm:p-5 relative shadow-saigon-card border-2 border-neutral-900 max-h-[85vh] flex flex-col justify-between overflow-hidden">
             
             {/* Close Button */}
             <button
@@ -1879,7 +1944,7 @@ export const Profile: React.FC = () => {
 
       {/* Custom Alert/Confirm Modal */}
       {customDialog.isOpen && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-neutral-900/60 backdrop-blur-xs p-4 select-none animate-fade-in">
+        <div className="fixed inset-0 z-[10200] flex items-center justify-center bg-neutral-900/60 backdrop-blur-xs p-4 select-none animate-fade-in">
           <div className="bg-[#FEFCF9] border-4 border-neutral-900 shadow-retro max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-150">
             {/* Retro header strip */}
             <div className="absolute top-0 left-0 right-0 h-2 bg-[#BF3A20]"></div>

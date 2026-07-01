@@ -112,13 +112,17 @@ export const orderController = {
         throw new AppError(404, 'NOT_FOUND', 'Bạn chưa có quán hàng nào trên hệ thống.');
       }
 
-      // Lấy đơn hàng kèm thông tin khách hàng
       const orders = await Order.findAll({
         where: { restaurantId: restaurant.id },
         include: [
           {
             model: User,
             as: 'user',
+            attributes: ['id', 'name', 'phone', 'avatar'],
+          },
+          {
+            model: User,
+            as: 'shipper',
             attributes: ['id', 'name', 'phone', 'avatar'],
           },
         ],

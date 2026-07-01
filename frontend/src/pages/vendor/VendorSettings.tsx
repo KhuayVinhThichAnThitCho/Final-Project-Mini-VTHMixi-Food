@@ -30,6 +30,27 @@ export const VendorSettings: React.FC = () => {
   const [status, setStatus] = useState<'open' | 'closed'>('open');
   const [logo, setLogo] = useState('');
 
+  // Custom modal states
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const [logoModal, setLogoModal] = useState<{
+    isOpen: boolean;
+    value: string;
+  }>({
+    isOpen: false,
+    value: '',
+  });
+
   const fetchRestaurant = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -80,8 +101,48 @@ export const VendorSettings: React.FC = () => {
     }
   };
 
+  const getIsTimeOpen = () => {
+    if (!openTime || !closeTime) return true;
+    try {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const [openH, openM] = openTime.split(':').map(Number);
+      const [closeH, closeM] = closeTime.split(':').map(Number);
+
+      const openMinutes = openH * 60 + openM;
+      const closeMinutes = closeH * 60 + closeM;
+
+      if (closeMinutes > openMinutes) {
+        return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+      } else {
+        return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+      }
+    } catch (err) {
+      return true;
+    }
+  };
+
   const handleToggleStatus = () => {
-    setStatus(prev => prev === 'open' ? 'closed' : 'open');
+    const nextStatus = status === 'open' ? 'closed' : 'open';
+    const confirmTitle = nextStatus === 'open' ? 'Xác nhận mở cửa' : 'Xác nhận tạm nghỉ';
+    const confirmMessage = nextStatus === 'open'
+      ? 'Bạn có chắc chắn muốn kích hoạt MỞ CỬA quán để bắt đầu nhận đơn hàng?'
+      : 'Bạn có chắc chắn muốn TẠM NGHỈ BÁN? Khách hàng sẽ không thể đặt đơn từ quán của bạn nữa.';
+      
+    setConfirmModal({
+      isOpen: true,
+      title: confirmTitle,
+      message: confirmMessage,
+      onConfirm: () => setStatus(nextStatus),
+    });
+  };
+
+  const handleChangeLogo = () => {
+    setLogoModal({
+      isOpen: true,
+      value: logo,
+    });
   };
 
   if (loading) return (
@@ -125,41 +186,50 @@ export const VendorSettings: React.FC = () => {
                   <Store size={48} className="text-primary-500 opacity-80" />
                 )}
               </div>
-              <label htmlFor="logo-input" className="absolute bottom-0 right-0 w-10 h-10 bg-white border border-gray-100 rounded-full flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors cursor-pointer">
+              <button
+                type="button"
+                onClick={handleChangeLogo}
+                className="absolute bottom-0 right-0 w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-md hover:bg-gray-50 hover:scale-105 transition-all cursor-pointer z-20"
+                title="Đổi ảnh logo"
+              >
                 <Camera size={18} className="text-gray-600" />
-              </label>
-              <input
-                id="logo-input"
-                type="text"
-                placeholder="URL ảnh logo..."
-                value={logo}
-                onChange={e => setLogo(e.target.value)}
-                className="sr-only"
-              />
+              </button>
             </div>
 
             <h2 className="font-bold text-xl mb-1 text-gray-800">{name || restaurant?.name}</h2>
             <p className="text-sm font-mono font-medium text-gray-400 mb-4">#{restaurant?.id?.slice(-6).toUpperCase()}</p>
 
-            {/* Logo URL input */}
-            <div className="w-full mb-4">
-              <input
-                type="text"
-                placeholder="URL ảnh logo quán..."
-                value={logo}
-                onChange={e => setLogo(e.target.value)}
-                className="w-full text-sm bg-gray-50 border border-gray-200 focus:border-primary-500 rounded-xl px-4 py-2.5 text-gray-700 focus:outline-none focus:ring-4 focus:ring-primary-500/10 transition-all"
-              />
-            </div>
-
-            <div className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">Trạng Thái:</span>
-              <button
-                onClick={handleToggleStatus}
-                className={`px-4 py-2 text-sm font-bold rounded-lg shadow-sm transition-all ${status === 'open' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}
-              >
-                {status === 'open' ? '🟢 Đang Mở Cửa' : '⚫ Đã Đóng Cửa'}
-              </button>
+            <div className="w-full flex flex-col gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100 mb-4 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-700">Thiết lập bán hàng:</span>
+                <button
+                  type="button"
+                  onClick={handleToggleStatus}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm border transition-all cursor-pointer ${
+                    status === 'open' 
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' 
+                      : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                  }`}
+                >
+                  {status === 'open' ? '🟢 Kích hoạt' : '⚫ Tạm nghỉ'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between border-t border-gray-200 pt-2.5">
+                <span className="text-sm font-semibold text-gray-700">Trạng thái hiện tại:</span>
+                <span className={`px-2.5 py-1 text-xs font-bold rounded-md border ${
+                  status === 'closed'
+                    ? 'bg-gray-100 text-gray-500 border-gray-200'
+                    : getIsTimeOpen()
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                      : 'bg-amber-50 text-amber-600 border-amber-100'
+                }`}>
+                  {status === 'closed'
+                    ? 'Tạm Nghỉ Bán'
+                    : getIsTimeOpen()
+                      ? 'Đang Mở Cửa'
+                      : 'Hết Giờ Phục Vụ'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -181,6 +251,8 @@ export const VendorSettings: React.FC = () => {
                   className="w-full bg-gray-50 border border-gray-200 focus:border-primary-500 rounded-xl px-4 py-3 text-gray-800 font-medium focus:outline-none focus:ring-4 focus:ring-primary-500/10 transition-all"
                 />
               </div>
+
+
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -262,6 +334,79 @@ export const VendorSettings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none animate-fade-in">
+          <div className="bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro p-6 max-w-sm w-full animate-scale-up font-mono">
+            <h3 className="text-sm font-bold text-neutral-900 border-b-2 border-dashed border-neutral-200 pb-3 mb-4 uppercase tracking-wider">
+              {confirmModal.title}
+            </h3>
+            <p className="text-xs text-neutral-600 leading-relaxed mb-6 font-medium">
+              {confirmModal.message}
+            </p>
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 border-2 border-neutral-900 text-xs font-bold bg-[#FEFCF9] text-neutral-800 shadow-retro-sm active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 transition-all cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                className="px-4 py-2 border-2 border-neutral-900 text-xs font-bold bg-[#BF3A20] text-white shadow-retro-sm active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 transition-all cursor-pointer"
+              >
+                Đồng ý
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Logo URL Prompt Modal */}
+      {logoModal.isOpen && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none animate-fade-in">
+          <div className="bg-[#FEFCF9] border-2 border-neutral-900 shadow-retro p-6 max-w-md w-full animate-scale-up font-mono">
+            <h3 className="text-sm font-bold text-neutral-900 border-b-2 border-dashed border-neutral-200 pb-3 mb-4 uppercase tracking-wider">
+              Đổi ảnh logo quán
+            </h3>
+            <p className="text-xs text-neutral-500 mb-3 font-medium">
+              Nhập link URL hình ảnh mới cho logo quán của bạn:
+            </p>
+            <input
+              type="text"
+              value={logoModal.value}
+              onChange={(e) => setLogoModal(prev => ({ ...prev, value: e.target.value }))}
+              placeholder="https://..."
+              className="w-full bg-[#F0E9DE] border-2 border-neutral-950 p-2.5 text-xs text-neutral-900 font-mono focus:outline-none mb-6"
+            />
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setLogoModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 border-2 border-neutral-900 text-xs font-bold bg-[#FEFCF9] text-neutral-800 shadow-retro-sm active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 transition-all cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLogo(logoModal.value.trim());
+                  setLogoModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                className="px-4 py-2 border-2 border-neutral-900 text-xs font-bold bg-[#BF3A20] text-white shadow-retro-sm active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 transition-all cursor-pointer"
+              >
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

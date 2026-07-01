@@ -18,6 +18,8 @@ interface Voucher {
   restaurant?: {
     name: string;
   } | null;
+  maxUses?: number | null;
+  usedCount: number;
 }
 
 interface VoucherForm {
@@ -29,6 +31,7 @@ interface VoucherForm {
   startDate: string;
   endDate: string;
   restaurantId: string; // empty means platform-wide
+  maxUses: string;
 }
 
 const emptyForm: VoucherForm = {
@@ -40,6 +43,7 @@ const emptyForm: VoucherForm = {
   startDate: new Date().toISOString().split('T')[0],
   endDate: '',
   restaurantId: '',
+  maxUses: '',
 };
 
 export const AdminVouchers: React.FC = () => {
@@ -109,6 +113,7 @@ export const AdminVouchers: React.FC = () => {
         startDate: form.startDate,
         endDate: form.endDate,
         restaurantId: form.restaurantId || undefined,
+        maxUses: form.maxUses ? Number(form.maxUses) : undefined,
       });
       
       const newV = res?.data;
@@ -148,7 +153,14 @@ export const AdminVouchers: React.FC = () => {
       ? `${v.discountValue}%${v.maxDiscountAmount ? ` (tối đa ${Number(v.maxDiscountAmount).toLocaleString('vi-VN')} đ)` : ''}`
       : `${Number(v.discountValue).toLocaleString('vi-VN')} đ`;
 
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('vi-VN');
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const isExpired = (v: Voucher) => new Date(v.endDate) < new Date();
 
@@ -202,71 +214,78 @@ export const AdminVouchers: React.FC = () => {
             <p className="text-neutral-500 font-mono text-xs uppercase font-bold">Chưa có mã khuyến mãi nào được tạo</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-neutral-100/80 border-b-2 border-neutral-950 font-mono uppercase">
-                <tr className="text-neutral-600 font-bold tracking-wider">
-                  <th className="py-4 px-6 border-r border-neutral-200">Mã Giảm Giá</th>
-                  <th className="py-4 px-6 border-r border-neutral-200">Phạm Vi Áp Dụng</th>
-                  <th className="py-4 px-6 border-r border-neutral-200">Mức Giảm</th>
-                  <th className="py-4 px-6 border-r border-neutral-200">Đơn Tối Thiểu</th>
-                  <th className="py-4 px-6 border-r border-neutral-200">Thời Gian Hiệu Lực</th>
-                  <th className="py-4 px-6 border-r border-neutral-200 text-center">Trạng Thái</th>
-                  <th className="py-4 px-6 text-right">Thao Tác</th>
+          <div className="overflow-x-auto border-2 border-neutral-950 shadow-retro-sm">
+            <table className="w-full text-left text-xs border-collapse min-w-[1050px]">
+              <thead className="bg-[#FAF7F3] border-b-2 border-neutral-950 font-mono uppercase">
+                <tr className="text-neutral-700 font-bold tracking-wider">
+                  <th className="py-3.5 px-4 border-r border-neutral-200 font-black tracking-widest whitespace-nowrap">Mã Giảm Giá</th>
+                  <th className="py-3.5 px-4 border-r border-neutral-200 font-black tracking-widest whitespace-nowrap">Phạm Vi Áp Dụng</th>
+                  <th className="py-3.5 px-4 border-r border-neutral-200 font-black tracking-widest whitespace-nowrap">Mức Giảm</th>
+                  <th className="py-3.5 px-4 border-r border-neutral-200 font-black tracking-widest whitespace-nowrap">Đơn Tối Thiểu</th>
+                  <th className="py-3.5 px-4 border-r border-neutral-200 font-black tracking-widest whitespace-nowrap">Lượt Sử Dụng</th>
+                  <th className="py-3.5 px-4 border-r border-neutral-200 font-black tracking-widest whitespace-nowrap">Thời Gian Hiệu Lực</th>
+                  <th className="py-3.5 px-4 border-r border-neutral-200 text-center font-black tracking-widest whitespace-nowrap">Trạng Thái</th>
+                  <th className="py-3.5 px-4 text-right font-black tracking-widest whitespace-nowrap">Thao Tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y border-t border-neutral-200">
+              <tbody className="divide-y border-t border-neutral-200 bg-white">
                 {vouchers.filter(Boolean).map(promo => {
                   const expired = isExpired(promo);
                   const active = promo.isActive && !expired;
                   const isPlatform = !promo.restaurantId;
                   return (
                     <tr key={promo.id} className={`hover:bg-neutral-50/50 transition-colors ${!active ? 'opacity-60 bg-neutral-50/20' : ''}`}>
-                      <td className="py-4 px-6 border-r border-neutral-100">
-                        <span className="font-mono font-bold text-sm text-[#BF3A20] select-all bg-red-50 border border-red-100 px-2.5 py-1 rounded-sm inline-block">
+                      <td className="py-4 px-4 border-r border-neutral-100 align-middle whitespace-nowrap">
+                        <span className="font-mono font-black text-xs text-[#BF3A20] select-all bg-red-50 border border-neutral-900 shadow-retro-sm px-2.5 py-1 rounded-sm inline-block">
                           {promo.code}
                         </span>
                       </td>
-                      <td className="py-4 px-6 border-r border-neutral-100 font-mono font-bold text-neutral-700">
+                      <td className="py-4 px-4 border-r border-neutral-100 align-middle whitespace-nowrap">
                         {isPlatform ? (
-                          <span className="text-red-700 bg-red-50 px-2 py-0.5 border border-red-100 rounded-sm">🎫 TOÀN SÀN</span>
+                          <span className="text-red-700 bg-red-50 px-2.5 py-1 border border-neutral-900 shadow-retro-sm rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider inline-block">🎫 TOÀN SÀN</span>
                         ) : (
-                          <span className="text-yellow-800 bg-yellow-50 px-2 py-0.5 border border-yellow-250 rounded-sm flex items-center gap-1">
-                            <Store size={12} /> {promo.restaurant?.name || 'Quán riêng'}
+                          <span className="text-neutral-800 bg-yellow-50 px-2.5 py-1 border border-neutral-900 shadow-retro-sm rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1.5">
+                            <Store size={11} className="text-[#C98F0A]" /> {promo.restaurant?.name || 'Quán riêng'}
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-6 border-r border-neutral-100 font-mono font-bold text-neutral-800">
+                      <td className="py-4 px-4 border-r border-neutral-100 align-middle whitespace-nowrap font-mono font-bold text-neutral-900 text-xs">
                         {formatDiscount(promo)}
                       </td>
-                      <td className="py-4 px-6 border-r border-neutral-100 font-mono font-medium text-neutral-600">
+                      <td className="py-4 px-4 border-r border-neutral-100 align-middle whitespace-nowrap font-mono font-bold text-neutral-700 text-xs">
                         {Number(promo.minOrderAmount).toLocaleString('vi-VN')} đ
                       </td>
-                      <td className="py-4 px-6 border-r border-neutral-100">
-                        <span className="flex items-center gap-2 font-mono text-neutral-500">
-                          <Calendar size={13} className="text-neutral-400" />
-                          {formatDate(promo.startDate)} → {formatDate(promo.endDate)}
+                      <td className="py-4 px-4 border-r border-neutral-100 align-middle whitespace-nowrap font-mono text-neutral-600 text-xs">
+                        <span className="font-black text-neutral-900">{promo.usedCount}</span>
+                        <span className="text-neutral-400 font-bold"> / {promo.maxUses !== null && promo.maxUses !== undefined ? promo.maxUses : '∞'}</span>
+                      </td>
+                      <td className="py-4 px-4 border-r border-neutral-100 align-middle whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 bg-neutral-100/80 border border-neutral-300 px-2.5 py-1 rounded-sm text-neutral-600 font-mono text-[10px]">
+                          <Calendar size={11} className="text-neutral-500" />
+                          {formatDate(promo.startDate)} – {formatDate(promo.endDate)}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-center border-r border-neutral-100">
-                        <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-sm border ${
-                          active ? 'border-emerald-250 text-emerald-700 bg-emerald-50' :
-                          expired ? 'border-orange-250 text-orange-600 bg-orange-50' :
-                          'border-neutral-250 text-neutral-500 bg-neutral-50'
+                      <td className="py-4 px-4 border-r border-neutral-100 align-middle text-center whitespace-nowrap">
+                        <span className={`px-2.5 py-1 text-[9px] font-black rounded-sm border-2 border-neutral-900 shadow-retro-sm whitespace-nowrap tracking-wider inline-block ${
+                          active ? 'text-emerald-700 bg-emerald-50' :
+                          expired ? 'text-orange-650 bg-orange-50' :
+                          'text-neutral-550 bg-neutral-50'
                         }`}>
-                          {active ? 'HOẠT ĐỘNG' : expired ? 'HẾT HẠN' : 'VÔ HIỆU'}
+                          {active ? '🟢 HOẠT ĐỘNG' : expired ? '⏰ HẾT HẠN' : '🔴 VÔ HIỆU'}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-right">
-                        {active && (
+                      <td className="py-4 px-4 align-middle text-right whitespace-nowrap">
+                        {active ? (
                           <button
                             onClick={() => handleDelete(promo.id, promo.code)}
                             disabled={deletingId === promo.id}
-                            className="p-1.5 text-red-500 hover:bg-red-55 border-2 border-transparent hover:border-red-500 transition-colors disabled:opacity-50"
+                            className="p-1.5 text-[#BF3A20] hover:bg-red-50 border-2 border-neutral-900 shadow-retro-sm hover:shadow-none active:translate-x-[1px] active:translate-y-[1px] rounded-sm transition-all disabled:opacity-50 cursor-pointer bg-white"
                             title="Vô hiệu hóa"
                           >
-                            {deletingId === promo.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            {deletingId === promo.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                           </button>
+                        ) : (
+                          <span className="text-[10px] text-neutral-450 italic font-mono select-none">Khóa</span>
                         )}
                       </td>
                     </tr>
@@ -348,6 +367,7 @@ export const AdminVouchers: React.FC = () => {
                     onChange={e => setForm(f => ({ ...f, discountValue: e.target.value }))}
                     placeholder={form.discountType === 'percentage' ? '10' : '20000'}
                     min={0}
+                    step={form.discountType === 'percentage' ? 5 : 5000}
                     className="w-full bg-neutral-50 border-2 border-neutral-900 px-3 py-2 text-neutral-800 font-mono focus:outline-none"
                   />
                 </div>
@@ -359,6 +379,7 @@ export const AdminVouchers: React.FC = () => {
                     onChange={e => setForm(f => ({ ...f, minOrderAmount: e.target.value }))}
                     placeholder="50000"
                     min={0}
+                    step={5000}
                     className="w-full bg-neutral-50 border-2 border-neutral-900 px-3 py-2 text-neutral-800 font-mono focus:outline-none"
                   />
                 </div>
@@ -373,10 +394,23 @@ export const AdminVouchers: React.FC = () => {
                     onChange={e => setForm(f => ({ ...f, maxDiscountAmount: e.target.value }))}
                     placeholder="50000"
                     min={0}
+                    step={5000}
                     className="w-full bg-neutral-50 border-2 border-neutral-900 px-3 py-2 text-neutral-850 font-mono focus:outline-none"
                   />
                 </div>
               )}
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-neutral-650 uppercase mb-1.5">Số Lượt Sử Dụng Tối Đa (Bỏ trống = Vô hạn)</label>
+                <input
+                  type="number"
+                  value={form.maxUses}
+                  onChange={e => setForm(f => ({ ...f, maxUses: e.target.value }))}
+                  placeholder="Ví dụ: 100"
+                  min={1}
+                  className="w-full bg-neutral-50 border-2 border-neutral-900 px-3 py-2 text-neutral-850 font-mono focus:outline-none text-xs"
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

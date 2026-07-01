@@ -438,25 +438,64 @@ export const CheckoutTracking: React.FC = () => {
     return total > 0 ? total : 0;
   }, [subtotal, deliveryFee, discountAmount]);
 
+  // Helper to validate and get eligible restaurant order for a voucher
+  const getVoucherApplicability = (v: any) => {
+    const now = new Date();
+    const startDate = new Date(v.startDate);
+    const endDate = new Date(v.endDate);
+    if (now < startDate || now > endDate) {
+      return { applicable: false, reason: 'Mã giảm giá đã hết hạn hoặc chưa có hiệu lực.', targetRestaurantId: null, maxSubtotal: 0 };
+    }
+
+    const uniqueRestaurantIds = Array.from(new Set(selectedItems.map(item => item.restaurantId).filter(Boolean)));
+    
+    let hasMatchingRestaurant = false;
+    let hasEligibleSubOrder = false;
+    let maxSubtotal = 0;
+    let targetRestaurantId: string | null = null;
+    
+    for (const rId of uniqueRestaurantIds) {
+      const restItems = selectedItems.filter(item => item.restaurantId === rId);
+      const restSubtotal = restItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      
+      const isRestaurantMatch = !v.restaurantId || v.restaurantId === rId;
+      if (isRestaurantMatch) {
+        hasMatchingRestaurant = true;
+        if (restSubtotal >= Number(v.minOrderAmount)) {
+          hasEligibleSubOrder = true;
+          if (restSubtotal > maxSubtotal) {
+            maxSubtotal = restSubtotal;
+            targetRestaurantId = rId;
+          }
+        }
+      }
+    }
+
+    if (v.restaurantId && !hasMatchingRestaurant) {
+      return { applicable: false, reason: `Chỉ áp dụng tại quán: ${v.restaurant?.name || 'Quán riêng'}`, targetRestaurantId: null, maxSubtotal: 0 };
+    }
+
+    if (!hasEligibleSubOrder) {
+      return { 
+        applicable: false, 
+        reason: v.restaurantId 
+          ? `Đơn hàng của quán này chưa đủ tối thiểu ${Number(v.minOrderAmount).toLocaleString('vi-VN')}đ`
+          : `Không có đơn hàng lẻ của nhà hàng nào đạt tối thiểu ${Number(v.minOrderAmount).toLocaleString('vi-VN')}đ`,
+        targetRestaurantId: null,
+        maxSubtotal: 0
+      };
+    }
+
+    return { applicable: true, reason: '', targetRestaurantId, maxSubtotal };
+  };
+
   // Apply Coupon code object
   const applyVoucherObj = (voucher: any) => {
     setCouponError('');
-    const now = new Date();
-    const startDate = new Date(voucher.startDate);
-    const endDate = new Date(voucher.endDate);
-
-    if (now < startDate || now > endDate) {
-      setCouponError('Mã giảm giá này chưa có hiệu lực hoặc đã hết hạn.');
-      return;
-    }
-
-    if (voucher.restaurantId && voucher.restaurantId !== restaurantId) {
-      setCouponError('Mã giảm giá này không áp dụng cho quán ăn này.');
-      return;
-    }
-
-    if (subtotal < Number(voucher.minOrderAmount)) {
-      setCouponError(`Đơn hàng chưa đạt giá trị tối thiểu ${Number(voucher.minOrderAmount).toLocaleString('vi-VN')}đ để áp dụng mã này.`);
+    
+    const check = getVoucherApplicability(voucher);
+    if (!check.applicable) {
+      setCouponError(check.reason);
       return;
     }
 
@@ -464,7 +503,7 @@ export const CheckoutTracking: React.FC = () => {
     if (voucher.discountType === 'fixed_amount') {
       calculatedDiscount = Number(voucher.discountValue);
     } else if (voucher.discountType === 'percentage') {
-      const calculated = (subtotal * Number(voucher.discountValue)) / 100;
+      const calculated = (check.maxSubtotal * Number(voucher.discountValue)) / 100;
       calculatedDiscount = voucher.maxDiscountAmount ? Math.min(calculated, Number(voucher.maxDiscountAmount)) : calculated;
     }
 
@@ -544,24 +583,32 @@ export const CheckoutTracking: React.FC = () => {
       return;
     }
 
-    const ordersData = uniqueRestaurantIds.map(rId => {
-      const restItems = selectedItems.filter(item => item.restaurantId === rId);
-      const isFirst = uniqueRestaurantIds[0] === rId;
-      
-      // Áp dụng voucher: Chỉ áp dụng voucherCode cho đơn hàng có restaurantId khớp với voucher.restaurantId
-      // Hoặc nếu voucher dùng chung (không có restaurantId), áp dụng cho đơn đầu tiên
-      let voucherToUse: string | undefined = undefined;
-      if (appliedCode) {
-        const matchingVoucher = collectedVouchers.find(wrapper => wrapper.voucher?.code === appliedCode)?.voucher;
+    // Find which restaurant sub-order is eligible for the applied voucher
+    let targetVoucherRestaurantId: string | null = null;
+    if (appliedCode) {
+      if (appliedCode === 'SAIGON90S') {
+        // SAIGON90S is a fallback/mock coupon, apply it to the first restaurant
+        targetVoucherRestaurantId = uniqueRestaurantIds[0] || null;
+      } else {
+        const wrapper = collectedVouchers.find(w => w.voucher?.code === appliedCode);
+        const matchingVoucher = wrapper?.voucher;
         if (matchingVoucher) {
-          if (matchingVoucher.restaurantId === rId || (!matchingVoucher.restaurantId && isFirst)) {
-            voucherToUse = appliedCode;
+          const check = getVoucherApplicability(matchingVoucher);
+          if (check.applicable) {
+            targetVoucherRestaurantId = check.targetRestaurantId;
           }
-        } else if (appliedCode === 'SAIGON90S' && isFirst) {
-          voucherToUse = appliedCode;
         }
       }
+    }
 
+    const ordersData = uniqueRestaurantIds.map(rId => {
+      const restItems = selectedItems.filter(item => item.restaurantId === rId);
+      
+      let voucherToUse: string | undefined = undefined;
+      if (appliedCode && targetVoucherRestaurantId === rId) {
+        voucherToUse = appliedCode;
+      }
+      
       return {
         restaurantId: rId,
         items: restItems.map(item => ({
@@ -1474,7 +1521,7 @@ export const CheckoutTracking: React.FC = () => {
                         <p className="text-[10px] font-mono font-bold uppercase text-neutral-400 mb-1.5">Mã giảm giá khả dụng:</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md">
                           {vouchers.map((v: any) => {
-                            const isApplicable = subtotal >= Number(v.minOrderAmount);
+                            const isApplicable = getVoucherApplicability(v).applicable;
                             return (
                               <div 
                                 key={v.id}
@@ -2124,7 +2171,9 @@ export const CheckoutTracking: React.FC = () => {
                   
                   {collectedVouchers.map((wrapper) => {
                     const v = wrapper.voucher;
-                    const isApplicable = subtotal >= Number(v.minOrderAmount) && (!v.restaurantId || v.restaurantId === restaurantId);
+                    const appCheck = getVoucherApplicability(v);
+                    const isApplicable = appCheck.applicable;
+                    const reason = appCheck.reason;
                     const isUsed = wrapper.isUsed;
                     const isExpired = new Date(v.endDate) < new Date();
 
@@ -2151,9 +2200,7 @@ export const CheckoutTracking: React.FC = () => {
                         />
                         {!isApplicable && !isUsed && !isExpired && (
                           <p className="text-[9px] font-mono text-[#BF3A20] font-bold mt-1 pl-1">
-                            * {v.restaurantId && v.restaurantId !== restaurantId 
-                              ? `Chỉ áp dụng tại quán: ${v.restaurant?.name || 'Quán riêng'}` 
-                              : `Đơn tối thiểu chưa đủ (cần ${Number(v.minOrderAmount).toLocaleString('vi-VN')}đ)`}
+                            * {reason}
                           </p>
                         )}
                       </div>

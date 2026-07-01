@@ -1,4 +1,5 @@
 import api from './api';
+import { useAuthStore } from '../store/useAuthStore';
 
 // Danh sách voucher giả lập phòng trường hợp backend lỗi hoặc chưa kết nối
 const MOCK_VOUCHERS = [
@@ -78,9 +79,16 @@ const MOCK_VOUCHERS = [
   }
 ];
 
+const getLocalStorageKey = () => {
+  const user = useAuthStore.getState().user;
+  const userId = user?.id || 'guest';
+  return `user_collected_vouchers_${userId}`;
+};
+
 // Lấy danh sách ví voucher mock từ localStorage nếu có
 const getLocalCollectedVouchers = () => {
-  const data = localStorage.getItem('user_collected_vouchers');
+  const key = getLocalStorageKey();
+  const data = localStorage.getItem(key);
   if (data) return JSON.parse(data);
   // Mặc định cho sẵn 2 voucher đã thu thập để trải nghiệm
   const defaultCollected = [
@@ -99,8 +107,13 @@ const getLocalCollectedVouchers = () => {
       voucher: MOCK_VOUCHERS[1]
     }
   ];
-  localStorage.setItem('user_collected_vouchers', JSON.stringify(defaultCollected));
+  localStorage.setItem(key, JSON.stringify(defaultCollected));
   return defaultCollected;
+};
+
+const saveLocalCollectedVouchers = (collected: any[]) => {
+  const key = getLocalStorageKey();
+  localStorage.setItem(key, JSON.stringify(collected));
 };
 
 export const voucherApi = {
@@ -149,7 +162,7 @@ export const voucherApi = {
         }
       };
       collected.push(newCollect);
-      localStorage.setItem('user_collected_vouchers', JSON.stringify(collected));
+      saveLocalCollectedVouchers(collected);
       return { success: true, message: 'Thu thập mã giảm giá thành công.', data: newCollect } as any;
     }
   },
@@ -190,6 +203,7 @@ export const voucherApi = {
     startDate: string;
     endDate: string;
     restaurantId?: string;
+    maxUses?: number;
   }): Promise<any> => {
     try {
       return await api.post('/vouchers/mine', data) as any;
@@ -207,6 +221,8 @@ export const voucherApi = {
         isActive: true,
         restaurantId: data.restaurantId || null,
         restaurant: data.restaurantId ? { name: 'Quán của bạn', logo: null } : null,
+        maxUses: data.maxUses || null,
+        usedCount: 0,
       };
       MOCK_VOUCHERS.unshift(newVoucher as any);
       return { success: true, message: 'Tạo mã giảm giá thành công.', data: newVoucher } as any;

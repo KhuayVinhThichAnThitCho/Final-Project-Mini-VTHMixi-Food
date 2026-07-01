@@ -9,6 +9,7 @@ import useAuth from '../../hooks/useAuth';
 import menuItemApi from '../../services/menuItemApi';
 import reviewApi from '../../services/reviewApi';
 import favoriteApi from '../../services/favoriteApi';
+import { isWithinOperatingHours } from '../../utils/timeHelper';
 
 const categoryNames: Record<string, string> = {
   all: 'Tất cả món',
@@ -178,7 +179,8 @@ export const ProductDetail: React.FC = () => {
         restaurantName: rest.name || dbItem.restaurantName || mockRest.name || 'Quán ăn',
         restaurantRating: rest.ratingAvg !== undefined ? Number(rest.ratingAvg) : (mockRest.rating || 0),
         restaurantDeliveryFee: rest.deliveryFee !== undefined ? Number(rest.deliveryFee) : (mockRest.deliveryFee || 0),
-        restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open') : (mockRest.isOpen || false),
+        restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open' && isWithinOperatingHours(rest.operatingHours)) : (mockRest.isOpen || false),
+        restaurantStatus: rest.status || mockRest.status || (mockRest.isOpen ? 'open' : 'closed'),
         toppings: dbItem.toppings || [],
       };
     }
@@ -298,6 +300,11 @@ export const ProductDetail: React.FC = () => {
 
   // Handle add item to global cart
   const handleAddToCart = () => {
+    if (item.restaurantIsOpen === false) {
+      showToast('⚠️ Nhà hàng đã đóng cửa, không thể đặt món lúc này!', 'error');
+      return;
+    }
+
     const toppingsList = selectedToppings
       .map((toppingId) => (item.toppings || []).find((t: any) => t.id === toppingId))
       .filter((t): t is Exclude<typeof t, undefined> => t !== undefined);
@@ -498,14 +505,16 @@ export const ProductDetail: React.FC = () => {
                 {/* THÊM VÀO GIỎ HÀNG Button — trung bình */}
                 <button
                   onClick={handleAddToCart}
-                  disabled={!item.isAvailable || item.stock <= 0}
+                  disabled={!item.isAvailable || item.stock <= 0 || item.restaurantIsOpen === false}
                   className={`flex-grow py-2.5 px-4 font-bold uppercase tracking-wider border-2 border-neutral-900 shadow-retro active:translate-x-[2px] active:translate-y-[2px] active:shadow-retro-sm transition-all duration-150 text-center text-xs ${
-                    item.isAvailable && item.stock > 0
+                    item.isAvailable && item.stock > 0 && item.restaurantIsOpen !== false
                       ? 'bg-[#BF3A20] hover:bg-[#D44B2F] text-white cursor-pointer'
                       : 'bg-neutral-300 text-neutral-500 opacity-45 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0'
                   }`}
                 >
-                  {item.isAvailable && item.stock > 0 ? (
+                  {item.restaurantIsOpen === false ? (
+                    <span>Quán đã đóng cửa</span>
+                  ) : item.isAvailable && item.stock > 0 ? (
                     <span>Thêm vào giỏ — {totalPrice.toLocaleString('vi-VN')}đ</span>
                   ) : (
                     <span>Hết hàng</span>

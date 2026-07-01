@@ -106,13 +106,13 @@ export const VendorChat: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full min-h-[600px] bg-white rounded-2xl border border-gray-100 shadow-modern animate-fade-in overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-52px)] md:h-[calc(100vh-72px)] min-h-[500px] bg-white rounded-2xl border border-gray-100 shadow-modern animate-fade-in overflow-hidden">
       {/* Sidebar - Danh sách khách hàng */}
       <div className="w-full md:w-80 flex-shrink-0 border-r border-gray-100 flex flex-col bg-gray-50/50">
         <div className="p-5 border-b border-gray-100 bg-white">
           <h2 className="font-bold text-lg text-gray-800">Tin nhắn khách hàng</h2>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {conversations.length === 0 ? (
             <div className="p-8 text-sm text-gray-500 text-center font-medium">Không có cuộc hội thoại nào</div>
           ) : (
@@ -161,7 +161,7 @@ export const VendorChat: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/30">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-gray-50/30">
               {messages.map((msg, idx) => {
                 const isMine = msg.senderType === 'VENDOR';
                 return (

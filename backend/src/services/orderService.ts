@@ -37,6 +37,40 @@ export const orderService = {
       throw new AppError(400, 'BUSINESS_ERROR', 'Quán ăn này hiện đang đóng cửa hoặc chưa được kích hoạt.');
     }
 
+    // Kiểm tra giờ hoạt động nếu có cài đặt
+    if (restaurant.operatingHours) {
+      try {
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+        const opHours = typeof restaurant.operatingHours === 'string'
+          ? JSON.parse(restaurant.operatingHours)
+          : restaurant.operatingHours;
+
+        if (opHours.open && opHours.close) {
+          const [openH, openM] = opHours.open.split(':').map(Number);
+          const [closeH, closeM] = opHours.close.split(':').map(Number);
+
+          const openMinutes = openH * 60 + openM;
+          const closeMinutes = closeH * 60 + closeM;
+
+          let isWithin = true;
+          if (closeMinutes > openMinutes) {
+            isWithin = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+          } else {
+            isWithin = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+          }
+
+          if (!isWithin) {
+            throw new AppError(400, 'BUSINESS_ERROR', `Quán ăn hiện đã ngoài giờ phục vụ (${opHours.open} - ${opHours.close}).`);
+          }
+        }
+      } catch (err: any) {
+        if (err instanceof AppError) throw err;
+        console.error('Error checking operating hours in backend:', err);
+      }
+    }
+
     // Kiểm tra địa chỉ nhận hàng có thuộc TP.HCM hay không
     const normalizedAddress = deliveryAddress.toLowerCase();
     const isInHCM = 
@@ -100,12 +134,14 @@ export const orderService = {
     // 2. Tính số tiền giảm giá nếu áp dụng voucher
     let discount = 0;
     let userVoucherToUpdate: any = null;
+    let appliedVoucherInstance: any = null;
 
     if (voucherCode) {
       const voucher = await Voucher.findOne({ where: { code: voucherCode, isActive: true } });
       if (!voucher) {
         throw new AppError(404, 'NOT_FOUND', 'Mã giảm giá không tồn tại hoặc đã hết hạn.');
       }
+      appliedVoucherInstance = voucher;
 
       const now = new Date();
       if (now < voucher.startDate || now > voucher.endDate) {
@@ -118,6 +154,11 @@ export const orderService = {
 
       if (totalPrice < Number(voucher.minOrderAmount)) {
         throw new AppError(400, 'BUSINESS_ERROR', `Đơn hàng chưa đạt giá trị tối thiểu ${Number(voucher.minOrderAmount).toLocaleString('vi-VN')} đ để áp dụng mã này.`);
+      }
+
+      // Kiểm tra xem mã giảm giá đã hết lượt sử dụng toàn hệ thống chưa
+      if (voucher.maxUses !== null && voucher.maxUses !== undefined && voucher.usedCount >= voucher.maxUses) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Mã giảm giá này đã hết lượt sử dụng.');
       }
 
       // Kiểm tra trạng thái trong ví voucher của người dùng
@@ -252,6 +293,11 @@ export const orderService = {
       }
     }
 
+    if (appliedVoucherInstance) {
+      appliedVoucherInstance.usedCount = (appliedVoucherInstance.usedCount || 0) + 1;
+      await appliedVoucherInstance.save();
+    }
+
     return order;
   },
 
@@ -272,6 +318,24 @@ export const orderService = {
       }
     } catch (error) {
       console.error(`❌ [Stock Restore Error] Lỗi hoàn tồn kho cho đơn #${order.id}:`, error);
+    }
+  },
+
+  /**
+   * Xử lý các tác vụ khi hủy đơn hàng: Hoàn tồn kho và hoàn tiền vào ví SG Pay (nếu đã thanh toán)
+   */
+  handleOrderCancellation: async (order: Order): Promise<void> => {
+    // 1. Hoàn tồn kho
+    await orderService.restoreOrderStock(order);
+
+    // 2. Hoàn tiền vào ví điện tử SG Pay nếu đơn hàng đã thanh toán (isPaid === true)
+    if (order.isPaid) {
+      await walletService.deposit(
+        order.userId,
+        Number(order.totalAmount),
+        `Hoàn tiền đơn hàng #${order.id.slice(0, 8).toUpperCase()} do đơn hàng bị hủy`
+      );
+      console.log(`💰 [Refund] Đã hoàn lại ${order.totalAmount} VND vào ví SG Pay cho người dùng ${order.userId} (Đơn hàng #${order.id})`);
     }
   },
 
@@ -297,7 +361,7 @@ export const orderService = {
 
     // Nếu đơn hàng chuyển sang trạng thái hủy và trạng thái cũ không phải là hủy
     if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
-      await orderService.restoreOrderStock(order);
+      await orderService.handleOrderCancellation(order);
     }
 
     const updatedOrder = await orderRepository.updateStatus(orderId, newStatus);

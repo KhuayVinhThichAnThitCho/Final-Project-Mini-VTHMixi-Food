@@ -1,5 +1,6 @@
 import api from './api';
 import { MOCK_MENU_ITEMS, MOCK_RESTAURANTS } from '../utils/mockData';
+import { isWithinOperatingHours } from '../utils/timeHelper';
 
 export const menuItemApi = {
   /**
@@ -20,7 +21,8 @@ export const menuItemApi = {
             restaurantName: rest.name || item.restaurantName || mockRest.name || 'Quán ăn',
             restaurantRating: rest.ratingAvg !== undefined ? Number(rest.ratingAvg) : (mockRest.rating || 0),
             restaurantDeliveryFee: rest.deliveryFee !== undefined ? Number(rest.deliveryFee) : (mockRest.deliveryFee || 0),
-            restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open') : (mockRest.isOpen || false),
+            restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open' && isWithinOperatingHours(rest.operatingHours)) : (mockRest.isOpen || false),
+            restaurantStatus: rest.status || mockRest.status || (mockRest.isOpen ? 'open' : 'closed'),
           };
         });
       }
@@ -75,7 +77,8 @@ export const menuItemApi = {
               restaurantName: rest.name || item.restaurantName || mockRest.name || 'Quán ăn',
               restaurantRating: rest.ratingAvg !== undefined ? Number(rest.ratingAvg) : (mockRest.rating || 0),
               restaurantDeliveryFee: rest.deliveryFee !== undefined ? Number(rest.deliveryFee) : (mockRest.deliveryFee || 0),
-              restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open') : (mockRest.isOpen || false),
+              restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open' && isWithinOperatingHours(rest.operatingHours)) : (mockRest.isOpen || false),
+              restaurantStatus: rest.status || mockRest.status || (mockRest.isOpen ? 'open' : 'closed'),
             };
           });
         }
@@ -89,7 +92,8 @@ export const menuItemApi = {
               restaurantName: rest.name || item.restaurantName || mockRest.name || 'Quán ăn',
               restaurantRating: rest.ratingAvg !== undefined ? Number(rest.ratingAvg) : (mockRest.rating || 0),
               restaurantDeliveryFee: rest.deliveryFee !== undefined ? Number(rest.deliveryFee) : (mockRest.deliveryFee || 0),
-              restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open') : (mockRest.isOpen || false),
+              restaurantIsOpen: rest.status !== undefined ? (rest.status === 'open' && isWithinOperatingHours(rest.operatingHours)) : (mockRest.isOpen || false),
+              restaurantStatus: rest.status || mockRest.status || (mockRest.isOpen ? 'open' : 'closed'),
             };
           });
         }
