@@ -10,6 +10,8 @@ export interface RestaurantFilters {
   limit?: number;
 }
 
+import { isWithinOperatingHours } from '../utils/timeHelper';
+
 export const restaurantApi = {
   /**
    * Lấy danh sách nhà hàng có lọc và phân trang
@@ -20,7 +22,17 @@ export const restaurantApi = {
       const response = await api.get('/restaurants', {
         params: { page, limit, minRating, maxDeliveryFee, isOpenOnly, sortBy },
       }) as any;
-      return response.data;
+      const data = response.data;
+      if (data && Array.isArray(data.restaurants)) {
+        data.restaurants = data.restaurants.map((r: any) => ({
+          ...r,
+          isOpen: r.status === 'open' && isWithinOperatingHours(r.operatingHours),
+          rating: r.ratingAvg ? Number(r.ratingAvg) : r.rating || 4.5,
+          deliveryTime: r.deliveryTime || '15-25 phút',
+          imageUrl: r.logo || r.imageUrl || 'https://placehold.co/600x400/FEFCF9/BF3A20?text=Quán+Ăn',
+        }));
+      }
+      return data;
     } catch (error) {
       console.warn('Backend /restaurants failed. Falling back to mock.', error);
 
@@ -51,7 +63,17 @@ export const restaurantApi = {
   getRestaurantById: async (id: string) => {
     try {
       const response = await api.get(`/restaurants/${id}`) as any;
-      return response.data;
+      const r = response.data;
+      if (r) {
+        return {
+          ...r,
+          isOpen: r.status === 'open' && isWithinOperatingHours(r.operatingHours),
+          rating: r.ratingAvg ? Number(r.ratingAvg) : r.rating || 4.5,
+          deliveryTime: r.deliveryTime || '15-25 phút',
+          imageUrl: r.logo || r.imageUrl || 'https://placehold.co/600x400/FEFCF9/BF3A20?text=Quán+Ăn',
+        };
+      }
+      return r;
     } catch (error) {
       console.warn(`Backend /restaurants/${id} failed. Falling back to mock.`, error);
       const restaurant = MOCK_RESTAURANTS.find((r) => r.id === id) || MOCK_RESTAURANTS[0];

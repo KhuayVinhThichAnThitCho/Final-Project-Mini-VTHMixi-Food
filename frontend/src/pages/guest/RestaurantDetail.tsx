@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useChatStore } from '../../store/useChatStore';
 import api from '../../services/api';
 import { restaurantApi } from '../../services/restaurantApi';
+import { isWithinOperatingHours } from '../../utils/timeHelper';
 
 interface MenuItem {
   id: string;
@@ -145,7 +146,7 @@ export const RestaurantDetail: React.FC = () => {
     );
   }
 
-  const isOpen = restaurant.status === 'open';
+  const isOpen = restaurant.status === 'open' && isWithinOperatingHours(restaurant.operatingHours);
   const rating = restaurant.ratingAvg ?? restaurant.rating ?? 0;
 
   return (
@@ -185,8 +186,18 @@ export const RestaurantDetail: React.FC = () => {
         </button>
 
         {/* Status badge overlay */}
-        <span className={`absolute top-4 right-4 text-xs font-mono font-bold px-3 py-1 border rounded-sm ${isOpen ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-neutral-700 text-neutral-200 border-neutral-600'}`}>
-          {isOpen ? '● Đang mở cửa' : '○ Đóng cửa'}
+        <span className={`absolute top-4 right-4 text-xs font-mono font-bold px-3 py-1 border rounded-sm ${
+          isOpen 
+            ? 'bg-emerald-600 text-white border-emerald-700' 
+            : restaurant.status === 'closed'
+              ? 'bg-neutral-700 text-neutral-200 border-neutral-600'
+              : 'bg-amber-600 text-white border-amber-700'
+        }`}>
+          {isOpen 
+            ? '● Đang mở cửa' 
+            : restaurant.status === 'closed'
+              ? '○ Tạm nghỉ bán'
+              : '○ Hết giờ phục vụ'}
         </span>
       </div>
 
@@ -329,6 +340,10 @@ export const RestaurantDetail: React.FC = () => {
                 <Button
                   variant="retro"
                   onClick={() => {
+                    if (!isOpen) {
+                      showToast('⚠️ Nhà hàng đã đóng cửa, không thể đặt món lúc này!', false);
+                      return;
+                    }
                     if (item.stock > 0 && item.isAvailable) {
                       const added = addToCart({
                         id: item.id,
@@ -343,14 +358,18 @@ export const RestaurantDetail: React.FC = () => {
                       showToast('⚠️ Món này đã hết hàng!', false);
                     }
                   }}
-                  disabled={item.stock <= 0 || !item.isAvailable}
+                  disabled={item.stock <= 0 || !item.isAvailable || !isOpen}
                   className={`py-1.5 px-3 text-xs flex-shrink-0 ${
-                    item.stock <= 0 || !item.isAvailable
+                    item.stock <= 0 || !item.isAvailable || !isOpen
                       ? 'bg-neutral-200 text-neutral-400 border-neutral-300 cursor-not-allowed shadow-none active:translate-x-0 active:translate-y-0'
                       : 'bg-[#BF3A20] text-white hover:bg-[#D44B2F]'
                   }`}
                 >
-                  + Thêm
+                  {isOpen 
+                    ? '+ Thêm' 
+                    : restaurant.status === 'closed'
+                      ? 'Tạm nghỉ'
+                      : 'Hết giờ'}
                 </Button>
               </div>
             ))}

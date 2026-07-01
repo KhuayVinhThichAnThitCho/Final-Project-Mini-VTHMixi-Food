@@ -14,19 +14,31 @@ export const aiTools = {
         status: 'completed',
         createdAt: { [Op.gte]: startDate }
       },
-      attributes: ['totalAmount', 'createdAt']
+      attributes: ['totalAmount', 'platformFee', 'createdAt']
     });
 
-    // Aggregate by day
-    const dailyRevenue: Record<string, number> = {};
+    // Aggregate by day: net revenue (after platform fee) + order count
+    const dailyData: Record<string, { netRevenue: number; orders: number }> = {};
     orders.forEach(order => {
-      const dateString = order.createdAt.toISOString().split('T')[0];
-      dailyRevenue[dateString] = (dailyRevenue[dateString] || 0) + Number(order.totalAmount);
+      const dateString = new Date(order.createdAt)
+        .toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      if (!dailyData[dateString]) {
+        dailyData[dateString] = { netRevenue: 0, orders: 0 };
+      }
+      const net = Number(order.totalAmount) - Number((order as any).platformFee || 0);
+      dailyData[dateString].netRevenue += net;
+      dailyData[dateString].orders += 1;
     });
+
+    const totalNetRevenue = orders.reduce(
+      (sum, o) => sum + Number(o.totalAmount) - Number((o as any).platformFee || 0), 0
+    );
 
     return {
-      timeframe: `${days} days`,
-      dailyRevenue
+      timeframe: `${days} ngày gần nhất`,
+      totalOrders: orders.length,
+      totalNetRevenue,
+      dailyData
     };
   },
 

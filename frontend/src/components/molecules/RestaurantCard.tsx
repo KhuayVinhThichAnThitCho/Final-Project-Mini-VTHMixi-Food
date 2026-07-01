@@ -33,9 +33,13 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurant, onCl
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
                 ĐANG MỞ CỬA
               </span>
-            ) : (
+            ) : restaurant.status === 'closed' ? (
               <span className="inline-flex items-center gap-1 bg-neutral-100 text-neutral-500 text-[9px] font-mono font-black px-2 py-0.5 border border-neutral-300 rounded-sm">
-                ĐÃ ĐÓNG CỬA
+                TẠM NGHỈ BÁN
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-600 text-[9px] font-mono font-black px-2 py-0.5 border border-amber-300 rounded-sm">
+                HẾT GIỜ PHỤC VỤ
               </span>
             )}
           </div>

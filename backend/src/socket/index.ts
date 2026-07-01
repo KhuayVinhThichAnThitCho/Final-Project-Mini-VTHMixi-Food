@@ -110,7 +110,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
             const autoReply = await Message.create({
               conversationId,
               senderType: 'VENDOR',
-              text: 'Chào bạn, chúng tôi đã nhận được tin nhắn và sẽ phản hồi trong ngày hôm nay nhé.'
+              text: 'Chào bạn, chúng tôi đã nhận được tin nhắn và sẽ phản hồi trong ít phút nhé nhé.'
             });
 
             await Conversation.update(

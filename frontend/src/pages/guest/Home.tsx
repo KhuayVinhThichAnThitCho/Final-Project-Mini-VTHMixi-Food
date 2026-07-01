@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Store, ChevronRight } from 'lucide-react';
 import Header from '../../components/organisms/Header';
@@ -9,9 +9,11 @@ import SaigonDivider from '../../components/molecules/SaigonDivider';
 import { MOCK_CATEGORIES, MOCK_RESTAURANTS, MOCK_MENU_ITEMS, MenuItemDetail } from '../../utils/mockData';
 import useCart from '../../hooks/useCart';
 import menuItemApi from '../../services/menuItemApi';
+import restaurantApi from '../../services/restaurantApi';
 import { VoucherCard, VoucherData } from '../../components/molecules/VoucherCard';
 import voucherApi from '../../services/voucherApi';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
 
 // Swiper component and modules
@@ -25,6 +27,7 @@ import 'swiper/css/pagination';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { allCartItemsCount } = useCart();
@@ -33,6 +36,7 @@ export const Home: React.FC = () => {
   // States cho hệ thống Voucher ở trang chủ
   const [vouchers, setVouchers] = useState<VoucherData[]>([]);
   const [collectedIds, setCollectedIds] = useState<string[]>([]);
+  const [usedVoucherIds, setUsedVoucherIds] = useState<string[]>([]);
   const [collectingId, setCollectingId] = useState<string | null>(null);
 
   // State cấu hình banner trang chủ từ Admin
@@ -63,10 +67,9 @@ export const Home: React.FC = () => {
         if (isAuthenticated) {
           const collRes = await voucherApi.getMyCollectedVouchers();
           if (collRes && collRes.success) {
-            const ids = (collRes.data || [])
-              .filter((item: any) => !item.isUsed)
-              .map((item: any) => item.voucherId);
-            setCollectedIds(ids);
+            const allCollected = collRes.data || [];
+            setCollectedIds(allCollected.map((item: any) => item.voucherId));
+            setUsedVoucherIds(allCollected.filter((item: any) => item.isUsed).map((item: any) => item.voucherId));
           }
         }
       } catch (err) {
@@ -74,11 +77,26 @@ export const Home: React.FC = () => {
       }
     };
     loadVouchers();
+
+    const loadFeaturedRestaurants = async () => {
+      try {
+        const res = await restaurantApi.getRestaurants({ limit: 4, sortBy: 'rating' });
+        if (res && res.restaurants && res.restaurants.length > 0) {
+          setFeaturedRestaurants(res.restaurants);
+        } else {
+          setFeaturedRestaurants(MOCK_RESTAURANTS.filter((r) => r.isOpen && r.rating >= 4.6).slice(0, 4));
+        }
+      } catch (err) {
+        console.error('Error loading featured restaurants:', err);
+        setFeaturedRestaurants(MOCK_RESTAURANTS.filter((r) => r.isOpen && r.rating >= 4.6).slice(0, 4));
+      }
+    };
+    loadFeaturedRestaurants();
   }, [isAuthenticated]);
 
   const handleCollectVoucher = async (voucherId: string) => {
     if (!isAuthenticated) {
-      alert('Vui lòng đăng nhập để thu thập mã giảm giá.');
+      toast.warning('Vui lòng đăng nhập để thu thập mã giảm giá.');
       navigate('/login');
       return;
     }
@@ -87,10 +105,10 @@ export const Home: React.FC = () => {
       const res = await voucherApi.collectVoucher(voucherId);
       if (res && res.success) {
         setCollectedIds(prev => [...prev, voucherId]);
-        alert(res.message || 'Đã lưu mã giảm giá vào ví!');
+        toast.success(res.message || 'Đã lưu mã giảm giá vào ví!');
       }
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi thu thập mã giảm giá.');
+      toast.error(err.message || 'Lỗi khi thu thập mã giảm giá.');
     } finally {
       setCollectingId(null);
     }
@@ -102,9 +120,7 @@ export const Home: React.FC = () => {
   const [loadingTopItems, setLoadingTopItems] = useState<boolean>(true);
 
   // ─── DỮ LIỆU NHÀ HÀNG (Restaurants) ─────────────────────────────────────────
-  const featuredRestaurants = useMemo(() => {
-    return MOCK_RESTAURANTS.filter((r) => r.isOpen && r.rating >= 4.6).slice(0, 4);
-  }, []);
+  const [featuredRestaurants, setFeaturedRestaurants] = useState<any[]>([]);
 
   // Fetch Top Items (Best Sellers & Most Viewed) từ backend
   useEffect(() => {
@@ -223,6 +239,7 @@ export const Home: React.FC = () => {
                 <VoucherCard
                   voucher={voucher}
                   isCollected={collectedIds.includes(voucher.id)}
+                  isUsed={usedVoucherIds.includes(voucher.id)}
                   onCollect={() => handleCollectVoucher(voucher.id)}
                   onUse={() => navigate(voucher.restaurantId ? `/restaurants/${voucher.restaurantId}` : '/')}
                   loading={collectingId === voucher.id}

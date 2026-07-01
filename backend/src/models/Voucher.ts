@@ -67,6 +67,17 @@ export class Voucher extends Model {
   @Column(DataType.BOOLEAN)
   isActive!: boolean;
 
+  // Giới hạn số lượt sử dụng tối đa của mã giảm giá này (null = vô hạn)
+  @AllowNull(true)
+  @Column(DataType.INTEGER)
+  maxUses?: number | null;
+
+  // Số lượng thực tế đã sử dụng thành công
+  @AllowNull(false)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  usedCount!: number;
+
   // Liên kết đến nhà hàng (nếu có, null nghĩa là voucher toàn hệ thống)
   @ForeignKey(() => Restaurant)
   @AllowNull(true)

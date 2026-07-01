@@ -300,7 +300,7 @@ export const Header: React.FC<HeaderProps> = ({ cartCount = 0 }) => {
         onConfirm={() => {
           logout();
           setShowLogoutModal(false);
-          navigate('/');
+          navigate('/login');
         }}
         onCancel={() => setShowLogoutModal(false)}
       />

@@ -16,6 +16,7 @@ export interface RestaurantData {
   coverImage?: string;
   operatingHours?: { open: string; close: string };
   isOpen: boolean;
+  status?: string;
 }
 
 export const MOCK_CATEGORIES: FoodCategory[] = [

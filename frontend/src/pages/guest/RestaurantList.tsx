@@ -256,9 +256,15 @@ export const RestaurantList: React.FC = () => {
                       <span className={`absolute top-2 left-2 text-[10px] font-mono font-bold px-2 py-0.5 border rounded-sm ${
                         restaurant.isOpen
                           ? 'bg-emerald-600 text-white border-emerald-700'
-                          : 'bg-neutral-700 text-neutral-200 border-neutral-800'
+                          : restaurant.status === 'closed'
+                            ? 'bg-neutral-700 text-neutral-200 border-neutral-800'
+                            : 'bg-amber-600 text-white border-amber-700'
                       }`}>
-                        {restaurant.isOpen ? '● Đang mở' : '○ Đóng cửa'}
+                        {restaurant.isOpen 
+                          ? '● Đang mở' 
+                          : restaurant.status === 'closed'
+                            ? '○ Tạm nghỉ bán'
+                            : '○ Hết giờ phục vụ'}
                       </span>
                     </div>
 

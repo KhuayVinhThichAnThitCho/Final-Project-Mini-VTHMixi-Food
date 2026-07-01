@@ -75,7 +75,7 @@ export const voucherController = {
         throw new AppError(401, 'UNAUTHORIZED', 'Bạn cần đăng nhập.');
       }
 
-      const { code, discountType, discountValue, maxDiscountAmount, minOrderAmount, startDate, endDate, restaurantId } = req.body;
+      const { code, discountType, discountValue, maxDiscountAmount, minOrderAmount, startDate, endDate, restaurantId, maxUses } = req.body;
 
       if (!code || !discountType || !discountValue || !startDate || !endDate) {
         throw new AppError(400, 'VALIDATION_ERROR', 'Thiếu thông tin bắt buộc để tạo mã giảm giá.');
@@ -109,6 +109,7 @@ export const voucherController = {
         isActive: true,
         restaurantId: finalRestaurantId,
         createdBy: req.user.id,
+        maxUses: maxUses !== undefined && maxUses !== null && maxUses !== '' ? Number(maxUses) : null,
       });
 
       // Tự động tạo System Notice nếu admin tạo mã giảm giá hệ thống (không thuộc quán nào)
@@ -191,6 +192,11 @@ export const voucherController = {
       const now = new Date();
       if (now < voucher.startDate || now > voucher.endDate) {
         throw new AppError(400, 'BUSINESS_ERROR', 'Mã giảm giá này không còn trong thời gian hoạt động.');
+      }
+
+      // Kiểm tra giới hạn số lượt sử dụng toàn hệ thống
+      if (voucher.maxUses !== null && voucher.maxUses !== undefined && voucher.usedCount >= voucher.maxUses) {
+        throw new AppError(400, 'BUSINESS_ERROR', 'Mã giảm giá này đã hết lượt sử dụng.');
       }
 
       // Kiểm tra xem đã thu thập chưa

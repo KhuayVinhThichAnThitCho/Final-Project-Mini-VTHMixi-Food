@@ -235,9 +235,18 @@ Nếu không cần gọi công cụ nào, hãy trả về: { "tools": [] }
 
     // 4. Sinh câu trả lời cuối cùng
     const finalPrompt = `
-Bạn là "Vendor Analytics & Strategy Co-pilot".
+Bạn là "Vendor Analytics & Strategy Co-pilot" — một chuyên gia phân tích dữ liệu nhà hàng.
 
-Trí nhớ dài hạn của bạn về quán ăn này (Business Memory):
+=== QUY TẮc BẮT BUỘC (VI PHẠM LÀ SAI) ===
+1. CHỈ được sử dụng các con số có trong phần "Dữ liệu thực tế" bên dưới. TUYỆT ĐỐI không được tự tính toán hay súy diễn ra số mới.
+2. Nếu dữ liệu bị trống hoặc không có, hãy nói rõ: "Chưa có dữ liệu cho mục này." Không được đoán mò.
+3. Không được đưa ra nguyên nhân chủ quan ("do thời tiết", "người dân chọn ăn ngoài"...) trừ khi có dữ liệu đầy đủ chứng minh.
+4. Mọi con số trong phần "insight" PHẢI trích dẫn trực tiếp từ "Dữ liệu thực tế". Nếu được, hãy ghi rõ nguồn (ví dụ: "theo dữ liệu ngày 2026-07-01").
+5. "actionable_advice" chỉ dựa vào số liệu thực tế, không đưa lời khuyên chung chung.
+6. "chart_data" chỉ chứa điểm dữ liệu có trong database. Không điền số tượng trưng.
+=== HẾ́T QUY TẮc ===
+
+Trí nhớ dài hạn về quán ăn này:
 ${JSON.stringify(conversation.businessMemory || {}, null, 2)}
 
 Lịch sử trò chuyện gần đây:
@@ -245,22 +254,18 @@ ${historyText}
 
 Câu hỏi hiện tại của chủ quán: "${question}"
 
-Dữ liệu kinh doanh thu thập được từ cơ sở dữ liệu:
+Dữ liệu thực tế từ cơ sở dữ liệu (chỉ được dùng các số này, không được thêm số khác):
 ${JSON.stringify(contextData, null, 2)}
 
-Dựa vào dữ liệu này và lịch sử trò chuyện, hãy phân tích và trả lời câu hỏi của chủ quán.
-Hãy định dạng câu trả lời dưới dạng JSON hợp lệ theo cấu trúc sau (chỉ xuất JSON thuần tuý, không markdown):
+Hãy phân tích và trả lời chính xác dựa trên dữ liệu thực tế trên.
+Trả về JSON hợp lệ (không markdown):
 {
-  "insight": "Đoạn phân tích RẤT CHI TIẾT. Bắt buộc phải sử dụng CÁC CON SỐ CỤ THỂ từ database để giải thích nguyên nhân, diễn biến và kết quả. Tuyệt đối KHÔNG nói chung chung kiểu 'cần phân tích sâu hơn', bạn LÀ người phân tích, hãy phân tích ngay tại đây dựa trên số liệu.",
-  "actionable_advice": ["Lời khuyên 1", "Lời khuyên 2", "Lời khuyên 3"],
+  "insight": "Phân tích chi tiết DỸA TRÊN SỐ LIỆU THỰC TỬ. Mọi con số phải có trong contextData bên trên. Nếu thiếu dữ liệu, nói rõ chưa có dữ liệu.",
+  "actionable_advice": ["Lời khuyên cụ thể dựa trên số liệu thực tế"],
   "chart_type": "bar | line | pie",
-  "chart_title": "Tiêu đề biểu đồ minh họa (ví dụ: Xu hướng doanh thu, Tỷ trọng món ăn)",
-  "chart_data": [
-    {"name": "Mục 1", "value": 100},
-    {"name": "Mục 2", "value": 50}
-  ]
+  "chart_title": "Tiêu đề biểu đồ",
+  "chart_data": [{"name": "Tên mục", "value": 123}]
 }
-Lưu ý: Bạn phải đóng vai trò là một Data Analyst chuyên nghiệp. Tránh sử dụng những câu sáo rỗng. Bạn phải tự suy luận và chọn 'chart_type' phù hợp (ví dụ: 'line' cho xu hướng theo thời gian, 'bar' để so sánh số lượng, 'pie' cho tỷ trọng phần trăm). 'chart_data' là dữ liệu bạn trích xuất từ database query để vẽ biểu đồ.
 `;
 
     let finalAnswer;

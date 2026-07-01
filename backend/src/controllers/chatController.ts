@@ -45,7 +45,7 @@ export const chatController = {
         await Message.create({
           conversationId: conversation.id,
           senderType: 'VENDOR',
-          text: `Chào bạn, chúng tôi đã nhận được tin nhắn và sẽ phản hồi trong ngày hôm nay nhé.`
+          text: `Chào bạn, chúng tôi đã nhận được tin nhắn và sẽ phản hồi trong ít phút nhé.`
         });
 
         // Load lại conversation để lấy đầy đủ thông tin restaurant trả về cho frontend
